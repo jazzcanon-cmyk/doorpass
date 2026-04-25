@@ -90,7 +90,15 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message)
 
-    await sendSlackMessage("🏠 새로운 건물이 등록되었습니다!")
+    await sendSlackMessage({
+      text: "🏠 새로운 건물이 등록되었습니다!",
+      color: "#36a64f",
+      fields: [
+        { title: "건물명", value: name || address?.split(" ").slice(-1)[0] || "-" },
+        { title: "주소", value: address || "-", short: false },
+        ...(memo ? [{ title: "메모", value: memo, short: false }] : []),
+      ],
+    })
 
     return NextResponse.json({ building: data }, { status: 201 })
   } catch (error) {

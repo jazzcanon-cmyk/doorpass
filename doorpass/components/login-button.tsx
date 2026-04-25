@@ -1,5 +1,6 @@
 "use client"
 import { useState } from "react"
+import { Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 
 type Provider = "google" | "kakao"
@@ -33,21 +34,33 @@ export function LoginButton({ provider, redirectTo }: LoginButtonProps) {
         disabled={loading}
         style={{
           width: "100%",
-          background: loading ? "#c9a800" : "#FEE500",
-          color: "#3C1E1E",
-          fontWeight: 700,
-          fontSize: 16,
-          padding: "14px 0",
-          borderRadius: 12,
-          border: "none",
-          cursor: loading ? "not-allowed" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,
+          gap: 10,
+          padding: "14px 20px",
+          borderRadius: 12,
+          backgroundColor: loading ? "#c9a800" : "#FEE500",
+          border: "none",
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.7 : 1,
+          fontWeight: 600,
+          fontSize: 14,
+          color: "#3C1E1E",
+          boxShadow: "0 4px 16px rgba(254,229,0,0.25), 0 1px 3px rgba(0,0,0,0.2)",
+          transition: "all 0.2s ease",
+          letterSpacing: "-0.01em",
         }}
+        onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.filter = "brightness(0.96)" }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)" }}
+        onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)" }}
+        onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)" }}
       >
-        <span style={{ fontSize: 20 }}>💬</span>
+        {loading ? (
+          <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
+        ) : (
+          <KakaoIcon />
+        )}
         {loading ? "로그인 중..." : "카카오로 시작하기"}
       </button>
     )
@@ -59,23 +72,46 @@ export function LoginButton({ provider, redirectTo }: LoginButtonProps) {
       disabled={loading}
       style={{
         width: "100%",
-        background: loading ? "#d0d0d0" : "#ffffff",
-        color: "#3c4043",
-        fontWeight: 600,
-        fontSize: 16,
-        padding: "14px 0",
-        borderRadius: 12,
-        border: "1px solid rgba(255,255,255,0.2)",
-        cursor: loading ? "not-allowed" : "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: 10,
+        padding: "14px 20px",
+        borderRadius: 12,
+        backgroundColor: loading ? "#f0f0f0" : "#ffffff",
+        border: "1.5px solid rgba(255,255,255,0.15)",
+        cursor: loading ? "not-allowed" : "pointer",
+        opacity: loading ? 0.7 : 1,
+        fontWeight: 600,
+        fontSize: 14,
+        color: "#3c4043",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.1)",
+        transition: "all 0.2s ease",
+        letterSpacing: "-0.01em",
       }}
+      onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#f8f8f8" }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#ffffff" }}
+      onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.98)" }}
+      onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)" }}
     >
-      <GoogleIcon />
+      {loading ? (
+        <Loader2 style={{ width: 16, height: 16, color: "#9aa0a6", animation: "spin 1s linear infinite" }} />
+      ) : (
+        <GoogleIcon />
+      )}
       {loading ? "로그인 중..." : "Google로 시작하기"}
     </button>
+  )
+}
+
+function KakaoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path fillRule="evenodd" clipRule="evenodd"
+        d="M9 1.5C4.86 1.5 1.5 4.19 1.5 7.5c0 2.1 1.26 3.945 3.165 5.085L3.75 15.75l3.57-2.34C7.59 13.47 8.29 13.5 9 13.5c4.14 0 7.5-2.69 7.5-6s-3.36-6-7.5-6z"
+        fill="#3C1E1E"
+      />
+    </svg>
   )
 }
 
