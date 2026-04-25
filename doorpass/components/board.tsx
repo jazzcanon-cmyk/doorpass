@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { useBoardStore, type PostDetail } from "@/stores/boardStore"
 import { NoticeBoard } from "@/components/notice-board"
 import { ResourceRoom } from "@/components/resource-room"
+import { trackPostView, trackButtonClick } from "@/lib/analytics"
 
 type BoardTab = "notices" | "resources" | "posts"
 
@@ -403,7 +404,7 @@ function List({ listKey, debouncedQuery, clearSearch }: {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-foreground">게시판</h2>
-        <Button size="sm" onClick={goToWrite} className="gap-1.5 h-8"><Plus className="h-3.5 w-3.5" />글쓰기</Button>
+        <Button size="sm" onClick={() => { trackButtonClick("write_post"); goToWrite() }} className="gap-1.5 h-8"><Plus className="h-3.5 w-3.5" />글쓰기</Button>
       </div>
 
       {isSearching && (
@@ -469,7 +470,7 @@ function Detail({ postId, defaultAuthor }: { postId: number; defaultAuthor?: str
     if (!postId || isNaN(postId)) { setError("잘못된 ID"); setLoading(false); return }
     fetch("/api/posts/" + postId)
       .then((r) => r.json())
-      .then((d) => { if (d.error) setError(d.error); else setPost(d.post); setLoading(false) })
+      .then((d) => { if (d.error) setError(d.error); else { setPost(d.post); if (d.post) trackPostView(postId, d.post.title) } setLoading(false) })
       .catch(() => { setError("불러오기 실패"); setLoading(false) })
   }, [postId])
 

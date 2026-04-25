@@ -1,6 +1,6 @@
 "use client"
 import { CalendarModal } from "@/components/calendar"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase-client"
 import dynamic from "next/dynamic"
@@ -11,6 +11,7 @@ import { BuildingCard } from "@/components/building-card"
 import { LocationStatus } from "@/components/location-status"
 import { SelectedBuildingInfo } from "@/components/selected-building-info"
 import { Board } from "@/components/board"
+import { trackSearch, trackBuildingView, trackPageView } from "@/lib/analytics"
 
 const BuildingMap = dynamic(
   () => import("@/components/building-map").then((mod) => mod.BuildingMap),
@@ -71,6 +72,9 @@ export default function Home() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const searchTrackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { trackPageView("/") }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -150,11 +154,18 @@ export default function Home() {
           (b.address ?? "").toLowerCase().includes(q)
       )
       setSearchResults(filtered)
+      if (q.length >= 2) {
+        if (searchTrackRef.current) clearTimeout(searchTrackRef.current)
+        searchTrackRef.current = setTimeout(() => trackSearch(query.trim(), filtered.length), 1500)
+      }
     },
     [allBuildings]
   )
 
-  const handleBuildingSelect = useCallback((b: Building | null) => setSelectedBuilding(b), [])
+  const handleBuildingSelect = useCallback((b: Building | null) => {
+    setSelectedBuilding(b)
+    if (b) trackBuildingView(b.id, b.name || b.address)
+  }, [])
 
   const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
     const upd = (list: Building[]) =>
