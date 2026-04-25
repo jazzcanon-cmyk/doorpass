@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { Shield, MapPin, Package } from "lucide-react"
+import Image from "next/image"
 import { LoginButton } from "@/components/login-button"
 
 export default function LoginPage() {
@@ -45,46 +46,21 @@ export default function LoginPage() {
           mounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
         }`}
       >
-        {/* Abstract logo: three overlapping circles */}
-        <div className="relative inline-flex items-center justify-center mb-6" style={{ width: 72, height: 72 }}>
-          <span
-            className="absolute rounded-full"
-            style={{
-              width: 42, height: 42,
-              background: "#E30A17",
-              top: 0, left: 0,
-              opacity: 0.92,
-            }}
-          />
-          <span
-            className="absolute rounded-full"
-            style={{
-              width: 42, height: 42,
-              background: "#F39800",
-              top: 0, right: 0,
-              opacity: 0.92,
-            }}
-          />
-          <span
-            className="absolute rounded-full"
-            style={{
-              width: 42, height: 42,
-              background: "#0066B3",
-              bottom: 0, left: "50%",
-              transform: "translateX(-50%)",
-              opacity: 0.95,
-            }}
-          />
-          {/* Center blend glow */}
-          <span
-            className="absolute rounded-full"
-            style={{
-              width: 20, height: 20,
-              background: "rgba(255,255,255,0.18)",
-              top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)",
-              filter: "blur(4px)",
-            }}
+        {/* CJ 공식 로고 */}
+        <div
+          className="inline-flex items-center justify-center mb-6 rounded-2xl px-6 py-3"
+          style={{
+            background: "#ffffff",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          <Image
+            src="/images/cj-logo.png"
+            alt="CJ대한통운"
+            width={180}
+            height={60}
+            priority
+            style={{ objectFit: "contain", height: 48, width: "auto" }}
           />
         </div>
 
@@ -92,7 +68,7 @@ export default function LoginPage() {
           신정대리점
         </h1>
         <p className="mt-1.5 font-medium" style={{ color: "#0066B3", fontSize: 13, letterSpacing: "0.04em" }}>
-          CJ대한통운 택배 관리 시스템
+          택배 관리 시스템
         </p>
       </div>
 
