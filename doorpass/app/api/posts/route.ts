@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendSlackMessage } from '@/lib/slack'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,5 +28,15 @@ export async function POST(request: Request) {
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  sendSlackMessage({
+    text: `📝 [신정대리점] 새 게시글: ${title}`,
+    color: '#36a64f',
+    fields: [
+      { title: '작성자', value: author || '익명' },
+      { title: '시간', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) },
+    ],
+  }).catch((err) => console.error('[Slack] 게시글 알림 전송 실패:', err))
+
   return NextResponse.json({ post: data })
 }
