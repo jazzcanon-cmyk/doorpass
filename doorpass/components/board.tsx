@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen } from "lucide-react"
+import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -63,11 +63,27 @@ function ago(d: string) {
   return Math.floor(s / 86400) + "일 전"
 }
 
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query || query.length < 2) return <>{text}</>
+  const idx = text.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-primary/20 text-primary not-italic rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  )
+}
+
 function List({ listKey }: { listKey: number }) {
   const { goToDetail, goToWrite } = useBoardStore()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -77,30 +93,91 @@ function List({ listKey }: { listKey: number }) {
       .catch(() => { setError("게시글 불러오기 실패"); setLoading(false) })
   }, [listKey])
 
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value.trim()), 500)
+  }
+
+  const clearSearch = () => {
+    setSearchQuery("")
+    setDebouncedQuery("")
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+  }
+
+  const isSearching = debouncedQuery.length >= 2
+  const filteredPosts = isSearching
+    ? posts.filter((p) => {
+        const q = debouncedQuery.toLowerCase()
+        return p.title.toLowerCase().includes(q) || p.author.toLowerCase().includes(q)
+      })
+    : posts
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (error) return <div className="text-center py-8 text-destructive text-sm">{error}</div>
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-foreground">게시판</h2>
         <Button size="sm" onClick={goToWrite} className="gap-1.5 h-8"><Plus className="h-3.5 w-3.5" />글쓰기</Button>
       </div>
-      {posts.length === 0 ? (
+
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="제목, 내용으로 검색..."
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-9 pr-9 bg-secondary border-0 h-9 text-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="검색어 초기화"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {isSearching && (
+        <p className="text-xs text-muted-foreground mb-3">
+          &ldquo;{debouncedQuery}&rdquo; 검색결과 {filteredPosts.length}개
+        </p>
+      )}
+
+      {filteredPosts.length === 0 ? (
         <Card><CardContent className="flex flex-col items-center py-12">
-          <MessageCircle className="h-12 w-12 text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">첫 번째 글을 작성해보세요!</p>
+          {isSearching ? (
+            <>
+              <Search className="h-12 w-12 text-muted-foreground" />
+              <p className="mt-4 text-muted-foreground text-sm text-center">
+                &ldquo;{debouncedQuery}&rdquo;에 대한 검색 결과가 없습니다.
+              </p>
+              <button onClick={clearSearch} className="mt-2 text-xs text-primary hover:underline">검색어 초기화</button>
+            </>
+          ) : (
+            <>
+              <MessageCircle className="h-12 w-12 text-muted-foreground" />
+              <p className="mt-4 text-muted-foreground">첫 번째 글을 작성해보세요!</p>
+            </>
+          )}
         </CardContent></Card>
       ) : (
         <div className="space-y-2">
-          {posts.map((p) => (
+          {filteredPosts.map((p) => (
             <Card key={p.id} className="cursor-pointer hover:border-primary/50 transition-all" onClick={() => goToDetail(p.id)}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   {p.image_url && <img src={p.image_url} alt="" className="w-14 rounded-lg object-contain bg-secondary flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm line-clamp-2">{p.title}</p>
+                    <p className="font-medium text-foreground text-sm line-clamp-2">
+                      <Highlight text={p.title} query={debouncedQuery} />
+                    </p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>{p.author}</span><span>{ago(p.created_at)}</span>
+                      <span><Highlight text={p.author} query={debouncedQuery} /></span>
+                      <span>{ago(p.created_at)}</span>
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count}</span>
                     </div>
                   </div>
