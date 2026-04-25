@@ -12,8 +12,10 @@ export async function POST(request: Request) {
     if (!type) return NextResponse.json({ error: "type required" }, { status: 400 })
 
     const { error } = await supabase.from("user_activities").insert({
-      activity_type: type,
-      data: data ?? {},
+      action_type: type,
+      target_type: data?.targetType ?? null,
+      target_id:   data?.targetId   ?? null,
+      metadata:    data ?? {},
     })
 
     if (error) {

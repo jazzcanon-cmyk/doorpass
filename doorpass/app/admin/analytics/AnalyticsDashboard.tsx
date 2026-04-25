@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 
 interface PopularSearch { query: string; search_count: number }
 interface PopularBuilding { building_name: string; building_id: string; view_count: number }
-interface RecentActivity { id: number; activity_type: string; data: Record<string, unknown>; created_at: string }
+interface RecentActivity { id: number; action_type: string; target_type: string | null; target_id: string | null; metadata: Record<string, unknown>; created_at: string }
 interface HourlyPoint { hour: string; count: number }
 interface TypeCount { type: string; count: number }
 
@@ -181,20 +181,20 @@ export function AnalyticsDashboard() {
           {stats.recentActivities.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground text-sm">활동 없음</p>
           ) : stats.recentActivities.map((a) => {
-            const Icon = TYPE_ICON[a.activity_type] ?? Activity
+            const Icon = TYPE_ICON[a.action_type] ?? Activity
             const detail =
-              a.activity_type === "search" ? `"${a.data?.query ?? ""}"` :
-              a.activity_type === "building_view" ? String(a.data?.buildingName ?? "") :
-              a.activity_type === "post_view" ? String(a.data?.postTitle ?? "") :
-              a.activity_type === "button_click" ? String(a.data?.buttonName ?? "") :
-              String(a.data?.pagePath ?? "")
+              a.action_type === "search" ? `"${a.metadata?.query ?? ""}"` :
+              a.action_type === "building_view" ? String(a.metadata?.buildingName ?? "") :
+              a.action_type === "post_view" ? String(a.metadata?.postTitle ?? "") :
+              a.action_type === "button_click" ? String(a.metadata?.buttonName ?? "") :
+              String(a.metadata?.pagePath ?? "")
             return (
               <div key={a.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-secondary flex items-center justify-center">
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-foreground">{TYPE_LABEL[a.activity_type] ?? a.activity_type}</span>
+                  <span className="text-xs font-medium text-foreground">{TYPE_LABEL[a.action_type] ?? a.action_type}</span>
                   {detail && <span className="text-xs text-muted-foreground ml-1.5 truncate">{detail}</span>}
                 </div>
                 <span className="text-[10px] text-muted-foreground flex-shrink-0">{ago(a.created_at)}</span>

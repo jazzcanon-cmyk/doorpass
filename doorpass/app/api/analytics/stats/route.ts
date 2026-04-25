@@ -19,7 +19,7 @@ export async function GET() {
       supabase.from("popular_buildings").select("*").limit(10),
       supabase.from("user_activities").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("user_activities")
-        .select("activity_type, created_at")
+        .select("action_type, created_at")
         .gte("created_at", since24h)
         .order("created_at", { ascending: true }),
     ])
@@ -37,7 +37,7 @@ export async function GET() {
     // 활동 유형별 집계 (지난 24시간)
     const typeMap = new Map<string, number>()
     for (const row of last24hRes.data ?? []) {
-      typeMap.set(row.activity_type, (typeMap.get(row.activity_type) ?? 0) + 1)
+      typeMap.set(row.action_type, (typeMap.get(row.action_type) ?? 0) + 1)
     }
     const activityByType = Array.from(typeMap.entries())
       .sort(([, a], [, b]) => b - a)
