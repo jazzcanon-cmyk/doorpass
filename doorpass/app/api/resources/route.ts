@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("resources").insert(payload)
     if (error) throw new Error(error.message)
 
-    const TYPE_LABELS: Record<string, string> = { link: "링크", file: "파일", image: "이미지", document: "문서" }
+    const TYPE_LABELS: Record<string, string> = { link: "링크", file: "파일", image: "이미지", document: "문서", text: "글" }
     sendSlackMessage({
       text: `📁 [신정대리점] 새 자료 등록: ${title ?? "-"}`,
       color: "#9b59b6",

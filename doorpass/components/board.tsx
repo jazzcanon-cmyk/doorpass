@@ -188,7 +188,7 @@ function SearchableNoticeList({ query }: { query: string }) {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  link: "링크", file: "파일", image: "이미지", document: "문서",
+  link: "링크", file: "파일", image: "이미지", document: "문서", text: "글",
 }
 
 function SearchableResourceList({ query }: { query: string }) {

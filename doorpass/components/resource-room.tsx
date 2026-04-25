@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Loader2, AlertCircle, Link, FileText, ImageIcon, File as FileIcon, FolderOpen, ExternalLink, X } from "lucide-react"
+import { Plus, Trash2, Loader2, AlertCircle, Link, FileText, ImageIcon, File as FileIcon, FolderOpen, ExternalLink, X, PenLine, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 
-type ResourceType = "link" | "file" | "image" | "document"
+type ResourceType = "link" | "file" | "image" | "document" | "text"
 
 interface Resource {
   id: number
@@ -24,6 +24,7 @@ const TYPE_CONFIG: Record<ResourceType, { label: string; Icon: React.ElementType
   file:     { label: "파일",   Icon: FileIcon,  color: "text-orange-400", bg: "bg-orange-500/10" },
   image:    { label: "이미지", Icon: ImageIcon,  color: "text-green-400",  bg: "bg-green-500/10" },
   document: { label: "문서",   Icon: FileText,  color: "text-purple-400", bg: "bg-purple-500/10" },
+  text:     { label: "글",     Icon: PenLine,   color: "text-cyan-400",   bg: "bg-cyan-500/10" },
 }
 
 async function compressImage(file: File): Promise<File> {
@@ -86,6 +87,7 @@ export function ResourceRoom() {
   const [compressInfo, setCompressInfo] = useState<string | null>(null)
   const [compressing, setCompressing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const fetchResources = async () => {
     setError(null)
@@ -146,8 +148,9 @@ export function ResourceRoom() {
 
   const submit = async () => {
     if (!title.trim()) { toast.error("제목을 입력해주세요."); return }
+    if (resourceType === "text" && !description.trim()) { toast.error("내용을 입력해주세요."); return }
     if (resourceType === "link" && !url.trim()) { toast.error("URL을 입력해주세요."); return }
-    if (resourceType !== "link" && !pickedFile && !url.trim()) {
+    if (resourceType !== "link" && resourceType !== "text" && !pickedFile && !url.trim()) {
       toast.error("파일을 선택하거나 URL을 입력해주세요."); return
     }
 
@@ -211,7 +214,9 @@ export function ResourceRoom() {
           <CardContent className="p-4 space-y-3">
             <Input placeholder="닉네임 (기본: 관리자)" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
             <Input placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
-            <Input placeholder="설명 (선택)" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-0" />
+            {resourceType !== "text" && (
+              <Input placeholder="설명 (선택)" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-0" />
+            )}
 
             {/* 타입 선택 */}
             <div className="flex gap-2">
@@ -233,6 +238,17 @@ export function ResourceRoom() {
                 )
               })}
             </div>
+
+            {/* 글: 텍스트 내용 */}
+            {resourceType === "text" && (
+              <textarea
+                placeholder="내용을 입력하세요"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={6}
+                className="w-full rounded-md bg-secondary border-0 p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            )}
 
             {/* 링크: URL만 */}
             {resourceType === "link" && (
@@ -325,16 +341,21 @@ export function ResourceRoom() {
       ) : (
         <div className="space-y-2">
           {resources.map((res) => {
-            const cfg = TYPE_CONFIG[res.resource_type] ?? TYPE_CONFIG.link
+            const cfg = TYPE_CONFIG[res.resource_type as ResourceType] ?? TYPE_CONFIG.link
+            const isText = res.resource_type === "text"
+            const isExpanded = expandedId === res.id
             return (
               <Card
                 key={res.id}
                 className="hover:border-primary/50 transition-all"
-                onClick={() => res.url && window.open(res.url, "_blank")}
-                style={{ cursor: res.url ? "pointer" : "default" }}
+                onClick={() => {
+                  if (isText) setExpandedId(isExpanded ? null : res.id)
+                  else if (res.url) window.open(res.url, "_blank")
+                }}
+                style={{ cursor: isText || res.url ? "pointer" : "default" }}
               >
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div className={`flex-shrink-0 w-10 h-10 rounded-lg ${cfg.bg} flex items-center justify-center`}>
                       <cfg.Icon className={`h-5 w-5 ${cfg.color}`} />
                     </div>
@@ -344,10 +365,21 @@ export function ResourceRoom() {
                           {cfg.label}
                         </span>
                         <p className="font-medium text-sm text-foreground truncate">{res.title}</p>
-                        {res.url && <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                        {!isText && res.url && <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                        {isText && (
+                          isExpanded
+                            ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        )}
                       </div>
-                      {res.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{res.description}</p>
+                      {isText ? (
+                        isExpanded && res.description && (
+                          <p className="mt-2 text-sm text-foreground whitespace-pre-wrap leading-relaxed">{res.description}</p>
+                        )
+                      ) : (
+                        res.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{res.description}</p>
+                        )
                       )}
                       {res.resource_type === "image" && res.url && (
                         <img
