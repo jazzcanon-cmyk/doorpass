@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen, Search } from "lucide-react"
+import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen, Search, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,23 @@ interface Post {
 interface Comment {
   id: number
   content: string
+  author: string
+  created_at: string
+}
+interface Notice {
+  id: number
+  title: string
+  content: string
+  author: string
+  is_important: boolean
+  created_at: string
+}
+interface Resource {
+  id: number
+  title: string
+  description?: string
+  resource_type: string
+  url?: string
   author: string
   created_at: string
 }
@@ -76,14 +93,293 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-function List({ listKey }: { listKey: number }) {
+function SearchBar({ searchQuery, onSearchChange, onClear }: {
+  searchQuery: string
+  onSearchChange: (v: string) => void
+  onClear: () => void
+}) {
+  return (
+    <div className="relative mb-3">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        placeholder="제목, 내용으로 검색..."
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="pl-9 pr-9 bg-secondary border-0 h-9 text-sm"
+      />
+      {searchQuery && (
+        <button
+          onClick={onClear}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="검색어 초기화"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SearchableNoticeList({ query }: { query: string }) {
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch("/api/notices")
+      .then((r) => r.json())
+      .then((d) => { setNotices(d.notices ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = notices.filter((n) => {
+    const q = query.toLowerCase()
+    return n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)
+  })
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-3">
+        공지사항에서 &ldquo;{query}&rdquo; {filtered.length}개 검색됨
+      </p>
+      {filtered.length === 0 ? (
+        <Card><CardContent className="flex flex-col items-center py-12">
+          <Search className="h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground text-sm text-center">공지사항에서 검색 결과가 없습니다.</p>
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((n) => (
+            <Card key={n.id} className={n.is_important ? "border-yellow-500/40" : ""}>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {n.is_important && (
+                        <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-medium flex-shrink-0">중요</span>
+                      )}
+                      <p className="font-medium text-sm text-foreground line-clamp-1">
+                        <Highlight text={n.title} query={query} />
+                      </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{n.author} · {ago(n.created_at)}</div>
+                    {expandedId === n.id && (
+                      <p className="mt-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                        <Highlight text={n.content} query={query} />
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
+                    className="p-1.5 text-muted-foreground hover:text-foreground flex-shrink-0"
+                  >
+                    {expandedId === n.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  link: "링크", file: "파일", image: "이미지", document: "문서",
+}
+
+function SearchableResourceList({ query }: { query: string }) {
+  const [resources, setResources] = useState<Resource[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/resources")
+      .then((r) => r.json())
+      .then((d) => { setResources(d.resources ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const filtered = resources.filter((r) => {
+    const q = query.toLowerCase()
+    return r.title.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q)
+  })
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-3">
+        자료실에서 &ldquo;{query}&rdquo; {filtered.length}개 검색됨
+      </p>
+      {filtered.length === 0 ? (
+        <Card><CardContent className="flex flex-col items-center py-12">
+          <Search className="h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground text-sm text-center">자료실에서 검색 결과가 없습니다.</p>
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((res) => (
+            <Card
+              key={res.id}
+              className="hover:border-primary/50 transition-all"
+              onClick={() => res.url && window.open(res.url, "_blank")}
+              style={{ cursor: res.url ? "pointer" : "default" }}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium flex-shrink-0">
+                        {TYPE_LABELS[res.resource_type] ?? res.resource_type}
+                      </span>
+                      <p className="font-medium text-sm text-foreground truncate">
+                        <Highlight text={res.title} query={query} />
+                      </p>
+                    </div>
+                    {res.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <Highlight text={res.description} query={query} />
+                      </p>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">{res.author} · {ago(res.created_at)}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SearchAllResults({ query, clearSearch }: { query: string; clearSearch: () => void }) {
+  const { goToDetail } = useBoardStore()
+  const [posts, setPosts] = useState<Post[]>([])
+  const [resources, setResources] = useState<Resource[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      fetch("/api/posts").then((r) => r.json()),
+      fetch("/api/resources").then((r) => r.json()),
+    ])
+      .then(([postsData, resourcesData]) => {
+        setPosts(postsData.posts ?? [])
+        setResources(resourcesData.resources ?? [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const q = query.toLowerCase()
+  const filteredPosts = posts.filter((p) => p.title.toLowerCase().includes(q) || p.author.toLowerCase().includes(q))
+  const filteredResources = resources.filter((r) => r.title.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q))
+  const total = filteredPosts.length + filteredResources.length
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        &ldquo;{query}&rdquo; 전체 {total}개 검색됨
+        {total > 0 && ` (게시글 ${filteredPosts.length}개, 자료실 ${filteredResources.length}개)`}
+      </p>
+
+      {total === 0 ? (
+        <Card><CardContent className="flex flex-col items-center py-12">
+          <Search className="h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground text-sm text-center">검색 결과가 없습니다.</p>
+          <button onClick={clearSearch} className="mt-2 text-xs text-primary hover:underline">검색어 초기화</button>
+        </CardContent></Card>
+      ) : (
+        <>
+          {filteredPosts.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <MessageCircle className="h-3.5 w-3.5" />게시글 ({filteredPosts.length})
+              </p>
+              <div className="space-y-2">
+                {filteredPosts.map((p) => (
+                  <Card key={p.id} className="cursor-pointer hover:border-primary/50 transition-all" onClick={() => goToDetail(p.id)}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        {p.image_url && <img src={p.image_url} alt="" className="w-14 rounded-lg object-contain bg-secondary flex-shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm line-clamp-2">
+                            <Highlight text={p.title} query={query} />
+                          </p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span><Highlight text={p.author} query={query} /></span>
+                            <span>{ago(p.created_at)}</span>
+                            <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredResources.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <FolderOpen className="h-3.5 w-3.5" />자료실 ({filteredResources.length})
+              </p>
+              <div className="space-y-2">
+                {filteredResources.map((res) => (
+                  <Card
+                    key={res.id}
+                    className="hover:border-primary/50 transition-all"
+                    onClick={() => res.url && window.open(res.url, "_blank")}
+                    style={{ cursor: res.url ? "pointer" : "default" }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium flex-shrink-0">
+                              {TYPE_LABELS[res.resource_type] ?? res.resource_type}
+                            </span>
+                            <p className="font-medium text-sm text-foreground truncate">
+                              <Highlight text={res.title} query={query} />
+                            </p>
+                          </div>
+                          {res.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              <Highlight text={res.description} query={query} />
+                            </p>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">{res.author} · {ago(res.created_at)}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function List({ listKey, debouncedQuery, clearSearch }: {
+  listKey: number
+  debouncedQuery: string
+  clearSearch: () => void
+}) {
   const { goToDetail, goToWrite } = useBoardStore()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [debouncedQuery, setDebouncedQuery] = useState("")
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -92,18 +388,6 @@ function List({ listKey }: { listKey: number }) {
       .then((d) => { if (d.error) setError(d.error); else setPosts(d.posts || []); setLoading(false) })
       .catch(() => { setError("게시글 불러오기 실패"); setLoading(false) })
   }, [listKey])
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedQuery(value.trim()), 500)
-  }
-
-  const clearSearch = () => {
-    setSearchQuery("")
-    setDebouncedQuery("")
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-  }
 
   const isSearching = debouncedQuery.length >= 2
   const filteredPosts = isSearching
@@ -122,28 +406,9 @@ function List({ listKey }: { listKey: number }) {
         <Button size="sm" onClick={goToWrite} className="gap-1.5 h-8"><Plus className="h-3.5 w-3.5" />글쓰기</Button>
       </div>
 
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          placeholder="제목, 내용으로 검색..."
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-9 pr-9 bg-secondary border-0 h-9 text-sm"
-        />
-        {searchQuery && (
-          <button
-            onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="검색어 초기화"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
       {isSearching && (
         <p className="text-xs text-muted-foreground mb-3">
-          &ldquo;{debouncedQuery}&rdquo; 검색결과 {filteredPosts.length}개
+          게시판에서 &ldquo;{debouncedQuery}&rdquo; {filteredPosts.length}개 검색됨
         </p>
       )}
 
@@ -152,9 +417,7 @@ function List({ listKey }: { listKey: number }) {
           {isSearching ? (
             <>
               <Search className="h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground text-sm text-center">
-                &ldquo;{debouncedQuery}&rdquo;에 대한 검색 결과가 없습니다.
-              </p>
+              <p className="mt-4 text-muted-foreground text-sm text-center">게시판에서 검색 결과가 없습니다.</p>
               <button onClick={clearSearch} className="mt-2 text-xs text-primary hover:underline">검색어 초기화</button>
             </>
           ) : (
@@ -415,6 +678,23 @@ interface CurrentUser {
 export function Board({ currentUser }: { currentUser?: CurrentUser }) {
   const { view, postId, editPost, listKey, goToList } = useBoardStore()
   const [boardTab, setBoardTab] = useState<BoardTab>("posts")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedQuery, setDebouncedQuery] = useState("")
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value.trim()), 500)
+  }
+
+  const clearSearch = () => {
+    setSearchQuery("")
+    setDebouncedQuery("")
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+  }
+
+  const isSearching = debouncedQuery.length >= 2
 
   const handleTabChange = (tab: BoardTab) => {
     setBoardTab(tab)
@@ -428,7 +708,12 @@ export function Board({ currentUser }: { currentUser?: CurrentUser }) {
           <button onClick={() => handleTabChange("posts")} className="flex items-center gap-2 text-muted-foreground mb-4 text-sm hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />게시판으로
           </button>
-          <NoticeBoard />
+          <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} onClear={clearSearch} />
+          {isSearching ? (
+            <SearchableNoticeList query={debouncedQuery} />
+          ) : (
+            <NoticeBoard />
+          )}
         </div>
       )}
 
@@ -437,7 +722,12 @@ export function Board({ currentUser }: { currentUser?: CurrentUser }) {
           <button onClick={() => handleTabChange("posts")} className="flex items-center gap-2 text-muted-foreground mb-4 text-sm hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />게시판으로
           </button>
-          <ResourceRoom />
+          <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} onClear={clearSearch} />
+          {isSearching ? (
+            <SearchableResourceList query={debouncedQuery} />
+          ) : (
+            <ResourceRoom />
+          )}
         </div>
       )}
 
@@ -465,7 +755,16 @@ export function Board({ currentUser }: { currentUser?: CurrentUser }) {
               </button>
             </div>
           )}
-          {view === "list" && <List listKey={listKey} />}
+          {view === "list" && (
+            <>
+              <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} onClear={clearSearch} />
+              {isSearching ? (
+                <SearchAllResults query={debouncedQuery} clearSearch={clearSearch} />
+              ) : (
+                <List listKey={listKey} debouncedQuery="" clearSearch={clearSearch} />
+              )}
+            </>
+          )}
           {view === "detail" && postId !== null && <Detail postId={postId} defaultAuthor={currentUser?.userName} />}
           {view === "write" && <Write defaultAuthor={currentUser?.userName} />}
           {view === "edit" && editPost && <Edit post={editPost} />}
