@@ -2,13 +2,21 @@
 
 async function track(type: string, data: Record<string, unknown>): Promise<void> {
   try {
-    fetch("/api/analytics/track", {
+    const res = await fetch("/api/analytics/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, data }),
       keepalive: true,
-    }).catch(() => {})
-  } catch {}
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      console.error(`[Analytics] track failed HTTP ${res.status}:`, text)
+    } else {
+      console.log(`[Analytics] tracked OK: ${type}`, data)
+    }
+  } catch (err) {
+    console.error("[Analytics] fetch error:", err)
+  }
 }
 
 export function trackSearch(query: string, results: number): void {
