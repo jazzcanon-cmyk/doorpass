@@ -13,11 +13,19 @@ interface Building {
   memo?: string
 }
 
+interface LatLngBounds {
+  minLat: number
+  maxLat: number
+  minLng: number
+  maxLng: number
+}
+
 interface BuildingMapProps {
   userLocation: { lat: number; lng: number } | null
   buildings: Building[]
   onBuildingSelect: (building: Building | null) => void
   selectedBuilding: Building | null
+  onBoundsChange?: (bounds: LatLngBounds) => void
 }
 
 function makeIcon(L: typeof import("leaflet"), isSelected: boolean) {
@@ -46,25 +54,32 @@ export function BuildingMap({
   userLocation,
   buildings,
   onBuildingSelect,
-  selectedBuilding
+  selectedBuilding,
+  onBoundsChange,
 }: BuildingMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const markersMapRef = useRef<Map<string, L.Marker>>(new Map())
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clusterGroupRef = useRef<any>(null)
   const userMarkerRef = useRef<L.Marker | null>(null)
   const onBuildingSelectRef = useRef(onBuildingSelect)
   const selectedBuildingRef = useRef(selectedBuilding)
+  const onBoundsChangeRef = useRef(onBoundsChange)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mapReady, setMapReady] = useState(false)
   const [L, setL] = useState<typeof import("leaflet") | null>(null)
 
-  // refs 최신값 유지 (effect 의존성 없이 항상 최신 값 접근)
   useEffect(() => { onBuildingSelectRef.current = onBuildingSelect }, [onBuildingSelect])
   useEffect(() => { selectedBuildingRef.current = selectedBuilding }, [selectedBuilding])
+  useEffect(() => { onBoundsChangeRef.current = onBoundsChange }, [onBoundsChange])
 
-  // Leaflet 동적 로드
+  // Leaflet + markercluster 동적 로드
   useEffect(() => {
-    import("leaflet").then((leaflet) => {
-      setL(leaflet.default as unknown as typeof import("leaflet"))
+    import("leaflet").then(async (leafletModule) => {
+      const leaflet = leafletModule.default as unknown as typeof import("leaflet")
+      await import("leaflet.markercluster")
+      setL(leaflet)
     })
   }, [])
 
@@ -77,6 +92,14 @@ export function BuildingMap({
       link.rel = "stylesheet"
       link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       document.head.appendChild(link)
+    }
+    if (!document.querySelector('link[href*="MarkerCluster"]')) {
+      for (const file of ["MarkerCluster.css", "MarkerCluster.Default.css"]) {
+        const link = document.createElement("link")
+        link.rel = "stylesheet"
+        link.href = `https://unpkg.com/leaflet.markercluster@1.5.3/dist/${file}`
+        document.head.appendChild(link)
+      }
     }
 
     const defaultCenter: [number, number] = userLocation
@@ -93,12 +116,42 @@ export function BuildingMap({
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clusterGroup = (L as any).markerClusterGroup({
+      chunkedLoading: true,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      maxClusterRadius: 60,
+      animate: true,
+    })
+    map.addLayer(clusterGroup)
+    clusterGroupRef.current = clusterGroup
+
+    // 뷰포트 변경 → 500ms debounce 후 콜백
+    const fireBoundsChange = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = setTimeout(() => {
+        const bounds = map.getBounds()
+        onBoundsChangeRef.current?.({
+          minLat: bounds.getSouth(),
+          maxLat: bounds.getNorth(),
+          minLng: bounds.getWest(),
+          maxLng: bounds.getEast(),
+        })
+      }, 500)
+    }
+
+    map.on("moveend", fireBoundsChange)
+    map.on("zoomend", fireBoundsChange)
+
     mapInstanceRef.current = map
     setMapReady(true)
 
     return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
       map.remove()
       mapInstanceRef.current = null
+      clusterGroupRef.current = null
       setMapReady(false)
     }
   }, [L, userLocation])
@@ -145,34 +198,30 @@ export function BuildingMap({
     mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 17)
   }, [userLocation, mapReady, L])
 
-  // 건물 마커 생성 — buildings/mapReady/L 변경 시에만 전체 재생성
+  // 건물 마커 생성 — 클러스터 그룹에 추가
   useEffect(() => {
-    if (!mapInstanceRef.current || !mapReady || !L) return
+    if (!mapInstanceRef.current || !mapReady || !L || !clusterGroupRef.current) return
 
-    markersMapRef.current.forEach((marker) => marker.remove())
+    const cluster = clusterGroupRef.current
+    cluster.clearLayers()
     markersMapRef.current.clear()
 
     buildings.forEach((building) => {
       const isSelected = selectedBuildingRef.current?.id === building.id
-      const marker = L.marker([building.latitude, building.longitude], { icon: makeIcon(L, isSelected) })
-        .addTo(mapInstanceRef.current!)
-
-      marker.on("click", () => {
-        onBuildingSelectRef.current(building)
+      const marker = L.marker([building.latitude, building.longitude], {
+        icon: makeIcon(L, isSelected),
       })
-
+      marker.on("click", () => onBuildingSelectRef.current(building))
       markersMapRef.current.set(building.id, marker)
+      cluster.addLayer(marker)
     })
   }, [buildings, mapReady, L])
 
-  // 선택 변경 시 아이콘만 교체 — 마커 전체 재생성 없음
+  // 선택 변경 시 아이콘만 교체
   useEffect(() => {
     if (!mapReady || !L) return
 
-    markersMapRef.current.forEach((marker) => {
-      marker.setIcon(makeIcon(L, false))
-    })
-
+    markersMapRef.current.forEach((marker) => marker.setIcon(makeIcon(L, false)))
     if (selectedBuilding) {
       const marker = markersMapRef.current.get(selectedBuilding.id)
       if (marker) marker.setIcon(makeIcon(L, true))
@@ -192,14 +241,8 @@ export function BuildingMap({
       <div ref={mapRef} className="w-full h-full z-0" />
       <style jsx global>{`
         @keyframes pulse {
-          0% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(2.5);
-            opacity: 0;
-          }
+          0% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(2.5); opacity: 0; }
         }
         .leaflet-container {
           background: #1a1a1a;
@@ -210,12 +253,19 @@ export function BuildingMap({
           color: #fafafa;
           border-radius: 8px;
         }
-        .leaflet-popup-tip {
-          background: #262626;
+        .leaflet-popup-tip { background: #262626; }
+        .leaflet-popup-content { margin: 8px 12px; font-size: 14px; }
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+          background-color: rgba(34, 197, 94, 0.2) !important;
         }
-        .leaflet-popup-content {
-          margin: 8px 12px;
-          font-size: 14px;
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+          background-color: rgba(34, 197, 94, 0.7) !important;
+          color: white !important;
+          font-weight: 600 !important;
         }
       `}</style>
     </div>

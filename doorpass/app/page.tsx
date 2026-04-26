@@ -64,6 +64,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("nearby")
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [allBuildings, setAllBuildings] = useState<Building[]>([])
+  const [viewportBuildings, setViewportBuildings] = useState<Building[]>([])
   const [nearbyBuildings, setNearbyBuildings] = useState<Building[]>([])
   const [searchResults, setSearchResults] = useState<Building[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -73,6 +74,7 @@ export default function Home() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const searchTrackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const viewportFetchingRef = useRef(false)
 
   useEffect(() => { trackPageView("/") }, [])
 
@@ -142,6 +144,30 @@ export default function Home() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }, [fetchBuildings])
+
+  const fetchBuildingsByViewport = useCallback(
+    async (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => {
+      if (viewportFetchingRef.current) return
+      viewportFetchingRef.current = true
+      try {
+        const params = new URLSearchParams({
+          minLat: String(bounds.minLat),
+          maxLat: String(bounds.maxLat),
+          minLng: String(bounds.minLng),
+          maxLng: String(bounds.maxLng),
+        })
+        const response = await fetch(`/api/buildings?${params}`)
+        if (!response.ok) return
+        const data = await response.json()
+        setViewportBuildings(data.buildings)
+      } catch (err) {
+        console.error("Viewport fetch error:", err)
+      } finally {
+        viewportFetchingRef.current = false
+      }
+    },
+    []
+  )
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -333,9 +359,10 @@ export default function Home() {
             <section className="container mx-auto px-4 pt-4">
               <BuildingMap
                 userLocation={location}
-                buildings={allBuildings}
+                buildings={viewportBuildings.length > 0 ? viewportBuildings : allBuildings}
                 onBuildingSelect={handleBuildingSelect}
                 selectedBuilding={selectedBuilding}
+                onBoundsChange={fetchBuildingsByViewport}
               />
               {selectedBuilding && (
                 <SelectedBuildingInfo

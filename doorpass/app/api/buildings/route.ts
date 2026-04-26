@@ -18,8 +18,42 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function GET() {
+function toBuilding(b: BuildingRow) {
+  return {
+    id: String(b.id),
+    name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
+    address: b.address ?? "",
+    password: b.password ?? "",
+    latitude: b.lat,
+    longitude: b.lng,
+    memo: b.memo ?? "",
+  }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const minLat = searchParams.get("minLat")
+  const maxLat = searchParams.get("maxLat")
+  const minLng = searchParams.get("minLng")
+  const maxLng = searchParams.get("maxLng")
+
   try {
+    // 뷰포트 범위가 주어지면 단일 필터 쿼리로 처리
+    if (minLat && maxLat && minLng && maxLng) {
+      const { data, error } = await supabase
+        .from("buildings")
+        .select("id, name, address, password, lat, lng, memo")
+        .gte("lat", parseFloat(minLat))
+        .lte("lat", parseFloat(maxLat))
+        .gte("lng", parseFloat(minLng))
+        .lte("lng", parseFloat(maxLng))
+        .order("address", { ascending: true })
+
+      if (error) throw new Error(error.message)
+      return NextResponse.json({ buildings: (data ?? []).map(toBuilding) })
+    }
+
+    // 전체 로드 (검색/목록용) — 페이지네이션
     let allBuildings: BuildingRow[] = []
     let from = 0
     const pageSize = 1000
@@ -39,17 +73,7 @@ export async function GET() {
       from += pageSize
     }
 
-    const buildings = allBuildings.map((b) => ({
-      id: String(b.id),
-      name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
-      address: b.address ?? "",
-      password: b.password ?? "",
-      latitude: b.lat,
-      longitude: b.lng,
-      memo: b.memo ?? "",
-    }))
-
-    return NextResponse.json({ buildings })
+    return NextResponse.json({ buildings: allBuildings.map(toBuilding) })
   } catch (error) {
     console.error("Error fetching buildings:", error)
     return NextResponse.json(
