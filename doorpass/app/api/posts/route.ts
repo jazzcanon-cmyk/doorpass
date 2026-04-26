@@ -29,16 +29,30 @@ export async function POST(request: Request) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  sendSlackMessage({
-    text: `📝 [신정대리점] 새 게시글`,
-    color: '#36a64f',
-    fields: [
-      { title: '제목', value: title, short: false },
-      { title: '작성자', value: author || '익명' },
-      { title: '카테고리', value: category || '일반' },
-      { title: '링크', value: 'https://doorpass.kr', short: false },
-    ],
-  }).catch((err) => console.error('[Slack] 게시글 알림 전송 실패:', err))
+  const categoryLabel =
+    category === 'notice'    ? '공지사항' :
+    category === 'resources' ? '자료실'   : '일반'
+
+  try {
+    console.log('Sending Slack notification for new post...')
+    const slackResult = await sendSlackMessage({
+      text: '[신정대리점] 새 게시글',
+      color: '#36a64f',
+      fields: [
+        { title: '📋 제목',    value: title,           short: false },
+        { title: '👤 작성자',  value: author || '익명'              },
+        { title: '📁 카테고리', value: categoryLabel                },
+        { title: '🔗 링크',    value: 'https://doorpass.kr', short: false },
+      ],
+    })
+    if (slackResult.ok) {
+      console.log('Slack notification sent successfully')
+    } else {
+      console.error('[Slack] 전송 실패:', slackResult.error)
+    }
+  } catch (err) {
+    console.error('[Slack] 예외 발생:', err)
+  }
 
   return NextResponse.json({ post: data })
 }
