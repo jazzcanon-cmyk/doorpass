@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { title, content, author, image_url } = await request.json()
+  const { title, content, author, image_url, category } = await request.json()
   if (!title || !content) {
     return NextResponse.json({ error: 'Title and content required' }, { status: 400 })
   }
@@ -30,11 +30,13 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   sendSlackMessage({
-    text: `📝 [신정대리점] 새 게시글: ${title}`,
+    text: `📝 [신정대리점] 새 게시글`,
     color: '#36a64f',
     fields: [
+      { title: '제목', value: title, short: false },
       { title: '작성자', value: author || '익명' },
-      { title: '시간', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) },
+      { title: '카테고리', value: category || '일반' },
+      { title: '링크', value: 'https://doorpass.kr', short: false },
     ],
   }).catch((err) => console.error('[Slack] 게시글 알림 전송 실패:', err))
 

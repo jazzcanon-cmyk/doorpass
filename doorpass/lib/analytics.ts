@@ -19,9 +19,9 @@ async function track(type: string, data: Record<string, unknown>): Promise<void>
   }
 }
 
-export function trackSearch(query: string, results: number): void {
+export function trackSearch(query: string, results: number, userEmail?: string): void {
   if (query.trim().length < 2) return
-  track("search", { query: query.trim(), results })
+  track("search", { query: query.trim(), results, userEmail })
   console.log(`[Analytics] search: "${query}" (${results}건)`)
 }
 

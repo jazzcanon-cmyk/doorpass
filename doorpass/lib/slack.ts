@@ -10,11 +10,13 @@ export interface SlackMessageOptions {
   color?: string
 }
 
-export async function sendSlackMessage(messageOrOptions: string | SlackMessageOptions): Promise<{ ok: boolean; error?: string }> {
+export async function sendSlackMessage(
+  messageOrOptions: string | SlackMessageOptions
+): Promise<{ ok: boolean; error?: string }> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL
   if (!webhookUrl) {
-    console.warn("[Slack] SLACK_WEBHOOK_URL 환경변수가 설정되지 않았습니다.")
-    return { ok: false, error: "SLACK_WEBHOOK_URL 환경변수 없음" }
+    console.warn("[Slack ✗] SLACK_WEBHOOK_URL 환경변수가 설정되지 않았습니다.")
+    return { ok: false, error: "SLACK_WEBHOOK_URL 없음" }
   }
 
   const payload =
@@ -36,6 +38,11 @@ export async function sendSlackMessage(messageOrOptions: string | SlackMessageOp
           ],
         }
 
+  const label =
+    typeof messageOrOptions === "string"
+      ? messageOrOptions.slice(0, 30)
+      : messageOrOptions.text.slice(0, 30)
+
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -43,16 +50,17 @@ export async function sendSlackMessage(messageOrOptions: string | SlackMessageOp
       body: JSON.stringify(payload),
     })
 
-    const responseText = await response.text()
-    console.log(`[Slack] status=${response.status} ok=${response.ok} body="${responseText}"`)
+    const body = await response.text()
 
     if (!response.ok) {
-      console.error(`[Slack] 전송 실패: HTTP ${response.status} - ${responseText}`)
-      return { ok: false, error: `HTTP ${response.status}: ${responseText}` }
+      console.error(`[Slack ✗] 전송 실패 | "${label}" | HTTP ${response.status} | ${body}`)
+      return { ok: false, error: `HTTP ${response.status}: ${body}` }
     }
+
+    console.log(`[Slack ✓] 전송 성공 | "${label}"`)
     return { ok: true }
   } catch (err) {
-    console.error("[Slack] fetch 예외 발생:", err)
+    console.error(`[Slack ✗] fetch 예외 | "${label}" |`, err)
     return { ok: false, error: String(err) }
   }
 }

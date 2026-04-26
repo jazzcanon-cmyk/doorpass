@@ -182,7 +182,7 @@ export default function Home() {
       setSearchResults(filtered)
       if (q.length >= 2) {
         if (searchTrackRef.current) clearTimeout(searchTrackRef.current)
-        searchTrackRef.current = setTimeout(() => trackSearch(query.trim(), filtered.length), 1500)
+        searchTrackRef.current = setTimeout(() => trackSearch(query.trim(), filtered.length, currentUser?.email), 1500)
       }
     },
     [allBuildings]
