@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { sendSlackMessage } from "@/lib/slack"
 import { requireAdminApi } from "@/lib/auth"
+import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 
 interface BuildingRow {
   id: number
@@ -19,11 +20,20 @@ const supabase = createClient(
 )
 
 function toBuilding(b: BuildingRow) {
+  const rawPassword = b.password ?? ""
+  let password = rawPassword
+  try {
+    if (rawPassword && isValidEncryptedPassword(rawPassword)) {
+      password = decryptPassword(rawPassword)
+    }
+  } catch {
+    password = rawPassword
+  }
   return {
     id: String(b.id),
     name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
     address: b.address ?? "",
-    password: b.password ?? "",
+    password,
     latitude: b.lat,
     longitude: b.lng,
     memo: b.memo ?? "",
@@ -108,7 +118,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase
       .from("buildings")
-      .insert({ name, address, password, lat, lng, memo })
+      .insert({ name, address, password: password ? encryptPassword(password) : null, lat, lng, memo })
       .select()
       .single()
 

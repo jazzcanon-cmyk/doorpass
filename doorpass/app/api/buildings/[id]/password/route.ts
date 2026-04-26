@@ -41,7 +41,7 @@ export async function POST(
       message: '비밀번호가 업데이트되었습니다.',
       building: {
         id: updatedBuilding.id,
-        building_name: updatedBuilding.building_name,
+        name: updatedBuilding.name,
         password_updated_at: updatedBuilding.password_updated_at,
       },
     });

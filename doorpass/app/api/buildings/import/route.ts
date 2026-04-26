@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import { createClient } from "@supabase/supabase-js"
 import { requireAdminApi } from "@/lib/auth"
+import { encryptPassword } from "@/lib/encryption"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
         // update
         const { error } = await supabase
           .from("buildings")
-          .update({ name: buildingName, password, memo })
+          .update({ name: buildingName, password: password ? encryptPassword(password) : null, memo })
           .eq("id", existingId)
         if (error) {
           stats.failed++
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
       const { error } = await supabase.from("buildings").insert({
         name: buildingName,
         address,
-        password,
+        password: password ? encryptPassword(password) : null,
         lat: coords.lat,
         lng: coords.lng,
         memo,

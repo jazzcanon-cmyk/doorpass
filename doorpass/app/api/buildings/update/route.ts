@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { requireAuth } from "@/lib/auth"
+import { encryptPassword } from "@/lib/encryption"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
     const updateData: Record<string, string> = {}
     if (name !== undefined) updateData.name = name
-    if (password !== undefined) updateData.password = password
+    if (password !== undefined) updateData.password = encryptPassword(password)
     if (memo !== undefined) updateData.memo = memo
 
     if (Object.keys(updateData).length === 0) {
