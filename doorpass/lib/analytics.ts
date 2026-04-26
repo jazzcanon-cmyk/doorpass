@@ -25,8 +25,8 @@ export function trackSearch(query: string, results: number, userEmail?: string):
   console.log(`[Analytics] search: "${query}" (${results}건)`)
 }
 
-export function trackBuildingView(buildingId: string, buildingName: string): void {
-  track("building_view", { buildingId, buildingName })
+export function trackBuildingView(buildingId: string, buildingName: string, userEmail?: string): void {
+  track("building_view", { buildingId, buildingName, userEmail })
   console.log(`[Analytics] building_view: ${buildingName}`)
 }
 

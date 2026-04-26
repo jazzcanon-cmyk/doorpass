@@ -190,8 +190,8 @@ export default function Home() {
 
   const handleBuildingSelect = useCallback((b: Building | null) => {
     setSelectedBuilding(b)
-    if (b) trackBuildingView(b.id, b.name || b.address)
-  }, [])
+    if (b) trackBuildingView(b.id, b.name || b.address, currentUser?.email)
+  }, [currentUser])
 
   const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
     const upd = (list: Building[]) =>
