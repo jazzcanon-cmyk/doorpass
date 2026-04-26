@@ -6,13 +6,13 @@
 
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_SECRET_KEY;
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
-  throw new Error('❌ ENCRYPTION_SECRET_KEY가 설정되지 않았거나 너무 짧습니다. .env.local을 확인하세요.');
+function getKey(): Buffer {
+  const ENCRYPTION_KEY = process.env.ENCRYPTION_SECRET_KEY;
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+    throw new Error('❌ ENCRYPTION_SECRET_KEY가 설정되지 않았거나 너무 짧습니다. .env.local을 확인하세요.');
+  }
+  return Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32);
 }
-
-// 키를 버퍼로 변환 (정확히 32바이트)
-const key = Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32);
 
 /**
  * 비밀번호 암호화
@@ -21,10 +21,8 @@ const key = Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32);
  */
 export function encryptPassword(password: string): string {
   try {
-    // IV(초기화 벡터) 생성 - 매번 다르게 (보안 강화)
+    const key = getKey();
     const iv = crypto.randomBytes(16);
-    
-    // AES-256-CBC로 암호화
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     
     let encrypted = cipher.update(password, 'utf8', 'hex');
@@ -45,12 +43,12 @@ export function encryptPassword(password: string): string {
  */
 export function decryptPassword(encryptedData: string): string {
   try {
-    // IV와 암호화된 데이터 분리
+    const key = getKey();
     const [ivHex, encryptedHex] = encryptedData.split(':');
     if (!ivHex || !encryptedHex) {
       throw new Error('잘못된 암호화 형식입니다.');
     }
-    
+
     const iv = Buffer.from(ivHex, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
     
