@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { requireAdminApi } from "@/lib/auth"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase-route"
 
 function toKSTDay(isoString: string): string {
   const d = new Date(isoString)
@@ -18,6 +13,8 @@ function toKSTDay(isoString: string): string {
 export async function GET() {
   const { unauthorized } = await requireAdminApi()
   if (unauthorized) return unauthorized
+
+  const supabase = await createSupabaseRouteHandlerClient()
 
   try {
     const since24h = new Date(Date.now() - 24 * 3600_000).toISOString()

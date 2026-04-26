@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr"
+import type { User } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { redirect } from "next/navigation"
+import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 
 function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -27,54 +29,12 @@ function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
 }
 
 type SupabaseServer = ReturnType<typeof makeSupabaseServer>
-type UserLike = { app_metadata?: Record<string, string>; user_metadata?: Record<string, string> }
-
-// 카카오 또는 구글 사용자를 approved_users 테이블에서 조회
-async function findApprovedUser<T extends Record<string, unknown>>(
-  supabase: SupabaseServer,
-  user: UserLike,
-  columns: string
-): Promise<T | null> {
-  const provider = user.app_metadata?.provider
-  const email = user.user_metadata?.email
-  const kakaoId = user.user_metadata?.provider_id || user.user_metadata?.sub
-
-  if (provider === "kakao") {
-    const { data: byKakao } = await supabase
-      .from("approved_users")
-      .select(columns)
-      .eq("kakao_id", kakaoId)
-      .single()
-    if (byKakao) return byKakao as unknown as T
-
-    if (email) {
-      const { data: byEmail } = await supabase
-        .from("approved_users")
-        .select(columns)
-        .eq("email", email)
-        .single()
-      return byEmail ? (byEmail as unknown as T) : null
-    }
-    return null
-  }
-
-  if (provider === "google" && email) {
-    const { data: byEmail } = await supabase
-      .from("approved_users")
-      .select(columns)
-      .eq("email", email)
-      .single()
-    return byEmail ? (byEmail as unknown as T) : null
-  }
-
-  return null
-}
 
 /**
- * API 라우트에서 세션 + 승인 여부를 검증하는 헬퍼.
+ * API 라우트에서 세션 + 차단 여부를 검증하는 헬퍼.
  * - 미인증: 401
- * - 승인되지 않은 사용자(is_active=false 또는 미등록): 403
- * - 정상: user 반환
+ * - approved_users에 본인 행이 있고 is_active=false(차단 목록): 403
+ * - 그 외(미등록 포함): 로그인만 되어 있으면 허용
  */
 export async function requireAuth() {
   const cookieStore = await cookies()
@@ -94,17 +54,17 @@ export async function requireAuth() {
     }
   }
 
-  const approved = await findApprovedUser<{ id: string; is_active: boolean }>(
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean }>(
     supabase,
-    user,
+    user as User,
     "id, is_active"
   )
 
-  if (!approved || !approved.is_active) {
+  if (approved && approved.is_active === false) {
     return {
       user: null,
       unauthorized: NextResponse.json(
-        { error: "접근 권한이 없습니다." },
+        { error: "관리자에 의해 사용이 제한된 계정입니다." },
         { status: 403 }
       ),
     }
@@ -115,16 +75,41 @@ export async function requireAuth() {
 
 /**
  * API 라우트에서 어드민 여부를 검증하는 헬퍼.
- * - 미인증: 401 / 비활성·비어드민: 403 / 정상: user 반환
+ * - 미인증: 401 / 차단·비어드민: 403 / 정상: user 반환
  */
 export async function requireAdminApi() {
-  const { user, unauthorized } = await requireAuth()
-  if (unauthorized) return { user: null, unauthorized }
-
   const cookieStore = await cookies()
   const supabase = makeSupabaseServer(cookieStore)
 
-  const approved = await findApprovedUser<{ role: string }>(supabase, user!, "role")
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json(
+        { error: "인증이 필요합니다." },
+        { status: 401 }
+      ),
+    }
+  }
+
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
+    supabase,
+    user as User,
+    "id, is_active, role"
+  )
+
+  if (approved && approved.is_active === false) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json(
+        { error: "관리자에 의해 사용이 제한된 계정입니다." },
+        { status: 403 }
+      ),
+    }
+  }
 
   if (!approved || approved.role !== "admin") {
     return {
@@ -155,13 +140,17 @@ export async function requireAdmin() {
     redirect("/login")
   }
 
-  const approved = await findApprovedUser<{ id: string; is_active: boolean; role: string }>(
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
     supabase,
-    user,
+    user as User,
     "id, is_active, role"
   )
 
-  if (!approved || !approved.is_active || approved.role !== "admin") {
+  if (approved && approved.is_active === false) {
+    redirect("/")
+  }
+
+  if (!approved || approved.role !== "admin") {
     redirect("/")
   }
 }

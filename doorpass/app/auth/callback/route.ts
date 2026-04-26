@@ -1,10 +1,19 @@
 import { createServerClient } from "@supabase/ssr"
+import type { User } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
+
+function safeNextPath(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/"
+  if (next.includes("..") || next.includes("\\")) return "/"
+  return next
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
+  const nextPath = safeNextPath(searchParams.get("next"))
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", origin))
@@ -35,47 +44,16 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=exchange_failed", origin))
   }
 
-  const provider = data.user.app_metadata?.provider
-  const email = data.user.user_metadata?.email as string | undefined
-  const kakaoId =
-    data.user.user_metadata?.provider_id || data.user.user_metadata?.sub
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean }>(
+    supabase,
+    data.user as User,
+    "id, is_active"
+  )
 
-  let approved: { id: string; is_active: boolean } | null = null
-
-  if (provider === "kakao") {
-    // 카카오: kakao_id로 조회 (기존 방식 유지)
-    const { data: byKakao } = await supabase
-      .from("approved_users")
-      .select("id, is_active")
-      .eq("kakao_id", kakaoId)
-      .single()
-    approved = byKakao
-
-    // kakao_id로 못 찾으면 이메일로 재시도 (email 컬럼으로 등록된 경우)
-    if (!approved && email) {
-      const { data: byEmail } = await supabase
-        .from("approved_users")
-        .select("id, is_active")
-        .eq("email", email)
-        .single()
-      approved = byEmail
-    }
-  } else if (provider === "google") {
-    // 구글: 이메일로 조회
-    if (email) {
-      const { data: byEmail } = await supabase
-        .from("approved_users")
-        .select("id, is_active")
-        .eq("email", email)
-        .single()
-      approved = byEmail
-    }
-  }
-
-  if (!approved || !approved.is_active) {
+  if (approved && approved.is_active === false) {
     await supabase.auth.signOut()
-    return NextResponse.redirect(new URL("/login?error=unauthorized", origin))
+    return NextResponse.redirect(new URL("/login?error=blocked", origin))
   }
 
-  return NextResponse.redirect(new URL("/", origin))
+  return NextResponse.redirect(new URL(nextPath, origin))
 }

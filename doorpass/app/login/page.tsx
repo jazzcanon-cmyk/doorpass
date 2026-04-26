@@ -7,13 +7,28 @@ import { LoginButton } from "@/components/login-button"
 export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [oauthCallback, setOauthCallback] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     setMounted(true)
     const p = new URLSearchParams(window.location.search)
+    const redirect = p.get("redirect")
+    if (redirect) {
+      const origin = window.location.origin
+      setOauthCallback(`${origin}/auth/callback?next=${encodeURIComponent(redirect)}`)
+    }
     const err = p.get("error")
-    if (err === "unauthorized") {
-      setErrorMsg("승인 대기 중입니다.\n대리점장님께 연락해주세요.")
+    if (err === "blocked") {
+      setErrorMsg(
+        "이 계정은 관리자에 의해 사용 제한 중입니다.\n승인 후 다시 로그인해 주세요. 문의는 대리점 관리자에게 해 주세요."
+      )
+    } else if (err === "unauthorized") {
+      setErrorMsg(
+        "등록된 로그인 방식과 맞지 않거나 이전에 사용하던 링크일 수 있습니다.\n" +
+          "• 지메일로 등록됐다면 → Google로 시작하기\n" +
+          "• 카카오로만 등록됐다면 → 카카오로 시작하기\n" +
+          "같은 사람이라도 소셜 종류가 다르면 다른 계정으로 취급됩니다."
+      )
     } else if (err === "exchange_failed") {
       setErrorMsg("로그인 처리 중 오류가 발생했습니다.\n다시 시도해주세요.")
     }
@@ -93,7 +108,7 @@ export default function LoginPage() {
           <div className="text-center mb-7">
             <h2 className="text-white font-semibold" style={{ fontSize: 17 }}>로그인</h2>
             <p className="mt-1" style={{ color: "rgba(255,255,255,0.38)", fontSize: 13 }}>
-              승인된 기사님만 이용하실 수 있습니다
+              카카오 또는 Google로 로그인 후 이용할 수 있습니다
             </p>
           </div>
 
@@ -116,7 +131,7 @@ export default function LoginPage() {
           )}
 
           <div className="flex flex-col gap-3">
-            <LoginButton provider="kakao" />
+            <LoginButton provider="kakao" redirectTo={oauthCallback} />
 
             <div className="flex items-center gap-3 py-1">
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
@@ -124,11 +139,11 @@ export default function LoginPage() {
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
             </div>
 
-            <LoginButton provider="google" />
+            <LoginButton provider="google" redirectTo={oauthCallback} />
           </div>
 
           <p className="text-center mt-6" style={{ color: "rgba(255,255,255,0.18)", fontSize: 12 }}>
-            미승인 계정은 접속이 제한됩니다
+            관리자가 제한한 계정만 로그인 후 이용이 막힙니다
           </p>
         </div>
       </div>

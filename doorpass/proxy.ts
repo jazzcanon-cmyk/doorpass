@@ -25,8 +25,16 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // 모든 요청마다 access token 만료 여부 확인 → 만료 시 refresh token으로 자동 갱신
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search)
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
 }

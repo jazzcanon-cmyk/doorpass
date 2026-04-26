@@ -1,7 +1,5 @@
-import { requireAdmin } from "@/lib/auth"
-import { AdminContent } from "./AdminContent"
+import { AdminDashboard } from "./AdminDashboard"
 
-export default async function AdminPage() {
-  await requireAdmin()
-  return <AdminContent />
+export default function AdminPage() {
+  return <AdminDashboard />
 }

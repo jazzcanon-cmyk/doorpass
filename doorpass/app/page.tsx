@@ -136,12 +136,26 @@ export default function Home() {
         await fetchBuildings(latitude, longitude)
         setLoading(false)
       },
-      () => {
-        setError("위치를 가져오는데 실패했습니다.")
+      (geoErr: GeolocationPositionError) => {
+        console.warn("[geolocation]", geoErr.code, geoErr.message)
+        const code = geoErr?.code
+        const msg =
+          code === 1
+            ? "위치 권한이 거부되었습니다. 주소창의 자물쇠 아이콘에서 이 사이트의 위치를 허용한 뒤 다시 시도해 주세요."
+            : code === 2
+              ? "기기에서 위치를 확인할 수 없습니다. (실내·PC에서는 자주 발생합니다) 검색 탭으로 전체 목록을 이용할 수 있습니다."
+              : code === 3
+                ? "위치 요청이 시간 초과되었습니다. GPS/Wi‑Fi 위치를 켠 뒤 다시 시도하거나 검색 탭을 이용해 주세요."
+                : "위치를 가져오는데 실패했습니다."
+        setError(msg)
         setLoading(false)
         fetchBuildings()
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      {
+        enableHighAccuracy: false,
+        timeout: 20000,
+        maximumAge: 120_000,
+      }
     )
   }, [fetchBuildings])
 

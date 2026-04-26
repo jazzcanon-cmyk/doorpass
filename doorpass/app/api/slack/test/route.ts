@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { sendSlackMessage, SlackMessageOptions } from "@/lib/slack"
+import { requireAdminApi } from "@/lib/auth"
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase-route"
 
 const now = () => new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
 
@@ -42,11 +44,20 @@ const SCENARIOS: Record<string, SlackMessageOptions> = {
 }
 
 export async function GET(request: Request) {
+  const { unauthorized } = await requireAdminApi()
+  if (unauthorized) return unauthorized
+
   const { searchParams } = new URL(request.url)
   const scenario = (searchParams.get("scenario") ?? "basic") as keyof typeof SCENARIOS
   const msg = SCENARIOS[scenario] ?? SCENARIOS.basic
 
   const result = await sendSlackMessage(msg)
+
+  const supabase = await createSupabaseRouteHandlerClient()
+  await supabase.from("user_activities").insert({
+    action_type: "slack_test",
+    metadata: { scenario, ok: result.ok, error: result.error ?? null },
+  })
 
   if (!result.ok) {
     return NextResponse.json({ ok: false, scenario, error: result.error }, { status: 500 })
