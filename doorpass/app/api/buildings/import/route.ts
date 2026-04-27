@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server"
 import * as XLSX from "xlsx"
-import { createClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAdminApi } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = supabaseAdmin
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendSlackMessage } from "@/lib/slack"
 import { requireAdminApi } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
@@ -14,10 +14,7 @@ interface BuildingRow {
   memo: string | null
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = supabaseAdmin
 
 function toBuilding(b: BuildingRow) {
   const rawPassword = b.password ?? ""

@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAuth } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = supabaseAdmin
 
 export async function POST(request: Request) {
   const { unauthorized } = await requireAuth()

@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) throw new Error("Supabase 환경변수가 설정되지 않았습니다.")
-  return createClient(url, key, { auth: { persistSession: false } })
-}
+const supabase = supabaseAdmin
 
 export async function GET() {
   try {
-    const supabase = getSupabase()
     const { data, error } = await supabase
       .from("notices")
       .select("*")
@@ -26,7 +20,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = getSupabase()
     const body = await request.json()
     const { action, ...payload } = body as { action?: string; [key: string]: unknown }
 
