@@ -1,22 +1,17 @@
 "use client"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { X, Search, Edit2, Trash2, Lock, Globe, ChevronLeft, ChevronRight } from "lucide-react"
+import KoreanLunarCalendar from "korean-lunar-calendar"
 
 function getLunarDate(date: Date): string {
-  const baseDate = new Date(2024, 0, 1)
-  const baseLunar = { year: 2023, month: 11, day: 20 }
-  const diffDays = Math.floor((date.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24))
-  let lunarDay = baseLunar.day + diffDays
-  let lunarMonth = baseLunar.month
-  let lunarYear = baseLunar.year
-  const monthDays = [30, 29, 30, 29, 30, 29, 30, 30, 29, 30, 29, 30]
-  while (lunarDay > monthDays[(lunarMonth - 1) % 12]) {
-    lunarDay -= monthDays[(lunarMonth - 1) % 12]
-    lunarMonth++
-    if (lunarMonth > 12) { lunarMonth = 1; lunarYear++ }
+  try {
+    const calendar = new KoreanLunarCalendar()
+    calendar.setSolarDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
+    const lunar = calendar.getLunarCalendar()
+    return `음력 ${lunar.month}/${lunar.day}`
+  } catch {
+    return ""
   }
-  void lunarYear
-  return `음력 ${lunarMonth}/${lunarDay}`
 }
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"]
