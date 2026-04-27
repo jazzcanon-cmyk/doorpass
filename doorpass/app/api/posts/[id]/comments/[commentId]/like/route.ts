@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAuth } from '@/lib/auth'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 const supabase = supabaseAdmin
 
@@ -52,6 +53,26 @@ export async function POST(
       .from('comments')
       .update({ like_count })
       .eq('id', commentId)
+
+    if (liked) {
+      ;(async () => {
+        const { data: commentData } = await supabase
+          .from('comments')
+          .select('content, post_id')
+          .eq('id', commentId)
+          .single()
+
+        const { data: postData } = await supabase
+          .from('posts')
+          .select('title')
+          .eq('id', commentData?.post_id)
+          .single()
+
+        await sendTelegramMessage(
+          `❤️ 댓글에 좋아요!\n📝 게시글: ${postData?.title || '알 수 없음'}\n💬 댓글: ${String(commentData?.content || '').slice(0, 30)}...\n👤 좋아요 수: ${like_count}개`
+        )
+      })().catch(console.error)
+    }
 
     return NextResponse.json({ liked, like_count })
   } catch (e: unknown) {
