@@ -13,6 +13,8 @@ import {
   Clock,
   CheckCircle2,
   Ban,
+  Users,
+  Settings2,
 } from "lucide-react"
 
 interface ApprovedUser {
@@ -26,6 +28,19 @@ interface ApprovedUser {
   created_at: string
 }
 
+interface AuthUser {
+  id: string
+  email: string | null
+  name: string | null
+  avatar_url: string | null
+  provider: string
+  created_at: string
+  last_sign_in_at: string | null
+  role: string | null
+  is_active: boolean | null
+  is_registered: boolean
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } })
   const data = (await res.json().catch(() => ({}))) as T & { error?: string }
@@ -33,7 +48,168 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
+function formatDate(iso: string | null) {
+  if (!iso) return "-"
+  return new Date(iso).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function providerLabel(provider: string) {
+  if (provider === "kakao") return { label: "카카오", cls: "bg-yellow-500/20 text-yellow-300" }
+  if (provider === "google") return { label: "구글", cls: "bg-blue-500/20 text-blue-300" }
+  return { label: provider, cls: "bg-white/10 text-white/50" }
+}
+
 export default function UsersPage() {
+  const [tab, setTab] = useState<"all" | "manage">("all")
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white">사용자 관리</h1>
+      </div>
+
+      <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setTab("all")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === "all"
+              ? "bg-blue-600 text-white shadow"
+              : "text-white/50 hover:text-white/80"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          전체 로그인 회원
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("manage")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === "manage"
+              ? "bg-blue-600 text-white shadow"
+              : "text-white/50 hover:text-white/80"
+          }`}
+        >
+          <Settings2 className="h-4 w-4" />
+          등록 관리
+        </button>
+      </div>
+
+      {tab === "all" ? <AllUsersTab /> : <ManageTab />}
+    </div>
+  )
+}
+
+function AllUsersTab() {
+  const [users, setUsers] = useState<AuthUser[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { users: list } = await api<{ users: AuthUser[] }>("/api/admin/auth-users")
+      setUsers(list ?? [])
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+      </div>
+    )
+  }
+
+  const registered = users.filter((u) => u.is_registered)
+  const unregistered = users.filter((u) => !u.is_registered)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-white/40">
+        전체 {users.length}명 · 등록됨 {registered.length}명 · 미등록 {unregistered.length}명
+      </p>
+      <div className="space-y-2">
+        {users.length === 0 && (
+          <p className="text-sm text-white/30 text-center py-10 rounded-xl border border-dashed border-white/10">
+            로그인한 회원이 없습니다.
+          </p>
+        )}
+        {users.map((u) => (
+          <AuthUserRow key={u.id} u={u} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AuthUserRow({ u }: { u: AuthUser }) {
+  const prov = providerLabel(u.provider)
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05] transition-all">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.06] border border-white/10">
+        {u.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={u.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover" />
+        ) : (
+          <User className="h-4 w-4 text-white/40" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-semibold text-white">{u.name ?? u.email ?? u.id}</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${prov.cls}`}>
+            {prov.label}
+          </span>
+          {u.is_registered ? (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
+              등록됨
+            </span>
+          ) : (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-white/5 text-white/30">
+              미등록
+            </span>
+          )}
+          {u.is_registered && u.role && (
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                u.role === "admin" ? "bg-yellow-500/20 text-yellow-400" : "bg-blue-500/20 text-blue-400"
+              }`}
+            >
+              {u.role === "admin" ? "관리자" : "일반"}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-3 mt-0.5 flex-wrap">
+          {u.email && <span className="text-xs text-white/40 truncate max-w-[220px]">{u.email}</span>}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end gap-0.5 text-right flex-shrink-0">
+        <span className="text-[11px] text-white/25">마지막 로그인</span>
+        <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
+        <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
+      </div>
+    </div>
+  )
+}
+
+function ManageTab() {
   const [users, setUsers] = useState<ApprovedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState("")
@@ -133,13 +309,10 @@ export default function UsersPage() {
   const approved = users.filter((u) => u.is_active)
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white">사용자 관리</h1>
-        <p className="text-sm text-white/40 mt-1">
-          사용 제한(승인 대기) {pending.length}명 · 이용 가능 {approved.length}명 · 전체 {users.length}명
-        </p>
-      </div>
+    <div className="space-y-8">
+      <p className="text-sm text-white/40 -mt-4">
+        사용 제한(승인 대기) {pending.length}명 · 이용 가능 {approved.length}명 · 전체 {users.length}명
+      </p>
 
       <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
