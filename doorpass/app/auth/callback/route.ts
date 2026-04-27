@@ -45,11 +45,18 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=exchange_failed", origin))
   }
 
-  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean }>(
-    supabase,
-    data.user as User,
-    "id, is_active"
-  )
+  const approved = await fetchApprovedUserForAuth<{
+    id: string
+    is_active: boolean
+    is_blocked: boolean
+    blocked_reason: string | null
+  }>(supabase, data.user as User, "id, is_active, is_blocked, blocked_reason")
+
+  if (approved?.is_blocked) {
+    await supabase.auth.signOut()
+    const reason = encodeURIComponent(approved.blocked_reason ?? "")
+    return NextResponse.redirect(new URL(`/blocked?reason=${reason}`, origin))
+  }
 
   if (approved && approved.is_active === false) {
     await supabase.auth.signOut()

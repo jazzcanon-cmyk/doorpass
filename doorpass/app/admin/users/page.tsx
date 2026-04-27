@@ -39,6 +39,9 @@ interface AuthUser {
   role: string | null
   is_active: boolean | null
   is_registered: boolean
+  approved_id: number | null
+  is_blocked: boolean
+  blocked_reason: string | null
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -109,6 +112,9 @@ export default function UsersPage() {
 function AllUsersTab() {
   const [users, setUsers] = useState<AuthUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [blockModal, setBlockModal] = useState<{ user: AuthUser } | null>(null)
+  const [blockReason, setBlockReason] = useState("")
+  const [blocking, setBlocking] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -122,9 +128,45 @@ function AllUsersTab() {
     }
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
+
+  const openBlock = (u: AuthUser) => { setBlockModal({ user: u }); setBlockReason("") }
+  const closeBlock = () => { setBlockModal(null); setBlockReason("") }
+
+  const submitBlock = async () => {
+    if (!blockModal) return
+    const { user: target } = blockModal
+    if (!target.approved_id) return
+    if (!blockReason.trim()) { toast.error("차단 사유를 입력해주세요."); return }
+    setBlocking(true)
+    try {
+      await api(`/api/admin/users/${target.approved_id}/block`, {
+        method: "POST",
+        body: JSON.stringify({ blocked: true, reason: blockReason.trim() }),
+      })
+      toast.success(`${target.name ?? target.email ?? "사용자"}님이 차단되었습니다.`)
+      closeBlock()
+      void load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "차단 실패")
+    } finally {
+      setBlocking(false)
+    }
+  }
+
+  const unblock = async (u: AuthUser) => {
+    if (!u.approved_id) return
+    try {
+      await api(`/api/admin/users/${u.approved_id}/block`, {
+        method: "POST",
+        body: JSON.stringify({ blocked: false }),
+      })
+      toast.success(`${u.name ?? u.email ?? "사용자"}님 차단이 해제되었습니다.`)
+      void load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "차단 해제 실패")
+    }
+  }
 
   if (loading) {
     return (
@@ -138,29 +180,92 @@ function AllUsersTab() {
   const unregistered = users.filter((u) => !u.is_registered)
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-white/40">
-        전체 {users.length}명 · 등록됨 {registered.length}명 · 미등록 {unregistered.length}명
-      </p>
+    <>
       <div className="space-y-2">
-        {users.length === 0 && (
-          <p className="text-sm text-white/30 text-center py-10 rounded-xl border border-dashed border-white/10">
-            로그인한 회원이 없습니다.
-          </p>
-        )}
-        {users.map((u) => (
-          <AuthUserRow key={u.id} u={u} />
-        ))}
+        <p className="text-sm text-white/40">
+          전체 {users.length}명 · 등록됨 {registered.length}명 · 미등록 {unregistered.length}명
+        </p>
+        <div className="space-y-2">
+          {users.length === 0 && (
+            <p className="text-sm text-white/30 text-center py-10 rounded-xl border border-dashed border-white/10">
+              로그인한 회원이 없습니다.
+            </p>
+          )}
+          {users.map((u) => (
+            <AuthUserRow
+              key={u.id}
+              u={u}
+              onBlock={() => openBlock(u)}
+              onUnblock={() => void unblock(u)}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+
+      {blockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-sm bg-[#1a1a2e] border border-white/[0.1] rounded-2xl p-6 space-y-4">
+            <h3 className="text-base font-semibold text-white">사용자 차단</h3>
+            <p className="text-sm text-white/50">
+              <span className="text-white font-medium">
+                {blockModal.user.name ?? blockModal.user.email ?? "이 사용자"}
+              </span>
+              님을 차단합니다. 차단 후 로그인 시 차단 페이지로 이동합니다.
+            </p>
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">차단 사유 (필수)</label>
+              <textarea
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="예: 악성 댓글, 부적절한 게시물 등"
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-sm placeholder:text-white/30 resize-none focus:outline-none focus:border-red-500/50"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={closeBlock}
+                className="px-4 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/5"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitBlock()}
+                disabled={blocking || !blockReason.trim()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white"
+              >
+                {blocking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                차단
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
-function AuthUserRow({ u }: { u: AuthUser }) {
+function AuthUserRow({
+  u,
+  onBlock,
+  onUnblock,
+}: {
+  u: AuthUser
+  onBlock: () => void
+  onUnblock: () => void
+}) {
   const prov = providerLabel(u.provider)
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05] transition-all">
+    <div
+      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all ${
+        u.is_blocked
+          ? "bg-red-500/5 border-red-500/20 opacity-70"
+          : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]"
+      }`}
+    >
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.06] border border-white/10">
         {u.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -172,20 +277,27 @@ function AuthUserRow({ u }: { u: AuthUser }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-white">{u.name ?? u.email ?? u.id}</span>
+          <span className={`text-sm font-semibold ${u.is_blocked ? "text-white/40 line-through" : "text-white"}`}>
+            {u.name ?? u.email ?? u.id}
+          </span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${prov.cls}`}>
             {prov.label}
           </span>
-          {u.is_registered ? (
+          {u.is_blocked && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-red-500/20 text-red-400 flex items-center gap-1">
+              🚫 차단됨
+            </span>
+          )}
+          {u.is_registered && !u.is_blocked ? (
             <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-green-500/15 text-green-400">
               등록됨
             </span>
-          ) : (
+          ) : !u.is_registered ? (
             <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-white/5 text-white/30">
               미등록
             </span>
-          )}
-          {u.is_registered && u.role && (
+          ) : null}
+          {u.is_registered && u.role && !u.is_blocked && (
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                 u.role === "admin" ? "bg-yellow-500/20 text-yellow-400" : "bg-blue-500/20 text-blue-400"
@@ -197,13 +309,37 @@ function AuthUserRow({ u }: { u: AuthUser }) {
         </div>
         <div className="flex gap-3 mt-0.5 flex-wrap">
           {u.email && <span className="text-xs text-white/40 truncate max-w-[220px]">{u.email}</span>}
+          {u.is_blocked && u.blocked_reason && (
+            <span className="text-xs text-red-400/70 truncate max-w-[200px]">사유: {u.blocked_reason}</span>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col items-end gap-0.5 text-right flex-shrink-0">
-        <span className="text-[11px] text-white/25">마지막 로그인</span>
-        <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
-        <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-col items-end gap-0.5 text-right">
+          <span className="text-[11px] text-white/25">마지막 로그인</span>
+          <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
+          <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
+        </div>
+        {u.is_registered && (
+          u.is_blocked ? (
+            <button
+              type="button"
+              onClick={onUnblock}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-green-500/10 hover:text-green-400 border border-white/10"
+            >
+              <ShieldCheck className="h-3 w-3" /> 해제
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onBlock}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+            >
+              <Ban className="h-3 w-3" /> 차단
+            </button>
+          )
+        )}
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ export async function GET() {
 
     const { data: approvedUsers, error: approvedError } = await supabaseAdmin
       .from("approved_users")
-      .select("email, role, is_active")
+      .select("id, email, role, is_active, is_blocked, blocked_reason")
     if (approvedError) throw approvedError
 
     const approvedMap = new Map(
@@ -42,6 +42,9 @@ export async function GET() {
         role: approved?.role ?? null,
         is_active: approved?.is_active ?? null,
         is_registered: !!approved,
+        approved_id: approved?.id ?? null,
+        is_blocked: approved?.is_blocked ?? false,
+        blocked_reason: approved?.blocked_reason ?? null,
       }
     })
 
