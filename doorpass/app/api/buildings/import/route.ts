@@ -47,6 +47,23 @@ export async function POST(request: Request) {
     const ws = wb.Sheets[wb.SheetNames[0]]
     const allRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
 
+    // 헤더 파싱: 영문(신규) / 한글(구버전) 모두 지원
+    const headerRow = (allRows[0] ?? []) as (string | undefined)[]
+    const colIdx = { name: -1, address: -1, password: -1, floor: -1, unit: -1, memo: -1 }
+    headerRow.forEach((h, i) => {
+      const s = String(h ?? "").trim()
+      if (s === "name"     || s === "건물명")   colIdx.name     = i
+      if (s === "address"  || s === "주소")     colIdx.address  = i
+      if (s === "password" || s === "비밀번호") colIdx.password = i
+      if (s === "floors"   || s === "층수")     colIdx.floor    = i
+      if (s === "unit"     || s === "호수")     colIdx.unit     = i
+      if (s === "memo"     || s === "메모")     colIdx.memo     = i
+    })
+    // 인식된 헤더가 없으면 기존 위치 기반으로 폴백
+    if (colIdx.name === -1 && colIdx.address === -1) {
+      Object.assign(colIdx, { name: 0, address: 1, password: 2, floor: 3, unit: 4, memo: 5 })
+    }
+
     // 헤더 제외, 빈 행 필터
     const dataRows = allRows.slice(1).filter(row =>
       Array.isArray(row) && row.some(c => c !== "" && c !== undefined && c !== null)
@@ -72,12 +89,13 @@ export async function POST(request: Request) {
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i] as (string | number | undefined)[]
-      const name     = String(row[0] ?? "").trim()
-      const address  = String(row[1] ?? "").trim()
-      const password = String(row[2] ?? "").trim()
-      const floor    = String(row[3] ?? "").trim()
-      const unit     = String(row[4] ?? "").trim()
-      const memoRaw  = String(row[5] ?? "").trim()
+      const get = (idx: number) => (idx >= 0 ? String(row[idx] ?? "") : "").trim()
+      const name     = get(colIdx.name)
+      const address  = get(colIdx.address)
+      const password = get(colIdx.password)
+      const floor    = get(colIdx.floor)
+      const unit     = get(colIdx.unit)
+      const memoRaw  = get(colIdx.memo)
       const rowNum   = i + 2
 
       if (!address) {
@@ -86,7 +104,7 @@ export async function POST(request: Request) {
         continue
       }
 
-      // 층/호 정보를 메모에 포함
+      // 층/호 정보가 있으면 메모에 포함 (구버전 호환)
       const floorUnit = [floor && `${floor}층`, unit && `${unit}호`].filter(Boolean).join(" ")
       const memo = [floorUnit, memoRaw].filter(Boolean).join(" / ")
 
