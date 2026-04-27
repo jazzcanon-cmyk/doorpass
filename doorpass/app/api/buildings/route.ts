@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendSlackMessage } from "@/lib/slack"
-import { requireAdminApi } from "@/lib/auth"
+import { requireAdminApi, requireAuth } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 
 interface BuildingRow {
@@ -38,6 +38,9 @@ function toBuilding(b: BuildingRow) {
 }
 
 export async function GET(request: Request) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   const { searchParams } = new URL(request.url)
   const minLat = searchParams.get("minLat")
   const maxLat = searchParams.get("maxLat")
