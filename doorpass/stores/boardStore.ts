@@ -13,6 +13,8 @@ interface Comment {
   content: string
   author: string
   created_at: string
+  like_count: number
+  liked?: boolean
 }
 export interface PostDetail extends Post {
   content: string

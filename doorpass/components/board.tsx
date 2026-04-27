@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen, Search, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowLeft, Plus, Eye, ImageIcon, X, Send, Loader2, MessageCircle, Pencil, Trash2, Check, Megaphone, FolderOpen, Search, ChevronDown, ChevronUp, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,8 @@ interface Comment {
   content: string
   author: string
   created_at: string
+  like_count: number
+  liked?: boolean
 }
 interface Notice {
   id: number
@@ -465,6 +467,7 @@ function Detail({ postId, defaultAuthor }: { postId: number; defaultAuthor?: str
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [likingIds, setLikingIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!postId || isNaN(postId)) { setError("잘못된 ID"); setLoading(false); return }
@@ -473,6 +476,38 @@ function Detail({ postId, defaultAuthor }: { postId: number; defaultAuthor?: str
       .then((d) => { if (d.error) setError(d.error); else { setPost(d.post); if (d.post) trackPostView(postId, d.post.title) } setLoading(false) })
       .catch(() => { setError("불러오기 실패"); setLoading(false) })
   }, [postId])
+
+  const toggleLike = async (commentId: number) => {
+    if (likingIds.has(commentId)) return
+    setLikingIds((prev) => new Set(prev).add(commentId))
+    setPost((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        comments: prev.comments.map((c: Comment) =>
+          c.id === commentId
+            ? { ...c, liked: !c.liked, like_count: c.liked ? c.like_count - 1 : c.like_count + 1 }
+            : c
+        ),
+      }
+    })
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: "POST" })
+      if (res.ok) {
+        const data = await res.json()
+        setPost((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            comments: prev.comments.map((c: Comment) =>
+              c.id === commentId ? { ...c, liked: data.liked, like_count: data.like_count } : c
+            ),
+          }
+        })
+      }
+    } catch { /* 낙관적 업데이트 유지 */ }
+    setLikingIds((prev) => { const s = new Set(prev); s.delete(commentId); return s })
+  }
 
   const submitComment = async () => {
     if (!comment.trim()) return
@@ -538,7 +573,18 @@ function Detail({ postId, defaultAuthor }: { postId: number; defaultAuthor?: str
           {(post.comments || []).map((c: Comment) => (
             <Card key={c.id} className="bg-secondary/50"><CardContent className="p-3">
               <div className="flex gap-2 mb-1"><span className="text-xs font-medium">{c.author}</span><span className="text-xs text-muted-foreground">{ago(c.created_at)}</span></div>
-              <p className="text-sm">{c.content}</p>
+              <div className="flex items-end justify-between gap-2">
+                <p className="text-sm flex-1">{c.content}</p>
+                <button
+                  onClick={() => toggleLike(c.id)}
+                  disabled={likingIds.has(c.id)}
+                  className={`flex items-center gap-1 text-xs flex-shrink-0 transition-colors ${c.liked ? "text-rose-500" : "text-muted-foreground hover:text-rose-400"}`}
+                  aria-label="좋아요"
+                >
+                  <Heart className={`h-3.5 w-3.5 ${c.liked ? "fill-rose-500" : ""}`} />
+                  {(c.like_count ?? 0) > 0 && <span>{c.like_count}</span>}
+                </button>
+              </div>
             </CardContent></Card>
           ))}
         </div>

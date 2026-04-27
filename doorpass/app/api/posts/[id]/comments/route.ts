@@ -20,7 +20,21 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    sendTelegramMessage(`💬 새 댓글\n내용: ${String(content || "").slice(0, 50)}`).catch(console.error)
+
+    ;(async () => {
+      const { data: post } = await supabase
+        .from('posts')
+        .select('title')
+        .eq('id', Number(id))
+        .single()
+      const postTitle = post?.title ?? '(제목 없음)'
+      const commentAuthor = author || '익명'
+      const preview = String(content || '').slice(0, 50)
+      await sendTelegramMessage(
+        `💬 새 댓글\n📝 게시글: ${postTitle}\n👤 작성자: ${commentAuthor}\n💬 내용: ${preview}`
+      )
+    })().catch(console.error)
+
     return NextResponse.json({ comment: data })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
