@@ -3,6 +3,7 @@ import * as XLSX from "xlsx"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAdminApi } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
+import { sendSlackMessage } from "@/lib/slack"
 
 const supabase = supabaseAdmin
 
@@ -168,6 +169,8 @@ export async function POST(request: Request) {
     }
 
     console.log(`[Import] 완료 — 성공: ${stats.success}, 실패: ${stats.failed}, 건너뜀: ${stats.skipped}`)
+
+    sendSlackMessage({ text: "📥 건물 일괄등록", color: "#8b5cf6", fields: [{ title: "등록 수", value: `${stats.success}건`, short: true }] }).catch(console.error)
 
     return NextResponse.json({ ...stats, errors })
   } catch (err) {

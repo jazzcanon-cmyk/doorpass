@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAuth } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
+import { sendSlackMessage } from "@/lib/slack"
 
 const supabase = supabaseAdmin
 
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
       .eq("id", Number(buildingId))
 
     if (error) throw new Error(error.message)
+
+    sendSlackMessage({ text: "✏️ 건물 정보 수정", color: "#f59e0b", fields: [{ title: "건물 ID", value: String(buildingId), short: true }] }).catch(console.error)
 
     return NextResponse.json({ success: true })
   } catch (error) {

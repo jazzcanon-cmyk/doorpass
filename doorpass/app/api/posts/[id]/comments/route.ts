@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendSlackMessage } from '@/lib/slack'
 
 const supabase = supabaseAdmin
 
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    sendSlackMessage({ text: "💬 새 댓글", color: "#06b6d4", fields: [{ title: "내용", value: String(content || "").slice(0, 50), short: false }] }).catch(console.error)
     return NextResponse.json({ comment: data })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })

@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
+import { sendSlackMessage } from "@/lib/slack"
 
 function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/"
@@ -54,6 +55,8 @@ export async function GET(request: Request) {
     await supabase.auth.signOut()
     return NextResponse.redirect(new URL("/login?error=blocked", origin))
   }
+
+  sendSlackMessage({ text: "👤 사용자 로그인", color: "#22c55e", fields: [{ title: "이메일", value: data.user.email || "알 수 없음", short: true }, { title: "방식", value: String(data.user.app_metadata?.provider || "unknown"), short: true }] }).catch(console.error)
 
   return NextResponse.redirect(new URL(nextPath, origin))
 }
