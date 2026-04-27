@@ -15,18 +15,36 @@ export async function GET() {
 
     const { data: approvedUsers, error: approvedError } = await supabaseAdmin
       .from("approved_users")
-      .select("id, email, role, is_active, is_blocked, blocked_reason")
+      .select("id, email, kakao_id, role, is_active, is_blocked, blocked_reason")
     if (approvedError) throw approvedError
 
-    const approvedMap = new Map(
+    // 이메일 맵 + kakao_id 맵 둘 다 구성 (카카오 사용자는 이메일 없이 kakao_id만 등록된 경우가 많음)
+    const byEmail = new Map(
       (approvedUsers ?? [])
         .filter((u) => u.email)
         .map((u) => [u.email!.toLowerCase(), u])
     )
+    const byKakaoId = new Map(
+      (approvedUsers ?? [])
+        .filter((u) => u.kakao_id)
+        .map((u) => [u.kakao_id!, u])
+    )
 
     const users = authUsers.map((u) => {
       const email = u.email?.toLowerCase() ?? ""
-      const approved = approvedMap.get(email)
+      // 카카오 identity에서 sub/provider_id 추출
+      const kakaoIdent = (u.identities ?? []).find((i) => i.provider === "kakao")
+      const kakaoSub = String(
+        (kakaoIdent?.identity_data as Record<string, unknown> | undefined)?.sub ??
+        (u.user_metadata as Record<string, unknown> | undefined)?.provider_id ??
+        ""
+      )
+
+      const approved =
+        (email ? byEmail.get(email) : undefined) ??
+        (kakaoSub ? byKakaoId.get(kakaoSub) : undefined) ??
+        undefined
+
       const provider = (u.app_metadata?.provider as string | undefined) ?? "unknown"
       return {
         id: u.id,
