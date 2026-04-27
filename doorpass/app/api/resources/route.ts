@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { sendSlackMessage } from "@/lib/slack"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 const supabase = supabaseAdmin
 
@@ -34,15 +34,9 @@ export async function POST(request: Request) {
     if (error) throw new Error(error.message)
 
     const TYPE_LABELS: Record<string, string> = { link: "링크", file: "파일", image: "이미지", document: "문서", text: "글" }
-    sendSlackMessage({
-      text: `📁 [신정대리점] 새 자료 등록: ${title ?? "-"}`,
-      color: "#9b59b6",
-      fields: [
-        { title: "유형", value: TYPE_LABELS[resource_type ?? ""] ?? (resource_type ?? "-") },
-        { title: "등록자", value: author ?? "관리자" },
-        { title: "시간", value: new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) },
-      ],
-    }).catch((err) => console.error("[Slack] 자료실 알림 전송 실패:", err))
+    sendTelegramMessage(
+      `📁 [신정대리점] 새 자료 등록: ${title ?? "-"}\n유형: ${TYPE_LABELS[resource_type ?? ""] ?? (resource_type ?? "-")}\n등록자: ${author ?? "관리자"}\n시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+    ).catch((err) => console.error("[Telegram] 자료실 알림 전송 실패:", err))
 
     return NextResponse.json({ success: true })
   } catch (err: unknown) {

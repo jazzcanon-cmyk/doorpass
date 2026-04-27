@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { sendSlackMessage } from '@/lib/slack'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 const supabase = supabaseAdmin
 
@@ -30,26 +30,9 @@ export async function POST(request: Request) {
     category === 'notice'    ? '공지사항' :
     category === 'resources' ? '자료실'   : '일반'
 
-  try {
-    console.log('Sending Slack notification for new post...')
-    const slackResult = await sendSlackMessage({
-      text: '[신정대리점] 새 게시글',
-      color: '#36a64f',
-      fields: [
-        { title: '📋 제목',    value: title,           short: false },
-        { title: '👤 작성자',  value: author || '익명'              },
-        { title: '📁 카테고리', value: categoryLabel                },
-        { title: '🔗 링크',    value: 'https://doorpass.kr', short: false },
-      ],
-    })
-    if (slackResult.ok) {
-      console.log('Slack notification sent successfully')
-    } else {
-      console.error('[Slack] 전송 실패:', slackResult.error)
-    }
-  } catch (err) {
-    console.error('[Slack] 예외 발생:', err)
-  }
+  sendTelegramMessage(
+    `[신정대리점] 새 게시글\n📋 제목: ${title}\n👤 작성자: ${author || '익명'}\n📁 카테고리: ${categoryLabel}`
+  ).catch(console.error)
 
   return NextResponse.json({ post: data })
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { sendSlackMessage } from "@/lib/slack"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 const supabase = supabaseAdmin
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const { error } = await supabase.from("notices").insert(payload)
     if (error) throw new Error(error.message)
-    sendSlackMessage({ text: "📣 새 공지사항", color: "#f59e0b", fields: [{ title: "제목", value: String((payload as { title?: string }).title || "공지"), short: false }] }).catch(console.error)
+    sendTelegramMessage(`📣 새 공지사항\n제목: ${String((payload as { title?: string }).title || "공지")}`).catch(console.error)
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "처리에 실패했습니다."

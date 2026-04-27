@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { sendSlackMessage } from "@/lib/slack"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 const supabase = supabaseAdmin
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const insertData = { ...insertRest, content: insertContent, title: String(insertContent ?? "").slice(0, 30) }
     const { error } = await supabase.from("calendar_memos").insert(insertData)
     if (error) throw new Error(error.message)
-    sendSlackMessage({ text: "📅 캘린더 메모 추가", color: "#3b82f6", fields: [{ title: "내용", value: String(insertContent || "").slice(0, 50), short: false }, { title: "날짜", value: String(insertRest.date || ""), short: true }] }).catch(console.error)
+    sendTelegramMessage(`📅 캘린더 메모 추가\n내용: ${String(insertContent || "").slice(0, 50)}\n날짜: ${String(insertRest.date || "")}`).catch(console.error)
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "저장에 실패했습니다."

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { sendSlackMessage } from "@/lib/slack"
+import { sendTelegramMessage } from "@/lib/telegram"
 import { requireAdminApi, requireAuth } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 
@@ -124,15 +124,9 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message)
 
-    await sendSlackMessage({
-      text: "🏠 새로운 건물이 등록되었습니다!",
-      color: "#36a64f",
-      fields: [
-        { title: "건물명", value: name || address?.split(" ").slice(-1)[0] || "-" },
-        { title: "주소", value: address || "-", short: false },
-        ...(memo ? [{ title: "메모", value: memo, short: false }] : []),
-      ],
-    })
+    sendTelegramMessage(
+      `🏠 새로운 건물이 등록되었습니다!\n건물명: ${name || address?.split(" ").slice(-1)[0] || "-"}\n주소: ${address || "-"}${memo ? `\n메모: ${memo}` : ""}`
+    ).catch(console.error)
 
     return NextResponse.json({ building: data }, { status: 201 })
   } catch (error) {

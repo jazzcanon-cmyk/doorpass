@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { sendSlackMessage } from "@/lib/slack"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 const supabase = supabaseAdmin
 
@@ -28,15 +28,9 @@ export async function POST(request: Request) {
       const query = String(data.query)
       const matched = IMPORTANT_KEYWORDS.find((kw) => query.includes(kw))
       if (matched) {
-        sendSlackMessage({
-          text: "⚠️ 중요 검색어 감지",
-          color: "#ff0000",
-          fields: [
-            { title: "검색어", value: query, short: false },
-            { title: "검색자", value: data.userEmail || "알 수 없음" },
-            { title: "결과", value: `${data.results ?? 0}개` },
-          ],
-        }).catch((err) => console.error("[Slack] 검색어 알림 전송 실패:", err))
+        sendTelegramMessage(
+          `⚠️ 중요 검색어 감지\n검색어: ${query}\n검색자: ${data.userEmail || "알 수 없음"}\n결과: ${data.results ?? 0}개`
+        ).catch((err) => console.error("[Telegram] 검색어 알림 전송 실패:", err))
       }
     }
 
