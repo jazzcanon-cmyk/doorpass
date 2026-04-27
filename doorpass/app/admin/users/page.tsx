@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase-client"
 import {
   UserPlus,
   Trash2,
@@ -115,6 +116,7 @@ function AllUsersTab() {
   const [blockModal, setBlockModal] = useState<{ user: AuthUser } | null>(null)
   const [blockReason, setBlockReason] = useState("")
   const [blocking, setBlocking] = useState(false)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -129,6 +131,12 @@ function AllUsersTab() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserEmail(data.user?.email ?? "")
+    })
+  }, [])
 
   const openBlock = (u: AuthUser) => { setBlockModal({ user: u }); setBlockReason("") }
   const closeBlock = () => { setBlockModal(null); setBlockReason("") }
@@ -195,6 +203,7 @@ function AllUsersTab() {
             <AuthUserRow
               key={u.id}
               u={u}
+              currentUserEmail={currentUserEmail}
               onBlock={() => openBlock(u)}
               onUnblock={() => void unblock(u)}
             />
@@ -249,10 +258,12 @@ function AllUsersTab() {
 
 function AuthUserRow({
   u,
+  currentUserEmail,
   onBlock,
   onUnblock,
 }: {
   u: AuthUser
+  currentUserEmail: string
   onBlock: () => void
   onUnblock: () => void
 }) {
@@ -321,16 +332,35 @@ function AuthUserRow({
           <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
           <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
         </div>
-        {u.is_registered && (
-          u.is_blocked ? (
-            <button
-              type="button"
-              onClick={onUnblock}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-green-500/10 hover:text-green-400 border border-white/10"
-            >
-              <ShieldCheck className="h-3 w-3" /> 해제
-            </button>
-          ) : (
+        {u.is_registered && (() => {
+          const isSelf = u.email === currentUserEmail
+          const isAdmin = u.role === "admin"
+          if (u.is_blocked) {
+            return (
+              <button
+                type="button"
+                onClick={onUnblock}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-green-500/10 hover:text-green-400 border border-white/10"
+              >
+                <ShieldCheck className="h-3 w-3" /> 해제
+              </button>
+            )
+          }
+          if (isSelf) {
+            return (
+              <span className="text-[10px] px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                본인
+              </span>
+            )
+          }
+          if (isAdmin) {
+            return (
+              <span className="text-[10px] px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                관리자
+              </span>
+            )
+          }
+          return (
             <button
               type="button"
               onClick={onBlock}
@@ -339,7 +369,7 @@ function AuthUserRow({
               <Ban className="h-3 w-3" /> 차단
             </button>
           )
-        )}
+        })()}
       </div>
     </div>
   )
