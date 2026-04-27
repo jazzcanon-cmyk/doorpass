@@ -7,13 +7,14 @@ const supabase = supabaseAdmin
 
 export async function POST(
   _request: Request,
-  { params }: { params: { id: string; commentId: string } }
+  { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
     const { user, unauthorized } = await requireAuth()
     if (unauthorized) return unauthorized
 
-    const commentId = Number(params.commentId)
+    const { commentId: commentIdParam } = await params
+    const commentId = Number(commentIdParam)
     if (isNaN(commentId)) {
       return NextResponse.json({ error: 'Invalid comment ID' }, { status: 400 })
     }
