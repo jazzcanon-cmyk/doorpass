@@ -47,6 +47,7 @@ export async function requireAuth() {
   if (!user) {
     return {
       user: null,
+      isAdmin: false,
       unauthorized: NextResponse.json(
         { error: "인증이 필요합니다." },
         { status: 401 }
@@ -58,11 +59,13 @@ export async function requireAuth() {
     id: string
     is_active: boolean
     is_blocked: boolean
-  }>(supabase, user as User, "id, is_active, is_blocked")
+    role: string
+  }>(supabase, user as User, "id, is_active, is_blocked, role")
 
   if (approved?.is_blocked) {
     return {
       user: null,
+      isAdmin: false,
       unauthorized: NextResponse.json(
         { error: "차단된 계정입니다." },
         { status: 403 }
@@ -73,6 +76,7 @@ export async function requireAuth() {
   if (approved && approved.is_active === false) {
     return {
       user: null,
+      isAdmin: false,
       unauthorized: NextResponse.json(
         { error: "관리자에 의해 사용이 제한된 계정입니다." },
         { status: 403 }
@@ -80,7 +84,31 @@ export async function requireAuth() {
     }
   }
 
-  return { user, unauthorized: null }
+  return { user, isAdmin: approved?.role === "admin", unauthorized: null }
+}
+
+/**
+ * 사용자 식별자(provider_id 또는 sub 또는 id)를 일관되게 추출.
+ * 캘린더 메모의 kakao_id 등 사용자 소유 row 비교에 사용.
+ */
+export function getUserIdentifier(user: User): string {
+  return (
+    (user.user_metadata?.provider_id as string | undefined) ??
+    (user.user_metadata?.sub as string | undefined) ??
+    user.id
+  )
+}
+
+/**
+ * 사용자 닉네임(user_metadata.name 우선) 추출. posts.author와 비교용.
+ */
+export function getUserName(user: User): string {
+  const meta = user.user_metadata ?? {}
+  return (
+    (meta.name as string | undefined) ??
+    (meta.full_name as string | undefined) ??
+    (user.email ? user.email.split("@")[0] : "익명")
+  )
 }
 
 /**
