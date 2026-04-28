@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAuth } from '@/lib/auth'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { logActivity, getIp } from '@/lib/activity-logger'
 
 const supabase = supabaseAdmin
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
@@ -75,6 +76,7 @@ export async function POST(
       })().catch(console.error)
     }
 
+    logActivity(user!.email!, "like", { comment_id: commentId, liked }, getIp(request))
     return NextResponse.json({ liked, like_count })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })

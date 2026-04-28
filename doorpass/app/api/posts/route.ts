@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendTelegramMessage } from '@/lib/telegram'
 import { requireAuth } from '@/lib/auth'
+import { logActivity, getIp } from '@/lib/activity-logger'
 
 const supabase = supabaseAdmin
 
@@ -18,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
   const { title, content, author, image_url, category } = await request.json()
   if (!title || !content) {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  logActivity(user!.email!, "post_create", { title, author: author || "익명" }, getIp(request))
 
   const categoryLabel =
     category === 'notice'    ? '공지사항' :

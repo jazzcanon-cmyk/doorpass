@@ -2,11 +2,12 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { requireAuth } from "@/lib/auth"
+import { logActivity, getIp } from "@/lib/activity-logger"
 
 const supabase = supabaseAdmin
 
-export async function GET() {
-  const { unauthorized } = await requireAuth()
+export async function GET(request: Request) {
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
   try {
     const { data, error } = await supabase
@@ -15,6 +16,7 @@ export async function GET() {
       .order("is_important", { ascending: false })
       .order("created_at", { ascending: false })
     if (error) throw new Error(error.message)
+    logActivity(user!.email!, "notice_view", { count: data?.length ?? 0 }, getIp(request))
     return NextResponse.json({ notices: data ?? [] })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "공지사항을 불러오지 못했습니다."

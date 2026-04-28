@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { requireAdminApi, requireAuth } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
+import { logActivity, getIp } from "@/lib/activity-logger"
 
 interface BuildingRow {
   id: number
@@ -38,7 +39,7 @@ function toBuilding(b: BuildingRow) {
 }
 
 export async function GET(request: Request) {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
   const { searchParams } = new URL(request.url)
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
         .order("address", { ascending: true })
 
       if (error) throw new Error(error.message)
+      logActivity(user!.email!, "building_view", { count: data?.length ?? 0 }, getIp(request))
       return NextResponse.json({ buildings: (data ?? []).map(toBuilding) })
     }
 

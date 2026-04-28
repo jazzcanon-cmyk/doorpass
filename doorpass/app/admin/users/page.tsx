@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase-client"
 import {
@@ -111,6 +112,7 @@ export default function UsersPage() {
 }
 
 function AllUsersTab() {
+  const router = useRouter()
   const [users, setUsers] = useState<AuthUser[]>([])
   const [loading, setLoading] = useState(true)
   const [blockModal, setBlockModal] = useState<{ user: AuthUser } | null>(null)
@@ -206,6 +208,7 @@ function AllUsersTab() {
               currentUserEmail={currentUserEmail}
               onBlock={() => openBlock(u)}
               onUnblock={() => void unblock(u)}
+              onDetail={() => u.email && router.push(`/admin/users/${encodeURIComponent(u.email)}`)}
             />
           ))}
         </div>
@@ -303,21 +306,24 @@ function AuthUserRow({
   currentUserEmail,
   onBlock,
   onUnblock,
+  onDetail,
 }: {
   u: AuthUser
   currentUserEmail: string
   onBlock: () => void
   onUnblock: () => void
+  onDetail: () => void
 }) {
   const prov = providerLabel(u.provider)
 
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all ${
+      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
         u.is_blocked
           ? "bg-red-500/5 border-red-500/20 opacity-70"
           : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.05]"
       }`}
+      onClick={onDetail}
     >
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.06] border border-white/10">
         {u.avatar_url ? (
@@ -368,7 +374,7 @@ function AuthUserRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col items-end gap-0.5 text-right">
           <span className="text-[11px] text-white/25">마지막 로그인</span>
           <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>

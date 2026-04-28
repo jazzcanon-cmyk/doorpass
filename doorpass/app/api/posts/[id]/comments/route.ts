@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route'
+import { logActivity, getIp } from '@/lib/activity-logger'
 import { sendTelegramMessage } from '@/lib/telegram'
 
 const supabase = supabaseAdmin
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    logActivity(author || "익명", "comment_create", { post_id: Number(id), content: String(content || "").slice(0, 50) }, getIp(request))
 
     ;(async () => {
       const { data: post } = await supabase

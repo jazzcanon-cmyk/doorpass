@@ -4,6 +4,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { logActivity } from "@/lib/activity-logger"
 
 function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/"
@@ -64,6 +65,11 @@ export async function GET(request: Request) {
   }
 
   sendTelegramMessage(`👤 사용자 로그인\n이메일: ${data.user.email || "알 수 없음"}\n방식: ${String(data.user.app_metadata?.provider || "unknown")}`).catch(console.error)
+  if (data.user.email) {
+    logActivity(data.user.email, "login", {
+      provider: data.user.app_metadata?.provider ?? "unknown",
+    })
+  }
 
   return NextResponse.redirect(new URL(nextPath, origin))
 }

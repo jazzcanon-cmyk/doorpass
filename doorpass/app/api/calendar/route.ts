@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { requireAuth } from "@/lib/auth"
+import { logActivity, getIp } from "@/lib/activity-logger"
 
 const supabase = supabaseAdmin
 
@@ -22,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
   try {
     const body = await request.json()
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("calendar_memos").insert(insertData)
     if (error) throw new Error(error.message)
     sendTelegramMessage(`📅 캘린더 메모 추가\n내용: ${String(insertContent || "").slice(0, 50)}\n날짜: ${String(insertRest.date || "")}`).catch(console.error)
+    logActivity(user!.email!, "calendar_memo", { content: String(insertContent || "").slice(0, 50), date: String(insertRest.date || "") }, getIp(request))
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "저장에 실패했습니다."
