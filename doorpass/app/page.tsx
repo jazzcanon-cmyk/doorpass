@@ -11,6 +11,7 @@ import { BuildingCard } from "@/components/building-card"
 import { LocationStatus } from "@/components/location-status"
 import { SelectedBuildingInfo } from "@/components/selected-building-info"
 import { Board } from "@/components/board"
+import { WelcomeDialog } from "@/components/WelcomeDialog"
 import { trackSearch, trackBuildingView, trackPageView } from "@/lib/analytics"
 
 const BuildingMap = dynamic(
@@ -73,6 +74,7 @@ export default function Home() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [showWelcome, setShowWelcome] = useState(false)
   const searchTrackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const viewportFetchingRef = useRef(false)
 
@@ -95,8 +97,23 @@ export default function Home() {
       void provider
       setCurrentUser({ userId, userName, email })
       setAuthStatus("ok")
+
+      // 환영 팝업: welcome_shown이 false인 경우만 표시
+      fetch("/api/users/welcome")
+        .then((r) => r.json())
+        .then(({ welcome_shown }) => {
+          if (welcome_shown === false) {
+            setTimeout(() => setShowWelcome(true), 500)
+          }
+        })
+        .catch(() => { /* 무시 */ })
     })
   }, [router])
+
+  const handleWelcomeClose = useCallback(() => {
+    setShowWelcome(false)
+    fetch("/api/users/welcome", { method: "POST" }).catch(() => { /* 무시 */ })
+  }, [])
 
   const fetchBuildings = useCallback(async (lat?: number, lng?: number) => {
     try {
@@ -269,6 +286,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+      <WelcomeDialog
+        open={showWelcome}
+        userName={currentUser?.userName ?? ""}
+        onClose={handleWelcomeClose}
+      />
+
       {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
