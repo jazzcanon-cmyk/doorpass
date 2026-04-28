@@ -262,15 +262,11 @@ function renderBlockAction(
   onBlock: () => void,
   onUnblock: () => void
 ) {
-  if (u.is_blocked) {
+  if (u.role === "admin") {
     return (
-      <button
-        type="button"
-        onClick={onUnblock}
-        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-green-500/10 hover:text-green-400 border border-white/10"
-      >
-        <ShieldCheck className="h-3 w-3" /> 해제
-      </button>
+      <span className="text-[10px] px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+        관리자
+      </span>
     )
   }
   if (currentUserEmail && u.email === currentUserEmail) {
@@ -280,11 +276,15 @@ function renderBlockAction(
       </span>
     )
   }
-  if (u.role === "admin") {
+  if (u.is_blocked) {
     return (
-      <span className="text-[10px] px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-        관리자
-      </span>
+      <button
+        type="button"
+        onClick={onUnblock}
+        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/50 hover:bg-green-500/10 hover:text-green-400 border border-white/10"
+      >
+        <ShieldCheck className="h-3 w-3" /> 해제
+      </button>
     )
   }
   return (
@@ -374,7 +374,7 @@ function AuthUserRow({
           <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
           <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
         </div>
-        {u.is_registered && renderBlockAction(u, currentUserEmail, onBlock, onUnblock)}
+        {renderBlockAction(u, currentUserEmail, onBlock, onUnblock)}
       </div>
     </div>
   )
