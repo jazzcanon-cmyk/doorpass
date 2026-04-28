@@ -4,6 +4,9 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { redirect } from "next/navigation"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+
+export type UserRole = "admin" | "editor" | "driver"
 
 function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -191,4 +194,28 @@ export async function requireAdmin() {
   if (!approved || approved.role !== "admin") {
     redirect("/")
   }
+}
+
+/**
+ * approved_users 테이블에서 사용자 역할 조회.
+ * 미등록 사용자는 'driver' 기본값.
+ */
+export async function getUserRole(userEmail: string | null | undefined): Promise<UserRole> {
+  if (!userEmail) return "driver"
+  const { data } = await supabaseAdmin
+    .from("approved_users")
+    .select("role")
+    .eq("email", userEmail)
+    .maybeSingle()
+  const role = (data?.role as string | undefined) ?? "driver"
+  if (role === "admin" || role === "editor") return role
+  return "driver"
+}
+
+/**
+ * 건물 정보 수정 권한 (admin 또는 editor)
+ */
+export async function canEditBuilding(userEmail: string | null | undefined): Promise<boolean> {
+  const role = await getUserRole(userEmail)
+  return role === "admin" || role === "editor"
 }

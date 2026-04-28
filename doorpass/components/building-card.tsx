@@ -1,11 +1,13 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Navigation, Pencil, X, Check, MapPin } from "lucide-react"
+import { Navigation, Pencil, X, Check, MapPin, Lock } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useIsAdmin } from "@/hooks/useIsAdmin"
 
 interface Building {
   id: string
@@ -30,11 +32,13 @@ function EditableRow({
   value,
   onSave,
   saving,
+  canEdit,
 }: {
   label: string
   value: string
   onSave: (val: string) => Promise<void>
   saving: boolean
+  canEdit: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
@@ -71,10 +75,12 @@ function EditableRow({
           <span className={`text-sm flex-1 ${label === "비밀번호" ? "font-mono font-bold text-yellow-400" : "text-foreground"}`}>
             {value || <span className="text-muted-foreground italic">미입력</span>}
           </span>
-          <Button variant="ghost" size="icon" onClick={() => { setEditing(true); setDraft(value) }}
-            className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0">
-            <Pencil className="h-3 w-3" />
-          </Button>
+          {canEdit && (
+            <Button variant="ghost" size="icon" onClick={() => { setEditing(true); setDraft(value) }}
+              className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0">
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       )}
     </div>
@@ -82,6 +88,7 @@ function EditableRow({
 }
 
 export function BuildingCard({ building, showDistance = true, onUpdate }: BuildingCardProps) {
+  const { canEdit } = useIsAdmin()
   const [showPopup, setShowPopup] = useState(false)
   const [saving, setSaving] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
@@ -197,19 +204,29 @@ export function BuildingCard({ building, showDistance = true, onUpdate }: Buildi
                 value={currentBuilding.name || ""}
                 onSave={(v) => saveField("name", v)}
                 saving={saving}
+                canEdit={canEdit}
               />
               <EditableRow
                 label="비밀번호"
                 value={currentBuilding.password || ""}
                 onSave={(v) => saveField("password", v)}
                 saving={saving}
+                canEdit={canEdit}
               />
               <EditableRow
                 label="메모"
                 value={currentBuilding.memo || ""}
                 onSave={(v) => saveField("memo", v)}
                 saving={saving}
+                canEdit={canEdit}
               />
+              {!canEdit && (
+                <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 flex items-center gap-2 text-xs text-white/50">
+                  <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="flex-1">건물 정보 수정은 편집자만 가능합니다.</span>
+                  <Link href="/settings" className="text-blue-400 hover:underline whitespace-nowrap">권한 요청</Link>
+                </div>
+              )}
             </div>
 
             {/* 길찾기 버튼 */}

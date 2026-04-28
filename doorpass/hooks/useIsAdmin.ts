@@ -1,8 +1,12 @@
 "use client"
 import { useEffect, useState } from "react"
 
+export type CurrentRole = "admin" | "editor" | "driver"
+
 export function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(false)
+  const [role, setRole] = useState<CurrentRole>("driver")
+  const [canEdit, setCanEdit] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -12,11 +16,15 @@ export function useIsAdmin() {
       .then((data) => {
         if (cancelled) return
         setIsAdmin(!!data?.isAdmin)
+        const r: CurrentRole =
+          data?.role === "admin" || data?.role === "editor" ? data.role : "driver"
+        setRole(r)
+        setCanEdit(!!data?.canEdit)
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoaded(true) })
     return () => { cancelled = true }
   }, [])
 
-  return { isAdmin, loaded }
+  return { isAdmin, role, canEdit, loaded }
 }

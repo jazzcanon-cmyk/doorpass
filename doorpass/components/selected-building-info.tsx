@@ -1,11 +1,13 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { X, Pencil, Check, Navigation } from "lucide-react"
+import { X, Pencil, Check, Navigation, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useIsAdmin } from "@/hooks/useIsAdmin"
 
 interface Building {
   id: string
@@ -25,6 +27,7 @@ interface SelectedBuildingInfoProps {
 }
 
 export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: SelectedBuildingInfoProps) {
+  const { canEdit } = useIsAdmin()
   const [isEditing, setIsEditing] = useState(false)
   const [editPassword, setEditPassword] = useState(building.password)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -132,14 +135,16 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
                     {building.password}
                   </span>
                   <div className="flex-1" />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={handleEdit}
-                    className="h-10 w-10 shrink-0"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={handleEdit}
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     size="icon"
@@ -151,6 +156,13 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
                 </>
               )}
             </div>
+            {!canEdit && !isEditing && (
+              <div className="mt-2 flex items-center gap-2 text-[11px] text-white/50">
+                <Lock className="h-3 w-3 flex-shrink-0" />
+                <span className="flex-1">비밀번호 수정은 편집자만 가능합니다.</span>
+                <Link href="/settings" className="text-blue-400 hover:underline whitespace-nowrap">권한 요청</Link>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

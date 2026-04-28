@@ -7,7 +7,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   LayoutDashboard, BarChart2, Building2, Users,
   MessageSquare, Settings, Menu, X, ChevronRight,
-  LogOut, Shield,
+  LogOut, Shield, ShieldCheck,
 } from "lucide-react"
 
 const NAV: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] = [
@@ -15,6 +15,7 @@ const NAV: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] 
   { href: "/admin/analytics", label: "📈 분석", icon: BarChart2 },
   { href: "/admin/buildings/import", label: "🏢 건물 관리", icon: Building2 },
   { href: "/admin/users", label: "👥 사용자 관리", icon: Users },
+  { href: "/admin/role-requests", label: "🛡️ 권한 요청", icon: ShieldCheck },
   { href: "/admin/telegram", label: "📱 Telegram 메시지", icon: MessageSquare },
   { href: "/admin/settings", label: "⚙️ 설정", icon: Settings },
 ]
@@ -22,6 +23,7 @@ const NAV: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] 
 const LABEL: Record<string, string> = {
   admin: "관리자", analytics: "분석", buildings: "건물 관리",
   import: "일괄 등록", users: "사용자 관리", telegram: "Telegram", settings: "설정",
+  "role-requests": "권한 요청",
 }
 
 function Breadcrumb({ pathname }: { pathname: string }) {

@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, canEditBuilding } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
 
 const supabase = supabaseAdmin
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  if (!(await canEditBuilding(user!.email))) {
+    return NextResponse.json(
+      { error: "건물 정보 수정 권한이 없습니다. 설정에서 편집자 권한을 요청하세요." },
+      { status: 403 }
+    )
+  }
 
   try {
     const { buildingId, name, password, memo } = await request.json()

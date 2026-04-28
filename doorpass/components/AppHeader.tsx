@@ -1,5 +1,6 @@
 "use client"
-import { RefreshCw, Search, Navigation, MessageSquare, LogOut } from "lucide-react"
+import Link from "next/link"
+import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppLogo } from "@/components/AppLogo"
 import type { CurrentUser, TabType } from "@/types/building"
@@ -45,6 +46,13 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               </Button>
             )}
+            <Link
+              href="/settings"
+              title="설정"
+              className="h-8 w-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
             <Button
               variant="ghost"
               size="icon"

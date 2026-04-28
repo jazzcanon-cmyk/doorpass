@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, canEditBuilding } from '@/lib/auth';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
 import { encryptPassword } from '@/lib/encryption';
 
@@ -8,8 +8,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { unauthorized } = await requireAuth();
+    const { user, unauthorized } = await requireAuth();
     if (unauthorized) return unauthorized;
+
+    if (!(await canEditBuilding(user!.email))) {
+      return NextResponse.json(
+        { error: '건물 정보 수정 권한이 없습니다. 설정에서 편집자 권한을 요청하세요.' },
+        { status: 403 }
+      );
+    }
 
     const { id: buildingId } = await params;
     const { password } = await request.json();
