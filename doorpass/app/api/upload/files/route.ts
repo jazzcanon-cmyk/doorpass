@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAuth } from '@/lib/auth'
 
 const supabase = supabaseAdmin
 
@@ -22,6 +23,8 @@ const ALLOWED: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File

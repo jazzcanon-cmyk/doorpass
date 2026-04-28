@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { requireAuth } from "@/lib/auth"
 
 const supabase = supabaseAdmin
 
 export async function GET() {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const { data, error } = await supabase
       .from("resources")
@@ -19,6 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const body = await request.json()
     const { action, ...payload } = body as { action?: string; [key: string]: unknown }
