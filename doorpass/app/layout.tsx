@@ -17,14 +17,14 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: '신정대리점 | 공동현관 비밀번호',
-  description: '배달/택배 기사를 위한 공동현관 비밀번호 조회 서비스',
+  title: 'DoorPass - 공동현관 비밀번호',
+  description: '전국 공동현관 비밀번호 공유 서비스',
   generator: 'v0.app',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: '도어패스',
+    title: 'DoorPass',
   },
   icons: {
     icon: [
@@ -47,7 +47,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="도어패스" />
+        <meta name="apple-mobile-web-app-title" content="DoorPass" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>

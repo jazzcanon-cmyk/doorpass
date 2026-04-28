@@ -80,7 +80,7 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-white font-bold tracking-tight" style={{ fontSize: 26, letterSpacing: "-0.02em" }}>
-          신정대리점
+          DoorPass
         </h1>
         <p className="mt-1.5 font-medium" style={{ color: "#0066B3", fontSize: 13, letterSpacing: "0.04em" }}>
           택배 관리 시스템

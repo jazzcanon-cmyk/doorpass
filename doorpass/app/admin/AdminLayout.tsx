@@ -63,7 +63,7 @@ function SidebarContent({
             <Shield className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold text-white leading-tight">신정대리점</p>
+            <p className="text-sm font-bold text-white leading-tight">DoorPass</p>
             <p className="text-[10px] text-white/40">관리자 패널</p>
           </div>
         </div>

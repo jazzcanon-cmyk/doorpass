@@ -169,7 +169,7 @@ export function AdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">대시보드</h1>
-          <p className="text-sm text-white/40 mt-1">신정대리점 관리자 현황</p>
+          <p className="text-sm text-white/40 mt-1">DoorPass 관리자 현황</p>
         </div>
         <div className="flex items-center gap-3">
           {liveHint && (

@@ -35,7 +35,7 @@ export function WelcomeDialog({ open, userName, onClose }: WelcomeDialogProps) {
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
           <p className="text-white/70 text-sm leading-relaxed">
-            신정대리점 공동현관 비밀번호 서비스에 가입하셨습니다.
+            공동현관 비밀번호 공유 서비스에 가입하셨습니다.
           </p>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">

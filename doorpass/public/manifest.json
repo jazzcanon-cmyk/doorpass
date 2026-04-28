@@ -1,6 +1,6 @@
 {
-  "name": "신정대리점 공동현관 비밀번호",
-  "short_name": "도어패스",
+  "name": "DoorPass - 공동현관 비밀번호",
+  "short_name": "DoorPass",
   "description": "배달/택배 기사를 위한 공동현관 비밀번호 조회 서비스",
   "start_url": "/",
   "display": "standalone",

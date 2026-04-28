@@ -324,7 +324,7 @@ export default function Home() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white leading-tight">신정대리점</h1>
+                <h1 className="text-sm font-bold text-white leading-tight">DoorPass</h1>
                 <p className="text-[11px] text-white/40">
                   {currentUser ? currentUser.userName : "공동현관 비밀번호"}
                 </p>
