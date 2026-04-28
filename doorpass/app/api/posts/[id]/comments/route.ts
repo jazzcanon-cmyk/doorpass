@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAuth } from '@/lib/auth'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route'
 import { logActivity, getIp } from '@/lib/activity-logger'
 import { sendTelegramMessage } from '@/lib/telegram'
@@ -21,6 +22,9 @@ function getPostId(url: string): string | null {
 }
 
 export async function GET(request: Request) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const id = getPostId(request.url)
     if (!id) return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
@@ -61,6 +65,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const id = getPostId(request.url)
     const { content, author } = await request.json()
@@ -75,7 +82,14 @@ export async function POST(request: Request) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    logActivity(author || "익명", "comment_create", { post_id: Number(id), content: String(content || "").slice(0, 50) }, getIp(request))
+
+    // 실제 인증된 사용자 이메일로 로그 기록
+    logActivity(
+      user!.email!,
+      "comment_create",
+      { post_id: Number(id), content: String(content || "").slice(0, 50), author: author || "익명" },
+      getIp(request)
+    )
 
     ;(async () => {
       const { data: post } = await supabase
