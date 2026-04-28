@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import * as XLSX from "xlsx"
 import { Download, Upload, FileSpreadsheet, X, CheckCircle2, AlertCircle, SkipForward } from "lucide-react"
 
 interface PreviewRow {
@@ -25,35 +24,44 @@ interface ImportResult {
 
 const HEADERS = ["건물명", "주소", "비밀번호", "층수", "호수", "메모"] as const
 
-function parseExcel(buffer: ArrayBuffer): PreviewRow[] {
-  const wb = XLSX.read(new Uint8Array(buffer), { type: "array" })
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
-  return rows.slice(1)
-    .filter(row => Array.isArray(row) && row.some(c => c !== "" && c !== undefined && c !== null))
-    .map(row => {
-      const r = row as (string | number | undefined)[]
-      return {
-        건물명:   String(r[0] ?? ""),
-        주소:     String(r[1] ?? ""),
-        비밀번호: String(r[2] ?? ""),
-        층수:     String(r[3] ?? ""),
-        호수:     String(r[4] ?? ""),
-        메모:     String(r[5] ?? ""),
-      }
-    })
+async function parseExcel(buffer: ArrayBuffer): Promise<PreviewRow[]> {
+  const { default: ExcelJS } = await import("exceljs")
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(buffer)
+  const ws = wb.worksheets[0]
+  const allRows: (string | number | boolean | undefined)[][] = []
+  ws.eachRow((row) => {
+    allRows.push((row.values as (string | number | boolean | undefined)[]).slice(1))
+  })
+  return allRows.slice(1)
+    .filter(row => row.some(c => c !== "" && c !== undefined && c !== null))
+    .map(row => ({
+      건물명:   String(row[0] ?? ""),
+      주소:     String(row[1] ?? ""),
+      비밀번호: String(row[2] ?? ""),
+      층수:     String(row[3] ?? ""),
+      호수:     String(row[4] ?? ""),
+      메모:     String(row[5] ?? ""),
+    }))
 }
 
-function downloadErrorLog(errors: ImportError[]) {
-  const wb = XLSX.utils.book_new()
-  const data = [
-    ["행 번호", "주소", "오류 사유"],
-    ...errors.map(e => [e.row, e.address, e.reason]),
-  ]
-  const ws = XLSX.utils.aoa_to_sheet(data)
-  ws["!cols"] = [{ wch: 8 }, { wch: 42 }, { wch: 40 }]
-  XLSX.utils.book_append_sheet(wb, ws, "오류목록")
-  XLSX.writeFile(wb, "import_errors.xlsx")
+async function downloadErrorLog(errors: ImportError[]) {
+  const { default: ExcelJS } = await import("exceljs")
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet("오류목록")
+  ws.columns = [{ width: 8 }, { width: 42 }, { width: 40 }]
+  ws.addRow(["행 번호", "주소", "오류 사유"])
+  errors.forEach(e => ws.addRow([e.row, e.address, e.reason]))
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "import_errors.xlsx"
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export function BuildingImportPage() {
@@ -75,9 +83,9 @@ export function BuildingImportPage() {
     setResult(null)
     setFile(f)
     const reader = new FileReader()
-    reader.onload = e => {
+    reader.onload = async e => {
       try {
-        const rows = parseExcel(e.target!.result as ArrayBuffer)
+        const rows = await parseExcel(e.target!.result as ArrayBuffer)
         setPreview(rows)
       } catch {
         setError("파일을 파싱할 수 없습니다. 템플릿 형식을 확인해주세요.")

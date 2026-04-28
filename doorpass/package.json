@@ -28,6 +28,7 @@
     "cmdk": "1.1.1",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.6.0",
+    "exceljs": "^4.4.0",
     "input-otp": "1.4.2",
     "korean-lunar-calendar": "^0.3.6",
     "leaflet": "^1.9.4",
@@ -44,7 +45,6 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
-    "xlsx": "^0.18.5",
     "zod": "^3.24.1",
     "zustand": "^4.5.2"
   },

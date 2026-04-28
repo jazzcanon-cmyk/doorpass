@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAdminApi } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
@@ -44,9 +44,13 @@ export async function POST(request: Request) {
     if (!file) return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 })
 
     const buffer = await file.arrayBuffer()
-    const wb = XLSX.read(new Uint8Array(buffer), { type: "array" })
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    const allRows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 }) as unknown[][]
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(buffer)
+    const ws = wb.worksheets[0]
+    const allRows: unknown[][] = []
+    ws.eachRow((row) => {
+      allRows.push((row.values as unknown[]).slice(1))
+    })
 
     // 헤더 파싱: 영문(신규) / 한글(구버전) 모두 지원
     const headerRow = (allRows[0] ?? []) as (string | undefined)[]
