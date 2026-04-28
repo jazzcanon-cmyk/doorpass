@@ -101,7 +101,8 @@ export async function POST(request: Request) {
       const commentAuthor = author || '익명'
       const preview = String(content || '').slice(0, 50)
       await sendTelegramMessage(
-        `💬 새 댓글\n📝 게시글: ${postTitle}\n👤 작성자: ${commentAuthor}\n💬 내용: ${preview}`
+        `💬 새 댓글\n📝 게시글: ${postTitle}\n👤 작성자: ${commentAuthor}\n💬 내용: ${preview}`,
+        "card_notification"
       )
     })().catch(console.error)
 

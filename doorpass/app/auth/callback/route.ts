@@ -64,7 +64,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=blocked", origin))
   }
 
-  sendTelegramMessage(`👤 사용자 로그인\n이메일: ${data.user.email || "알 수 없음"}\n방식: ${String(data.user.app_metadata?.provider || "unknown")}`).catch(console.error)
+  sendTelegramMessage(
+    `👤 사용자 로그인\n이메일: ${data.user.email || "알 수 없음"}\n방식: ${String(data.user.app_metadata?.provider || "unknown")}`,
+    "new_signup_notification"
+  ).catch(console.error)
   if (data.user.email) {
     logActivity(data.user.email, "login", {
       provider: data.user.app_metadata?.provider ?? "unknown",

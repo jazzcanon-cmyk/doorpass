@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { Bell, Shield, Server, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { Bell, Shield, Server, CheckCircle2, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 
 const ENV_VARS = [
   { key: "NEXT_PUBLIC_SUPABASE_URL",        label: "Supabase URL",            required: true },
@@ -11,11 +12,17 @@ const ENV_VARS = [
   { key: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", label: "Google Maps API Key",     required: false },
 ] as const
 
-const NOTIFY_SETTINGS = [
-  { id: "notify_post",     label: "새 게시글 알림",    desc: "게시판에 글 등록 시 Slack 알림",       defaultOn: true },
-  { id: "notify_keyword",  label: "중요 키워드 알림",  desc: "긴급·클레임 등 키워드 감지 시 알림",   defaultOn: true },
-  { id: "notify_building", label: "건물 등록 알림",    desc: "새 건물 DB 등록 시 Slack 알림",        defaultOn: true },
-  { id: "notify_user",     label: "신규 가입 알림",    desc: "기사님 카카오 로그인 최초 가입 시",     defaultOn: false },
+type SettingKey =
+  | "new_user_notification"
+  | "card_notification"
+  | "comment_notification"
+  | "new_signup_notification"
+
+const NOTIFY_SETTINGS: { id: SettingKey; label: string; desc: string }[] = [
+  { id: "new_user_notification",   label: "새 게시글 알림",   desc: "게시판에 글 등록 시 텔레그램 알림" },
+  { id: "card_notification",       label: "댓글 알림",        desc: "게시글 댓글 등록 시 알림" },
+  { id: "comment_notification",    label: "건물 등록 알림",   desc: "새 건물 DB 등록 시 알림" },
+  { id: "new_signup_notification", label: "신규 가입 알림",   desc: "사용자 로그인 시 알림" },
 ]
 
 const KEYWORDS = ["배송지연", "클레임", "긴급", "사고", "분실"]
@@ -25,26 +32,65 @@ interface EnvStatus { key: string; set: boolean | null; required?: boolean }
 export default function SettingsPage() {
   const [envStatuses, setEnvStatuses] = useState<EnvStatus[]>([])
   const [checking, setChecking] = useState(false)
-  const [notifyToggles, setNotifyToggles] = useState<Record<string, boolean>>(
-    Object.fromEntries(NOTIFY_SETTINGS.map(n => [n.id, n.defaultOn]))
-  )
+  const [settings, setSettings] = useState<Record<SettingKey, boolean>>({
+    new_user_notification: true,
+    card_notification: true,
+    comment_notification: true,
+    new_signup_notification: true,
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState<SettingKey | null>(null)
   const [showKey, setShowKey] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.settings) {
+          setSettings((prev) => ({ ...prev, ...data.settings }))
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load settings:", err)
+        toast.error("설정을 불러오는데 실패했습니다.")
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
   const checkEnv = async () => {
     setChecking(true)
     try {
       const res = await fetch("/api/admin/env-check")
-      const json = await res.json() as { vars: EnvStatus[] }
+      const json = (await res.json()) as { vars: EnvStatus[] }
       setEnvStatuses(json.vars ?? [])
     } catch {
-      setEnvStatuses(ENV_VARS.map(v => ({ key: v.key, set: null })))
+      setEnvStatuses(ENV_VARS.map((v) => ({ key: v.key, set: null })))
     } finally {
       setChecking(false)
     }
   }
 
-  const toggleNotify = (id: string) =>
-    setNotifyToggles(prev => ({ ...prev, [id]: !prev[id] }))
+  const handleToggle = async (key: SettingKey, next: boolean) => {
+    const prev = settings[key]
+    setSaving(key)
+    setSettings((s) => ({ ...s, [key]: next })) // 낙관적 업데이트
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ setting_key: key, setting_value: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? "Failed to save")
+      toast.success("설정이 저장되었습니다.")
+    } catch (err) {
+      console.error(err)
+      setSettings((s) => ({ ...s, [key]: prev })) // 롤백
+      toast.error("설정 저장에 실패했습니다.")
+    } finally {
+      setSaving(null)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
@@ -58,34 +104,58 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
           <Bell className="h-4 w-4 text-blue-400" /> 알림 설정
         </h2>
-        <div className="space-y-2">
-          {NOTIFY_SETTINGS.map(n => (
-            <div key={n.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-              <div>
-                <p className="text-sm text-white">{n.label}</p>
-                <p className="text-xs text-white/40 mt-0.5">{n.desc}</p>
-              </div>
-              <button
-                onClick={() => toggleNotify(n.id)}
-                className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 ${
-                  notifyToggles[n.id] ? "bg-blue-600" : "bg-white/10"
-                }`}
-                style={{ height: "22px", width: "40px" }}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                  notifyToggles[n.id] ? "translate-x-5" : "translate-x-0.5"
-                }`} />
-              </button>
-            </div>
-          ))}
-        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {NOTIFY_SETTINGS.map((n) => {
+              const on = settings[n.id]
+              const isSaving = saving === n.id
+              return (
+                <div
+                  key={n.id}
+                  className="flex items-center justify-between py-3 px-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"
+                >
+                  <div>
+                    <p className="text-sm text-white">{n.label}</p>
+                    <p className="text-xs text-white/40 mt-0.5">{n.desc}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/40" />}
+                    <button
+                      onClick={() => void handleToggle(n.id, !on)}
+                      disabled={isSaving}
+                      aria-label={n.label}
+                      className={`relative rounded-full transition-colors disabled:opacity-50 ${
+                        on ? "bg-blue-600" : "bg-white/10"
+                      }`}
+                      style={{ height: "22px", width: "40px" }}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                          on ? "translate-x-5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* 중요 키워드 목록 */}
         <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
           <p className="text-xs font-semibold text-white/50 mb-2">중요 키워드 (코드 설정)</p>
           <div className="flex flex-wrap gap-2">
-            {KEYWORDS.map(kw => (
-              <span key={kw} className="text-xs px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
+            {KEYWORDS.map((kw) => (
+              <span
+                key={kw}
+                className="text-xs px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400"
+              >
                 {kw}
               </span>
             ))}
@@ -135,7 +205,7 @@ export default function SettingsPage() {
               <p className="text-xs text-white/40 mt-0.5">NEXT_PUBLIC_ 접두사 키는 브라우저에 노출됨</p>
             </div>
             <button
-              onClick={() => setShowKey(v => !v)}
+              onClick={() => setShowKey((v) => !v)}
               className="flex items-center gap-1.5 text-yellow-400 text-xs font-medium"
             >
               {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -171,20 +241,30 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-2">
-          {ENV_VARS.map(v => {
-            const status = envStatuses.find(s => s.key === v.key)
+          {ENV_VARS.map((v) => {
+            const status = envStatuses.find((s) => s.key === v.key)
             return (
-              <div key={v.key} className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+              <div
+                key={v.key}
+                className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"
+              >
                 <div>
                   <p className="text-sm text-white font-mono text-xs">{v.key}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{v.label}{v.required ? "" : " (선택)"}</p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {v.label}
+                    {v.required ? "" : " (선택)"}
+                  </p>
                 </div>
                 {status == null ? (
                   <span className="text-xs text-white/20">미확인</span>
                 ) : status.set === null ? (
-                  <div className="flex items-center gap-1.5 text-white/30 text-xs"><AlertCircle className="h-3.5 w-3.5" /> 오류</div>
+                  <div className="flex items-center gap-1.5 text-white/30 text-xs">
+                    <AlertCircle className="h-3.5 w-3.5" /> 오류
+                  </div>
                 ) : status.set ? (
-                  <div className="flex items-center gap-1.5 text-green-400 text-xs"><CheckCircle2 className="h-3.5 w-3.5" /> 설정됨</div>
+                  <div className="flex items-center gap-1.5 text-green-400 text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> 설정됨
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1.5 text-red-400 text-xs">
                     <AlertCircle className="h-3.5 w-3.5" /> {v.required ? "누락!" : "미설정"}

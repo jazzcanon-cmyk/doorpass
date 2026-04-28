@@ -127,7 +127,8 @@ export async function POST(request: Request) {
     if (error) throw new Error(error.message)
 
     sendTelegramMessage(
-      `🏠 새로운 건물이 등록되었습니다!\n건물명: ${name || address?.split(" ").slice(-1)[0] || "-"}\n주소: ${address || "-"}${memo ? `\n메모: ${memo}` : ""}`
+      `🏠 새로운 건물이 등록되었습니다!\n건물명: ${name || address?.split(" ").slice(-1)[0] || "-"}\n주소: ${address || "-"}${memo ? `\n메모: ${memo}` : ""}`,
+      "comment_notification"
     ).catch(console.error)
 
     return NextResponse.json({ building: data }, { status: 201 })
