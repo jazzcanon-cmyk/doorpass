@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { X, Pencil, Check, Navigation } from "lucide-react"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -59,11 +60,11 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
         onPasswordUpdate?.(building.id, editPassword)
         setIsEditing(false)
       } else {
-        alert("비밀번호 업데이트에 실패했습니다.")
+        toast.error("비밀번호 업데이트에 실패했습니다.")
       }
     } catch (error) {
       console.error("Update error:", error)
-      alert("비밀번호 업데이트에 실패했습니다.")
+      toast.error("비밀번호 업데이트에 실패했습니다.")
     } finally {
       setIsUpdating(false)
     }

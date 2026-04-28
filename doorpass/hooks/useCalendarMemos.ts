@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 import type { Memo } from "@/types/calendar"
 
 export function useCalendarMemos() {
@@ -30,7 +31,7 @@ export function useCalendarMemos() {
       })
       await fetchMemos()
     } catch {
-      alert("삭제 중 오류가 발생했습니다.")
+      toast.error("삭제 중 오류가 발생했습니다.")
     }
   }, [fetchMemos])
 

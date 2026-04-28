@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase-client"
 
 type Provider = "google" | "kakao"
@@ -22,7 +23,7 @@ export function LoginButton({ provider, redirectTo }: LoginButtonProps) {
       },
     })
     if (error) {
-      alert("로그인 중 오류가 발생했습니다: " + error.message)
+      toast.error("로그인 중 오류가 발생했습니다: " + error.message)
       setLoading(false)
     }
   }
