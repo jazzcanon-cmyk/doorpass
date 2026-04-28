@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { useIsAdmin } from "@/hooks/useIsAdmin"
 
 interface Notice {
   id: number
@@ -25,6 +26,7 @@ function ago(d: string) {
 }
 
 export function NoticeBoard() {
+  const { isAdmin } = useIsAdmin()
   const [notices, setNotices] = useState<Notice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,12 +96,14 @@ export function NoticeBoard() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-bold text-foreground">공지사항</h2>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5 h-8">
-          <Plus className="h-3.5 w-3.5" />공지 작성
-        </Button>
+        {isAdmin && (
+          <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5 h-8">
+            <Plus className="h-3.5 w-3.5" />공지 작성
+          </Button>
+        )}
       </div>
 
-      {showForm && (
+      {isAdmin && showForm && (
         <Card className="mb-4 border-primary/30">
           <CardContent className="p-4 space-y-3">
             <Input placeholder="닉네임 (기본: 관리자)" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
@@ -166,12 +170,14 @@ export function NoticeBoard() {
                     >
                       {expandedId === n.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
-                    <button
-                      onClick={() => deleteNotice(n.id)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => deleteNotice(n.id)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -7,11 +7,12 @@ import { RESOURCE_TYPE_CONFIG, type ResourceItem, type ResourceType } from "@/ty
 interface ResourceCardProps {
   res: ResourceItem
   expanded: boolean
+  canDelete?: boolean
   onToggleExpand: () => void
   onDelete: () => void
 }
 
-export function ResourceCard({ res, expanded, onToggleExpand, onDelete }: ResourceCardProps) {
+export function ResourceCard({ res, expanded, canDelete = false, onToggleExpand, onDelete }: ResourceCardProps) {
   const cfg = RESOURCE_TYPE_CONFIG[res.resource_type as ResourceType] ?? RESOURCE_TYPE_CONFIG.link
   const isText = res.resource_type === "text"
 
@@ -61,12 +62,14 @@ export function ResourceCard({ res, expanded, onToggleExpand, onDelete }: Resour
             )}
             <div className="text-xs text-muted-foreground mt-1">{res.author} · {ago(res.created_at)}</div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
-            className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {canDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
+              className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>

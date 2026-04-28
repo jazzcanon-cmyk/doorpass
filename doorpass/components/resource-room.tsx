@@ -5,10 +5,12 @@ import { Plus, Loader2, AlertCircle, FolderOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useResources } from "@/hooks/useResources"
+import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ResourceForm } from "@/components/resources/ResourceForm"
 import { ResourceCard } from "@/components/resources/ResourceCard"
 
 export function ResourceRoom() {
+  const { isAdmin } = useIsAdmin()
   const { resources, loading, error, fetchResources, deleteResource } = useResources()
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -19,12 +21,14 @@ export function ResourceRoom() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-bold text-foreground">자료실</h2>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5 h-8">
-          <Plus className="h-3.5 w-3.5" />자료 등록
-        </Button>
+        {isAdmin && (
+          <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5 h-8">
+            <Plus className="h-3.5 w-3.5" />자료 등록
+          </Button>
+        )}
       </div>
 
-      {showForm && (
+      {isAdmin && showForm && (
         <ResourceForm
           onCancel={() => setShowForm(false)}
           onSubmitted={fetchResources}
@@ -49,6 +53,7 @@ export function ResourceRoom() {
               key={res.id}
               res={res}
               expanded={expandedId === res.id}
+              canDelete={isAdmin}
               onToggleExpand={() => setExpandedId(expandedId === res.id ? null : res.id)}
               onDelete={() => deleteResource(res.id)}
             />
