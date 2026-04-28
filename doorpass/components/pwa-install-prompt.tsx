@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react"
 import { X, Download, Share } from "lucide-react"
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => void
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
+}
+
 export function PWAInstallPrompt() {
   const [showBanner, setShowBanner] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
@@ -27,18 +32,26 @@ export function PWAInstallPrompt() {
       if (Date.now() - dismissedTime < 24 * 60 * 60 * 1000) return
     }
 
+    let bannerTimer: ReturnType<typeof setTimeout> | null = null
+
     if (ios) {
       // iOS는 beforeinstallprompt 없음 → 직접 배너 표시
-      setTimeout(() => setShowBanner(true), 2000)
-    } else {
-      // Android/Chrome: beforeinstallprompt 이벤트 대기
-      const handler = (e: Event) => {
-        e.preventDefault()
-        setDeferredPrompt(e)
-        setTimeout(() => setShowBanner(true), 2000)
+      bannerTimer = setTimeout(() => setShowBanner(true), 2000)
+      return () => {
+        if (bannerTimer) clearTimeout(bannerTimer)
       }
-      window.addEventListener('beforeinstallprompt', handler)
-      return () => window.removeEventListener('beforeinstallprompt', handler)
+    }
+
+    // Android/Chrome: beforeinstallprompt 이벤트 대기
+    const handler = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
+      bannerTimer = setTimeout(() => setShowBanner(true), 2000)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      if (bannerTimer) clearTimeout(bannerTimer)
     }
   }, [])
 

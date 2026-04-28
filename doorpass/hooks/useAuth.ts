@@ -11,7 +11,12 @@ export function useAuth() {
   const [showWelcome, setShowWelcome] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    let welcomeTimer: ReturnType<typeof setTimeout> | null = null
+    const controller = new AbortController()
+
     supabase.auth.getUser().then(({ data: { user } }) => {
+      if (cancelled) return
       if (!user) {
         router.replace("/login")
         return
@@ -26,13 +31,22 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email })
       setAuthStatus("ok")
 
-      fetch("/api/users/welcome")
+      fetch("/api/users/welcome", { signal: controller.signal })
         .then((r) => r.json())
         .then(({ welcome_shown }) => {
-          if (welcome_shown === false) setTimeout(() => setShowWelcome(true), 500)
+          if (cancelled || welcome_shown !== false) return
+          welcomeTimer = setTimeout(() => {
+            if (!cancelled) setShowWelcome(true)
+          }, 500)
         })
         .catch(() => {})
     })
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      if (welcomeTimer) clearTimeout(welcomeTimer)
+    }
   }, [router])
 
   const handleWelcomeClose = useCallback(() => {

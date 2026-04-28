@@ -1,5 +1,5 @@
 "use client"
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { X, Edit2, Trash2, Lock, Globe } from "lucide-react"
 import { COLORS, calendarInputStyle } from "@/lib/calendar-utils"
 import type { Memo } from "@/types/calendar"
@@ -15,8 +15,8 @@ interface MemoModalProps {
 }
 
 export function MemoModal({ selectedDate, memos, kakaoId, userName, onClose, onRefresh, onDelete }: MemoModalProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null)
+  const [content, setContent] = useState("")
   const [memoPrivate, setMemoPrivate] = useState(false)
   const [memoColor, setMemoColor] = useState(COLORS[0])
   const [saving, setSaving] = useState(false)
@@ -26,7 +26,7 @@ export function MemoModal({ selectedDate, memos, kakaoId, userName, onClose, onR
 
   const resetForm = () => {
     setEditingMemo(null)
-    if (textareaRef.current) textareaRef.current.value = ""
+    setContent("")
     setMemoPrivate(false)
     setMemoColor(COLORS[0])
     setSaveError(null)
@@ -34,7 +34,7 @@ export function MemoModal({ selectedDate, memos, kakaoId, userName, onClose, onR
 
   const startEdit = (memo: Memo) => {
     setEditingMemo(memo)
-    setTimeout(() => { if (textareaRef.current) textareaRef.current.value = memo.content }, 0)
+    setContent(memo.content)
     setMemoPrivate(memo.is_private)
     setMemoColor(memo.color)
     setSaveError(null)
@@ -43,7 +43,6 @@ export function MemoModal({ selectedDate, memos, kakaoId, userName, onClose, onR
   useEffect(() => { resetForm() }, [selectedDate])
 
   const saveMemo = async () => {
-    const content = textareaRef.current?.value ?? ""
     if (!content.trim()) {
       setSaveError("내용을 입력해주세요.")
       return
@@ -137,10 +136,9 @@ export function MemoModal({ selectedDate, memos, kakaoId, userName, onClose, onR
           </div>
 
           <textarea
-            ref={textareaRef}
             placeholder="메모 내용을 입력하세요"
-            defaultValue=""
-            onChange={() => setSaveError(null)}
+            value={content}
+            onChange={(e) => { setContent(e.target.value); setSaveError(null) }}
             rows={4}
             autoFocus
             style={{ ...calendarInputStyle, border: saveError ? "1px solid #ef4444" : "1px solid #e2e8f0", marginBottom: 10, resize: "none", lineHeight: 1.6 }}
