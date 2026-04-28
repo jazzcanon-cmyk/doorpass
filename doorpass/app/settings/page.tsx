@@ -70,7 +70,13 @@ export default function SettingsPage() {
   }
 
   const roleLabel =
-    role === "admin" ? "관리자" : role === "editor" ? "편집자" : "일반 사용자"
+    role === "admin"
+      ? "관리자"
+      : role === "sub_admin"
+        ? "부관리자"
+        : role === "editor"
+          ? "편집자"
+          : "일반 사용자"
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white">
@@ -84,6 +90,24 @@ export default function SettingsPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-xl space-y-6">
+        {(role === "admin" || role === "sub_admin") && (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-2">
+            <h2 className="text-sm font-semibold mb-2">관리 화면 바로가기</h2>
+            {role === "admin" && (
+              <Link href="/admin" className="block">
+                <Button className="w-full justify-center">🛡️ 관리자 화면으로 이동</Button>
+              </Link>
+            )}
+            {(role === "admin" || role === "sub_admin") && (
+              <Link href="/sub-admin" className="block">
+                <Button variant="outline" className="w-full justify-center">
+                  🏢 부관리자 화면 (CSV 업로드)
+                </Button>
+              </Link>
+            )}
+          </section>
+        )}
+
         <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <h2 className="text-sm font-semibold mb-1 flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-blue-400" /> 내 권한

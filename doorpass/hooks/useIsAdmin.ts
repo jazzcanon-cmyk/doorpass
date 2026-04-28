@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 
-export type CurrentRole = "admin" | "editor" | "driver"
+export type CurrentRole = "admin" | "sub_admin" | "editor" | "driver"
 
 export function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(false)
@@ -17,7 +17,9 @@ export function useIsAdmin() {
         if (cancelled) return
         setIsAdmin(!!data?.isAdmin)
         const r: CurrentRole =
-          data?.role === "admin" || data?.role === "editor" ? data.role : "driver"
+          data?.role === "admin" || data?.role === "sub_admin" || data?.role === "editor"
+            ? data.role
+            : "driver"
         setRole(r)
         setCanEdit(!!data?.canEdit)
       })

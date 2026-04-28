@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
-export type UserRole = "admin" | "editor" | "driver"
+export type UserRole = "admin" | "sub_admin" | "editor" | "driver"
 
 function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -208,14 +208,46 @@ export async function getUserRole(userEmail: string | null | undefined): Promise
     .eq("email", userEmail)
     .maybeSingle()
   const role = (data?.role as string | undefined) ?? "driver"
-  if (role === "admin" || role === "editor") return role
+  if (role === "admin" || role === "sub_admin" || role === "editor") return role
   return "driver"
 }
 
 /**
- * 건물 정보 수정 권한 (admin 또는 editor)
+ * 건물 정보 수정 권한 (admin / sub_admin / editor)
  */
 export async function canEditBuilding(userEmail: string | null | undefined): Promise<boolean> {
   const role = await getUserRole(userEmail)
-  return role === "admin" || role === "editor"
+  return role === "admin" || role === "sub_admin" || role === "editor"
+}
+
+/**
+ * 엑셀(CSV) 업로드 권한 (admin / sub_admin)
+ */
+export async function canUploadCSV(userEmail: string | null | undefined): Promise<boolean> {
+  const role = await getUserRole(userEmail)
+  return role === "admin" || role === "sub_admin"
+}
+
+/**
+ * 사용자 승인 권한 (admin / sub_admin)
+ */
+export async function canApproveUsers(userEmail: string | null | undefined): Promise<boolean> {
+  const role = await getUserRole(userEmail)
+  return role === "admin" || role === "sub_admin"
+}
+
+/**
+ * 권한 요청 승인 권한 (admin)
+ */
+export async function canApproveRoleRequests(userEmail: string | null | undefined): Promise<boolean> {
+  const role = await getUserRole(userEmail)
+  return role === "admin"
+}
+
+/**
+ * 부관리자 지정 권한 (admin)
+ */
+export async function canAssignSubAdmin(userEmail: string | null | undefined): Promise<boolean> {
+  const role = await getUserRole(userEmail)
+  return role === "admin"
 }

@@ -10,6 +10,7 @@ export async function GET() {
     email: user!.email ?? null,
     role,
     isAdmin,
-    canEdit: role === "admin" || role === "editor",
+    canEdit: role === "admin" || role === "sub_admin" || role === "editor",
+    canUploadCSV: role === "admin" || role === "sub_admin",
   })
 }

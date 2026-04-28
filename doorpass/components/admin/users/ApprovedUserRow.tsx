@@ -11,7 +11,23 @@ interface ApprovedUserRowProps {
   onDelete: () => void
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  admin: "관리자",
+  sub_admin: "부관리자",
+  editor: "편집자",
+  driver: "일반",
+}
+
+const ROLE_BADGE: Record<string, string> = {
+  admin: "bg-yellow-500/20 text-yellow-400",
+  sub_admin: "bg-purple-500/20 text-purple-300",
+  editor: "bg-emerald-500/20 text-emerald-300",
+  driver: "bg-blue-500/20 text-blue-400",
+}
+
 export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete }: ApprovedUserRowProps) {
+  const badgeCls = ROLE_BADGE[u.role] ?? ROLE_BADGE.driver
+  const label = ROLE_LABEL[u.role] ?? "일반"
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all ${
@@ -37,13 +53,14 @@ export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-white">{u.name}</span>
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-              u.role === "admin" ? "bg-yellow-500/20 text-yellow-400" : "bg-blue-500/20 text-blue-400"
-            }`}
-          >
-            {u.role === "admin" ? "관리자" : "일반"}
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeCls}`}>
+            {label}
           </span>
+          {u.role === "sub_admin" && u.managed_region && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300/80">
+              📍 {u.managed_region}
+            </span>
+          )}
           {!u.kakao_id && !u.email && u.role !== "admin" && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/30">미연결</span>
           )}

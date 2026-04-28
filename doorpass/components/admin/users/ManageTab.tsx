@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { UserPlus, Loader2, Clock, CheckCircle2 } from "lucide-react"
 import { adminApi } from "@/lib/admin-api"
 import { ApprovedUserRow } from "./ApprovedUserRow"
+import { AssignRoleModal } from "./AssignRoleModal"
 import type { ApprovedUser } from "@/types/admin-users"
 
 export function ManageTab() {
@@ -13,6 +14,8 @@ export function ManageTab() {
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [adding, setAdding] = useState(false)
+  const [assigning, setAssigning] = useState<ApprovedUser | null>(null)
+  const [savingRole, setSavingRole] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,17 +80,32 @@ export function ManageTab() {
     }
   }
 
-  const toggleRole = async (id: number, role: string, n: string) => {
-    const nextRole = role === "admin" ? "user" : "admin"
+  const openAssign = (u: ApprovedUser) => setAssigning(u)
+  const closeAssign = () => { setAssigning(null); setSavingRole(false) }
+
+  const submitAssign = async (
+    role: "admin" | "sub_admin" | "editor" | "driver",
+    managed_region: string | null
+  ) => {
+    if (!assigning) return
+    setSavingRole(true)
     try {
-      await adminApi("/api/admin/users", {
-        method: "PATCH",
-        body: JSON.stringify({ id, action: "set_role", role: nextRole }),
+      await adminApi(`/api/admin/users/${assigning.id}/assign-subadmin`, {
+        method: "POST",
+        body: JSON.stringify({ role, managed_region }),
       })
-      toast.success(`${n}님 권한: ${nextRole === "admin" ? "관리자" : "일반"}`)
+      const labels: Record<string, string> = {
+        admin: "관리자",
+        sub_admin: "부관리자",
+        editor: "편집자",
+        driver: "일반 사용자",
+      }
+      toast.success(`${assigning.name}님 권한: ${labels[role] ?? role}`)
+      closeAssign()
       void load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "권한 변경 실패")
+      setSavingRole(false)
     }
   }
 
@@ -170,7 +188,7 @@ export function ManageTab() {
                   mode="pending"
                   onApprove={() => void approve(u.id, u.name)}
                   onReject={() => void reject(u.id, u.name)}
-                  onRole={() => void toggleRole(u.id, u.role, u.name)}
+                  onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
                 />
               ))}
@@ -194,7 +212,7 @@ export function ManageTab() {
                   mode="approved"
                   onApprove={() => void approve(u.id, u.name)}
                   onReject={() => void reject(u.id, u.name)}
-                  onRole={() => void toggleRole(u.id, u.role, u.name)}
+                  onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
                 />
               ))}
@@ -204,6 +222,15 @@ export function ManageTab() {
             </div>
           </section>
         </div>
+      )}
+
+      {assigning && (
+        <AssignRoleModal
+          user={assigning}
+          saving={savingRole}
+          onClose={closeAssign}
+          onSubmit={submitAssign}
+        />
       )}
     </div>
   )

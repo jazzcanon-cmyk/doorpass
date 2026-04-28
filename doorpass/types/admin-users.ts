@@ -4,9 +4,10 @@ export interface ApprovedUser {
   name: string
   phone: string | null
   email: string | null
-  role: "admin" | "driver"
+  role: "admin" | "sub_admin" | "editor" | "driver"
   is_active: boolean
   created_at: string
+  managed_region?: string | null
 }
 
 export interface AuthUser {
