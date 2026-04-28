@@ -1,8 +1,6 @@
 "use client"
 import { CalendarModal } from "@/components/calendar"
-import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase-client"
+import { useState, useEffect, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { MapPin, Loader2, AlertCircle, RefreshCw, Search, Navigation, MessageSquare, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,7 +10,11 @@ import { LocationStatus } from "@/components/location-status"
 import { SelectedBuildingInfo } from "@/components/selected-building-info"
 import { Board } from "@/components/board"
 import { WelcomeDialog } from "@/components/WelcomeDialog"
-import { trackSearch, trackBuildingView, trackPageView } from "@/lib/analytics"
+import { trackBuildingView, trackPageView } from "@/lib/analytics"
+import { useAuth } from "@/hooks/useAuth"
+import { useLocation } from "@/hooks/useLocation"
+import { useBuildings } from "@/hooks/useBuildings"
+import type { Building, TabType } from "@/types/building"
 
 const BuildingMap = dynamic(
   () => import("@/components/building-map").then((mod) => mod.BuildingMap),
@@ -26,222 +28,51 @@ const BuildingMap = dynamic(
   }
 )
 
-interface Building {
-  id: string
-  name: string
-  address: string
-  password: string
-  memo?: string
-  latitude: number
-  longitude: number
-  distance?: number
-}
-
-interface CurrentUser {
-  userId: string
-  userName: string
-  email: string
-}
-
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371e3
-  const rad = Math.PI / 180
-  const a1 = lat1 * rad
-  const a2 = lat2 * rad
-  const da = (lat2 - lat1) * rad
-  const db = (lng2 - lng1) * rad
-  const a =
-    Math.sin(da / 2) * Math.sin(da / 2) +
-    Math.cos(a1) * Math.cos(a2) * Math.sin(db / 2) * Math.sin(db / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
-
-type TabType = "nearby" | "search" | "board"
-
 export default function Home() {
-  const router = useRouter()
-  const [authStatus, setAuthStatus] = useState<"loading" | "ok">("loading")
+  const { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout } = useAuth()
+  const { location, getLocation, loading, error: locationError } = useLocation()
+  const {
+    allBuildings,
+    viewportBuildings,
+    nearbyBuildings,
+    searchResults,
+    searchQuery,
+    lastUpdated,
+    error: buildingsError,
+    fetchBuildings,
+    fetchBuildingsByViewport,
+    handleSearch,
+    handleUpdate,
+  } = useBuildings(currentUser)
+
   const [activeTab, setActiveTab] = useState<TabType>("nearby")
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [allBuildings, setAllBuildings] = useState<Building[]>([])
-  const [viewportBuildings, setViewportBuildings] = useState<Building[]>([])
-  const [nearbyBuildings, setNearbyBuildings] = useState<Building[]>([])
-  const [searchResults, setSearchResults] = useState<Building[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
-  const [showWelcome, setShowWelcome] = useState(false)
-  const searchTrackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const viewportFetchingRef = useRef(false)
+
+  const error = locationError ?? buildingsError
 
   useEffect(() => { trackPageView("/") }, [])
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        router.replace("/login")
-        return
-      }
-      const provider = user.app_metadata?.provider
-      const userId = user.user_metadata?.provider_id ?? user.user_metadata?.sub ?? user.id
-      const email = user.email ?? ""
-      const userName =
-        user.user_metadata?.name ??
-        user.user_metadata?.full_name ??
-        (email ? email.split("@")[0] : "익명")
-
-      void provider
-      setCurrentUser({ userId, userName, email })
-      setAuthStatus("ok")
-
-      // 환영 팝업: welcome_shown이 false인 경우만 표시
-      fetch("/api/users/welcome")
-        .then((r) => r.json())
-        .then(({ welcome_shown }) => {
-          if (welcome_shown === false) {
-            setTimeout(() => setShowWelcome(true), 500)
-          }
-        })
-        .catch(() => { /* 무시 */ })
-    })
-  }, [router])
-
-  const handleWelcomeClose = useCallback(() => {
-    setShowWelcome(false)
-    fetch("/api/users/welcome", { method: "POST" }).catch(() => { /* 무시 */ })
-  }, [])
-
-  const fetchBuildings = useCallback(async (lat?: number, lng?: number) => {
-    try {
-      const response = await fetch("/api/buildings")
-      if (!response.ok) throw new Error("Failed to fetch")
-      const data = await response.json()
-      setAllBuildings(data.buildings)
-      if (lat !== undefined && lng !== undefined) {
-        const withDist = data.buildings
-          .map((b: Building) => ({
-            ...b,
-            distance: Math.round(calculateDistance(lat, lng, b.latitude, b.longitude)),
-          }))
-          .filter((b: Building) => (b.distance ?? 0) <= 50)
-          .sort((a: Building, b: Building) => (a.distance ?? 0) - (b.distance ?? 0))
-        setNearbyBuildings(withDist)
-      }
-      setLastUpdated(new Date())
-    } catch (err) {
-      console.error("Error:", err)
-      setError("건물 데이터를 가져오는데 실패했습니다.")
-    }
-  }, [])
-
-  const getLocation = useCallback(() => {
-    setLoading(true)
-    setError(null)
-    if (!navigator.geolocation) {
-      setError("위치 서비스를 지원하지 않는 브라우저입니다.")
-      setLoading(false)
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-        setLocation({ lat: latitude, lng: longitude })
-        await fetchBuildings(latitude, longitude)
-        setLoading(false)
-      },
-      (geoErr: GeolocationPositionError) => {
-        console.warn("[geolocation]", geoErr.code, geoErr.message)
-        const code = geoErr?.code
-        const msg =
-          code === 1
-            ? "위치 권한이 거부되었습니다. 주소창의 자물쇠 아이콘에서 이 사이트의 위치를 허용한 뒤 다시 시도해 주세요."
-            : code === 2
-              ? "기기에서 위치를 확인할 수 없습니다. (실내·PC에서는 자주 발생합니다) 검색 탭으로 전체 목록을 이용할 수 있습니다."
-              : code === 3
-                ? "위치 요청이 시간 초과되었습니다. GPS/Wi‑Fi 위치를 켠 뒤 다시 시도하거나 검색 탭을 이용해 주세요."
-                : "위치를 가져오는데 실패했습니다."
-        setError(msg)
-        setLoading(false)
-        fetchBuildings()
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 20000,
-        maximumAge: 120_000,
-      }
+  const refreshLocation = useCallback(() => {
+    getLocation(
+      (lat, lng) => fetchBuildings(lat, lng),
+      () => fetchBuildings()
     )
-  }, [fetchBuildings])
+  }, [getLocation, fetchBuildings])
 
-  const fetchBuildingsByViewport = useCallback(
-    async (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => {
-      if (viewportFetchingRef.current) return
-      viewportFetchingRef.current = true
-      try {
-        const params = new URLSearchParams({
-          minLat: String(bounds.minLat),
-          maxLat: String(bounds.maxLat),
-          minLng: String(bounds.minLng),
-          maxLng: String(bounds.maxLng),
-        })
-        const response = await fetch(`/api/buildings?${params}`)
-        if (!response.ok) return
-        const data = await response.json()
-        setViewportBuildings(data.buildings)
-      } catch (err) {
-        console.error("Viewport fetch error:", err)
-      } finally {
-        viewportFetchingRef.current = false
-      }
-    },
-    []
-  )
-
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query)
-      if (query.trim() === "") { setSearchResults([]); return }
-      const q = query.toLowerCase().trim()
-      const filtered = allBuildings.filter(
-        (b) =>
-          (b.name ?? "").toLowerCase().includes(q) ||
-          (b.address ?? "").toLowerCase().includes(q)
-      )
-      setSearchResults(filtered)
-      if (q.length >= 2) {
-        if (searchTrackRef.current) clearTimeout(searchTrackRef.current)
-        searchTrackRef.current = setTimeout(() => trackSearch(query.trim(), filtered.length, currentUser?.email), 1500)
-      }
-    },
-    [allBuildings]
-  )
+  useEffect(() => {
+    if (authStatus === "ok") refreshLocation()
+  }, [authStatus, refreshLocation])
 
   const handleBuildingSelect = useCallback((b: Building | null) => {
     setSelectedBuilding(b)
     if (b) trackBuildingView(b.id, b.name || b.address, currentUser?.email)
   }, [currentUser])
 
-  const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
-    const upd = (list: Building[]) =>
-      list.map((b) => (b.id === id ? { ...b, ...updated } : b))
-    setAllBuildings(upd)
-    setNearbyBuildings(upd)
-    setSearchResults(upd)
+  const handleBuildingUpdate = useCallback((id: string, updated: Partial<Building>) => {
+    handleUpdate(id, updated)
     if (selectedBuilding?.id === id)
       setSelectedBuilding((prev) => (prev ? { ...prev, ...updated } : null))
-  }, [selectedBuilding])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.replace("/login")
-  }
-
-  useEffect(() => {
-    if (authStatus === "ok") getLocation()
-  }, [authStatus, getLocation])
+  }, [handleUpdate, selectedBuilding])
 
   const tabs = [
     { key: "nearby" as TabType, label: "내 주변", icon: <Navigation className="h-4 w-4" /> },
@@ -255,15 +86,7 @@ export default function Home() {
         <div className="flex flex-col items-center gap-5">
           <div className="relative">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/30">
-              <svg
-                className="h-8 w-8 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg className="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18" />
                 <path d="M5 21V7l8-4v18" />
                 <path d="M19 21V11l-6-4" />
@@ -292,28 +115,18 @@ export default function Home() {
         onClose={handleWelcomeClose}
       />
 
-      {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-indigo-600/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 flex-shrink-0">
                 <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-blue-400/40 to-indigo-500/40 blur opacity-60" />
-                <svg
-                  className="relative h-[18px] w-[18px] text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg className="relative h-[18px] w-[18px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 21h18" />
                   <path d="M5 21V7l8-4v18" />
                   <path d="M19 21V11l-6-4" />
@@ -335,7 +148,7 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={getLocation}
+                  onClick={refreshLocation}
                   disabled={loading}
                   className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
                 >
@@ -355,7 +168,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab bar */}
         <div className="container mx-auto px-4 pb-3">
           <div className="flex gap-1 rounded-xl bg-white/5 border border-white/10 p-1">
             {tabs.map((tab) => (
@@ -376,12 +188,10 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Calendar */}
       <div className="container mx-auto px-4 pt-4">
         <CalendarModal kakaoId={currentUser?.userId} userName={currentUser?.userName} />
       </div>
 
-      {/* Nearby tab */}
       {activeTab === "nearby" && (
         <>
           <LocationStatus
@@ -390,7 +200,7 @@ export default function Home() {
             location={location}
             lastUpdated={lastUpdated}
             buildingCount={nearbyBuildings.length}
-            onRetry={getLocation}
+            onRetry={refreshLocation}
           />
           {!loading && !error && location && (
             <section className="container mx-auto px-4 pt-4">
@@ -405,7 +215,7 @@ export default function Home() {
                 <SelectedBuildingInfo
                   building={selectedBuilding}
                   onClose={() => setSelectedBuilding(null)}
-                  onPasswordUpdate={(id, pw) => handleUpdate(id, { password: pw })}
+                  onPasswordUpdate={(id, pw) => handleBuildingUpdate(id, { password: pw })}
                 />
               )}
             </section>
@@ -427,7 +237,7 @@ export default function Home() {
                 <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
                 <p className="text-red-300 text-sm mb-4">{error}</p>
                 <button
-                  onClick={getLocation}
+                  onClick={refreshLocation}
                   className="bg-red-500 hover:bg-red-600 active:scale-95 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all duration-200"
                 >
                   다시 시도
@@ -441,7 +251,7 @@ export default function Home() {
             ) : (
               <div className="space-y-3">
                 {nearbyBuildings.map((b) => (
-                  <BuildingCard key={b.id} building={b} showDistance onUpdate={handleUpdate} />
+                  <BuildingCard key={b.id} building={b} showDistance onUpdate={handleBuildingUpdate} />
                 ))}
               </div>
             )}
@@ -449,7 +259,6 @@ export default function Home() {
         </>
       )}
 
-      {/* Search tab */}
       {activeTab === "search" && (
         <>
           <section className="container mx-auto px-4 py-4">
@@ -483,7 +292,7 @@ export default function Home() {
                   검색 결과 {searchResults.length}건
                 </p>
                 {searchResults.map((b) => (
-                  <BuildingCard key={b.id} building={b} showDistance={false} onUpdate={handleUpdate} />
+                  <BuildingCard key={b.id} building={b} showDistance={false} onUpdate={handleBuildingUpdate} />
                 ))}
               </div>
             )}
@@ -491,14 +300,12 @@ export default function Home() {
         </>
       )}
 
-      {/* Board tab */}
       {activeTab === "board" && (
         <section className="container mx-auto px-4 py-4">
           <Board currentUser={currentUser ?? undefined} />
         </section>
       )}
 
-      {/* Footer */}
       <footer className="relative border-t border-white/[0.08] py-6">
         <div className="container mx-auto px-4 text-center">
           <p className="text-[11px] text-white/20">배달/택배 기사님들의 빠른 배송을 응원합니다 🚚</p>
