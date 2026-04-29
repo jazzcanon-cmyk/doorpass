@@ -64,10 +64,22 @@ export async function PATCH(
         description,
         resource_type,
         url: null,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", resourceId)
 
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (updateError) {
+      // DB에 updated_at 컬럼이 아직 없을 수 있으므로(마이그레이션 미적용 상황) fallback
+      if (/updated_at/i.test(updateError.message)) {
+        const { error: updateError2 } = await supabaseAdmin
+          .from("resources")
+          .update({ title, description, resource_type, url: null })
+          .eq("id", resourceId)
+        if (updateError2) return NextResponse.json({ error: updateError2.message }, { status: 500 })
+        return NextResponse.json({ success: true })
+      }
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
     return NextResponse.json({ success: true })
   }
 
@@ -86,10 +98,21 @@ export async function PATCH(
       description: nextDescription,
       resource_type,
       url: nextUrl,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", resourceId)
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) {
+    if (/updated_at/i.test(updateError.message)) {
+      const { error: updateError2 } = await supabaseAdmin
+        .from("resources")
+        .update({ title, description: nextDescription, resource_type, url: nextUrl })
+        .eq("id", resourceId)
+      if (updateError2) return NextResponse.json({ error: updateError2.message }, { status: 500 })
+      return NextResponse.json({ success: true })
+    }
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
   return NextResponse.json({ success: true })
 }
 
