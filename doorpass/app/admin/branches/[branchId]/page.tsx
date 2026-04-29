@@ -126,7 +126,7 @@ export default function BranchDetailPage() {
                 type="text"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="text-2xl font-bold border-b-2 border-blue-500 bg-transparent"
+                className="text-2xl font-bold border-b-2 border-blue-500 bg-transparent text-gray-900 dark:text-white"
               />
             ) : (
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{branch.name}</h1>
@@ -136,7 +136,7 @@ export default function BranchDetailPage() {
                 type="text"
                 value={editForm.region}
                 onChange={(e) => setEditForm({ ...editForm, region: e.target.value })}
-                className="text-gray-600 dark:text-gray-400 border-b border-gray-300 bg-transparent"
+                className="font-medium text-gray-700 dark:text-gray-300 border-b border-gray-300 bg-transparent"
               />
             ) : (
               <p className="font-medium text-gray-700 dark:text-gray-300">{branch.region}</p>
