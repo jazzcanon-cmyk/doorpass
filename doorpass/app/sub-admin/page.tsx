@@ -23,6 +23,7 @@ interface BuildingRow {
   region: string
 }
 
+// 배치 크기: 테스트 시 5로 낮춰 콘솔에서 배치 분할을 확인 가능. 운영은 200 권장.
 const BATCH_SIZE = 200
 const HEADERS = ["건물명", "주소", "비밀번호", "메모", "위도", "경도", "지역"] as const
 
@@ -151,12 +152,17 @@ export default function SubAdminPage() {
         batches.push(buildings.slice(i, i + BATCH_SIZE))
       }
 
+      console.log(
+        `[Upload] Total: ${buildings.length}, Batch size: ${BATCH_SIZE}, Batches: ${batches.length}`
+      )
+
       setProgress({ current: 0, total: buildings.length })
       let uploaded = 0
 
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i]
         const isLast = i === batches.length - 1
+        console.log(`[Upload] Processing batch ${i + 1}/${batches.length} (size=${batch.length})`)
         const res = await fetch("/api/buildings/upload-csv", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
