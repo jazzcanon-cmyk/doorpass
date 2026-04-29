@@ -8,12 +8,17 @@ import { useResources } from "@/hooks/useResources"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ResourceForm } from "@/components/resources/ResourceForm"
 import { ResourceCard } from "@/components/resources/ResourceCard"
+import type { BoardCurrentUser } from "@/types/board"
+import type { ResourceItem } from "@/types/resource"
+import { EditResourceModal } from "@/components/EditResourceModal"
 
-export function ResourceRoom() {
+export function ResourceRoom({ currentUser }: { currentUser?: BoardCurrentUser }) {
   const { isAdmin } = useIsAdmin()
   const { resources, loading, error, fetchResources, deleteResource } = useResources()
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [editResource, setEditResource] = useState<ResourceItem | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
@@ -54,12 +59,24 @@ export function ResourceRoom() {
               res={res}
               expanded={expandedId === res.id}
               canDelete={isAdmin}
+              canEdit={isAdmin || (!!currentUser?.userName && currentUser.userName === res.author)}
               onToggleExpand={() => setExpandedId(expandedId === res.id ? null : res.id)}
               onDelete={() => deleteResource(res.id)}
+              onEdit={() => {
+                setEditResource(res)
+                setEditOpen(true)
+              }}
             />
           ))}
         </div>
       )}
+
+      <EditResourceModal
+        isOpen={editOpen}
+        resource={editResource}
+        onClose={() => setEditOpen(false)}
+        onSuccess={fetchResources}
+      />
     </div>
   )
 }

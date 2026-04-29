@@ -1,5 +1,5 @@
 "use client"
-import { Trash2, ExternalLink, ChevronDown, ChevronUp } from "lucide-react"
+import { Trash2, ExternalLink, ChevronDown, ChevronUp, Pencil } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ago } from "@/lib/date-utils"
 import { RESOURCE_TYPE_CONFIG, type ResourceItem, type ResourceType } from "@/types/resource"
@@ -8,11 +8,21 @@ interface ResourceCardProps {
   res: ResourceItem
   expanded: boolean
   canDelete?: boolean
+  canEdit?: boolean
   onToggleExpand: () => void
   onDelete: () => void
+  onEdit?: () => void
 }
 
-export function ResourceCard({ res, expanded, canDelete = false, onToggleExpand, onDelete }: ResourceCardProps) {
+export function ResourceCard({
+  res,
+  expanded,
+  canDelete = false,
+  canEdit = false,
+  onToggleExpand,
+  onDelete,
+  onEdit,
+}: ResourceCardProps) {
   const cfg = RESOURCE_TYPE_CONFIG[res.resource_type as ResourceType] ?? RESOURCE_TYPE_CONFIG.link
   const isText = res.resource_type === "text"
 
@@ -62,6 +72,18 @@ export function ResourceCard({ res, expanded, canDelete = false, onToggleExpand,
             )}
             <div className="text-xs text-muted-foreground mt-1">{res.author} · {ago(res.created_at)}</div>
           </div>
+          {(canEdit && onEdit) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+              className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-primary"
+              title="수정"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
           {canDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete() }}

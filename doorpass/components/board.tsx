@@ -59,7 +59,7 @@ export function Board({ currentUser }: { currentUser?: BoardCurrentUser }) {
             <ArrowLeft className="h-4 w-4" />게시판으로
           </button>
           <SearchBar searchQuery={searchQuery} onSearchChange={handleSearchChange} onClear={clearSearch} />
-          {isSearching ? <SearchableResourceList query={debouncedQuery} /> : <ResourceRoom />}
+          {isSearching ? <SearchableResourceList query={debouncedQuery} /> : <ResourceRoom currentUser={currentUser} />}
         </div>
       )}
 
