@@ -7,7 +7,26 @@ import { supabase } from "@/lib/supabase-client"
 import { adminApi } from "@/lib/admin-api"
 import { AuthUserRow } from "./AuthUserRow"
 import { BlockUserModal } from "./BlockUserModal"
-import type { AuthUser } from "@/types/admin-users"
+import { AssignRoleModal } from "./AssignRoleModal"
+import type { ApprovedUser, AuthUser } from "@/types/admin-users"
+
+function toApprovedUser(u: AuthUser): ApprovedUser {
+  const role: ApprovedUser["role"] =
+    u.role === "admin" || u.role === "sub_admin" || u.role === "editor"
+      ? u.role
+      : "driver"
+  return {
+    id: u.approved_id ?? 0,
+    kakao_id: null,
+    name: u.name ?? u.email ?? "(이름 없음)",
+    phone: null,
+    email: u.email,
+    role,
+    is_active: u.is_active ?? true,
+    created_at: u.created_at,
+    managed_region: null,
+  }
+}
 
 export function AllUsersTab() {
   const router = useRouter()
@@ -17,6 +36,8 @@ export function AllUsersTab() {
   const [blockReason, setBlockReason] = useState("")
   const [blocking, setBlocking] = useState(false)
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("")
+  const [assigning, setAssigning] = useState<AuthUser | null>(null)
+  const [savingRole, setSavingRole] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -59,6 +80,41 @@ export function AllUsersTab() {
       toast.error(e instanceof Error ? e.message : "차단 실패")
     } finally {
       setBlocking(false)
+    }
+  }
+
+  const openAssign = (u: AuthUser) => {
+    if (!u.approved_id) {
+      toast.error("approved_users에 등록되지 않은 사용자입니다. '등록 관리' 탭에서 먼저 추가하세요.")
+      return
+    }
+    setAssigning(u)
+  }
+  const closeAssign = () => { setAssigning(null); setSavingRole(false) }
+
+  const submitAssign = async (
+    role: "admin" | "sub_admin" | "editor" | "driver",
+    managed_region: string | null
+  ) => {
+    if (!assigning?.approved_id) return
+    setSavingRole(true)
+    try {
+      await adminApi(`/api/admin/users/${assigning.approved_id}/assign-subadmin`, {
+        method: "POST",
+        body: JSON.stringify({ role, managed_region }),
+      })
+      const labels: Record<string, string> = {
+        admin: "관리자",
+        sub_admin: "부관리자",
+        editor: "편집자",
+        driver: "일반 사용자",
+      }
+      toast.success(`${assigning.name ?? assigning.email ?? "사용자"}님 권한: ${labels[role] ?? role}`)
+      closeAssign()
+      void load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "역할 변경 실패")
+      setSavingRole(false)
     }
   }
 
@@ -107,6 +163,7 @@ export function AllUsersTab() {
               onBlock={() => openBlock(u)}
               onUnblock={() => void unblock(u)}
               onDetail={() => u.email && router.push(`/admin/users/${encodeURIComponent(u.email)}`)}
+              onAssignRole={() => openAssign(u)}
             />
           ))}
         </div>
@@ -120,6 +177,15 @@ export function AllUsersTab() {
           onReasonChange={setBlockReason}
           onClose={closeBlock}
           onSubmit={() => void submitBlock()}
+        />
+      )}
+
+      {assigning && (
+        <AssignRoleModal
+          user={toApprovedUser(assigning)}
+          saving={savingRole}
+          onClose={closeAssign}
+          onSubmit={submitAssign}
         />
       )}
     </>

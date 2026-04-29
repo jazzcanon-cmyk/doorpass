@@ -1,7 +1,21 @@
 "use client"
-import { User, ShieldCheck, Ban } from "lucide-react"
+import { User, ShieldCheck, Ban, Crown } from "lucide-react"
 import { formatDate, providerLabel } from "@/lib/admin-api"
 import type { AuthUser } from "@/types/admin-users"
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "관리자",
+  sub_admin: "부관리자",
+  editor: "편집자",
+  driver: "일반",
+}
+
+const ROLE_BADGE: Record<string, string> = {
+  admin: "bg-yellow-500/20 text-yellow-400",
+  sub_admin: "bg-purple-500/20 text-purple-300",
+  editor: "bg-emerald-500/20 text-emerald-300",
+  driver: "bg-blue-500/20 text-blue-400",
+}
 
 function BlockAction({ u, currentUserEmail, onBlock, onUnblock }: {
   u: AuthUser
@@ -51,10 +65,16 @@ interface AuthUserRowProps {
   onBlock: () => void
   onUnblock: () => void
   onDetail: () => void
+  onAssignRole?: () => void
 }
 
-export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail }: AuthUserRowProps) {
+export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail, onAssignRole }: AuthUserRowProps) {
   const prov = providerLabel(u.provider)
+  const roleKey = u.role && (u.role === "admin" || u.role === "sub_admin" || u.role === "editor")
+    ? u.role
+    : "driver"
+  const roleLabel = ROLE_LABEL[roleKey]
+  const roleBadge = ROLE_BADGE[roleKey]
 
   return (
     <div
@@ -97,12 +117,8 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail 
             </span>
           ) : null}
           {u.is_registered && u.role && !u.is_blocked && (
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                u.role === "admin" ? "bg-yellow-500/20 text-yellow-400" : "bg-blue-500/20 text-blue-400"
-              }`}
-            >
-              {u.role === "admin" ? "관리자" : "일반"}
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleBadge}`}>
+              {roleLabel}
             </span>
           )}
         </div>
@@ -120,6 +136,16 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail 
           <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
           <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
         </div>
+        {onAssignRole && u.approved_id != null && (
+          <button
+            type="button"
+            onClick={onAssignRole}
+            title="역할 변경"
+            className="p-1.5 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 border border-white/10"
+          >
+            <Crown className="h-3.5 w-3.5" />
+          </button>
+        )}
         <BlockAction u={u} currentUserEmail={currentUserEmail} onBlock={onBlock} onUnblock={onUnblock} />
       </div>
     </div>
