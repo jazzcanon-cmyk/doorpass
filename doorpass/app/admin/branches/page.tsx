@@ -145,7 +145,7 @@ export default function BranchesPage() {
           <div key={region}>
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="h-5 w-5 text-blue-500" />
-              <h2 className="text-xl font-bold">{region}</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{region}</h2>
               <span className="text-sm text-gray-500">({regionBranches.length}개)</span>
             </div>
 
@@ -157,8 +157,8 @@ export default function BranchesPage() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-bold mb-1">{branch.name}</h3>
-                      <p className="text-sm text-gray-500">{branch.region}</p>
+                      <h3 className="text-xl font-bold mb-1 text-gray-900 dark:text-white">{branch.name}</h3>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{branch.region}</p>
                     </div>
                     <Building2 className="h-8 w-8 text-blue-500" />
                   </div>
@@ -180,9 +180,9 @@ export default function BranchesPage() {
 
                   {branch.manager_email && (
                     <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">부관리자</p>
-                      <p className="text-sm font-semibold">{branch.manager_name || branch.manager_email}</p>
-                      <p className="text-xs text-gray-500">{branch.manager_email}</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">부관리자</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{branch.manager_name || branch.manager_email}</p>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{branch.manager_email}</p>
                     </div>
                   )}
 
