@@ -33,3 +33,13 @@ To learn more, take a look at the following resources:
 - [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
 
 <a href="https://v0.app/chat/api/kiro/clone/jazzcanon-cmyk/v0-building-locator-app" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+
+## Excel 템플릿 생성
+
+부관리자용 Excel 템플릿을 재생성하려면:
+
+```bash
+npm run create-template
+```
+
+생성된 파일: `public/buildings_template_sub_admin.xlsx`
