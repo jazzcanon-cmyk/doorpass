@@ -129,7 +129,7 @@ export default function BranchDetailPage() {
                 className="text-2xl font-bold border-b-2 border-blue-500 bg-transparent"
               />
             ) : (
-              <h1 className="text-2xl font-bold">{branch.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{branch.name}</h1>
             )}
             {isEditing ? (
               <input
@@ -139,7 +139,7 @@ export default function BranchDetailPage() {
                 className="text-gray-600 dark:text-gray-400 border-b border-gray-300 bg-transparent"
               />
             ) : (
-              <p className="text-gray-600 dark:text-gray-400">{branch.region}</p>
+              <p className="font-medium text-gray-700 dark:text-gray-300">{branch.region}</p>
             )}
           </div>
         </div>
@@ -169,38 +169,38 @@ export default function BranchDetailPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Users className="h-5 w-5 text-blue-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">총 회원</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">총 회원</p>
           </div>
-          <p className="text-3xl font-bold">{branch.stats.userCount}명</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{branch.stats.userCount}명</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Home className="h-5 w-5 text-green-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">등록 건물</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">등록 건물</p>
           </div>
-          <p className="text-3xl font-bold">{branch.stats.buildingCount}개</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{branch.stats.buildingCount}개</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <TrendingUp className="h-5 w-5 text-purple-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">활성 회원</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">활성 회원</p>
           </div>
-          <p className="text-3xl font-bold">{branch.stats.activeUsers}명</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{branch.stats.activeUsers}명</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="h-5 w-5 text-orange-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">개설일</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">개설일</p>
           </div>
-          <p className="text-lg font-bold">{new Date(branch.created_at).toLocaleDateString("ko-KR")}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{new Date(branch.created_at).toLocaleDateString("ko-KR")}</p>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border mb-8">
-        <h2 className="text-lg font-bold mb-4">부관리자 정보</h2>
+        <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">부관리자 정보</h2>
         {isEditing ? (
           <div className="space-y-4">
             <div>
@@ -216,17 +216,17 @@ export default function BranchDetailPage() {
           </div>
         ) : branch.manager_email ? (
           <div>
-            <p className="font-semibold">{branch.manager_name || "이름 없음"}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{branch.manager_email}</p>
+            <p className="font-bold text-gray-900 dark:text-white">{branch.manager_name || "이름 없음"}</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{branch.manager_email}</p>
           </div>
         ) : (
-          <p className="text-gray-500">부관리자가 지정되지 않았습니다</p>
+          <p className="font-medium text-gray-700 dark:text-gray-300">부관리자가 지정되지 않았습니다</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
-          <h2 className="text-lg font-bold mb-4">월별 로그인 추이</h2>
+          <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">월별 로그인 추이</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={branch.stats.monthlyLogins}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -240,7 +240,7 @@ export default function BranchDetailPage() {
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
-          <h2 className="text-lg font-bold mb-4">지역별 건물 분포</h2>
+          <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">지역별 건물 분포</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={branch.stats.buildingsByRegion}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -257,7 +257,7 @@ export default function BranchDetailPage() {
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
         <div className="flex items-center gap-2 mb-4">
           <Activity className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-bold">최근 활동</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">최근 활동</h2>
         </div>
 
         <div className="space-y-3">
@@ -268,8 +268,8 @@ export default function BranchDetailPage() {
                 className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
               >
                 <div className="flex-1">
-                  <p className="font-semibold">{activity.description}</p>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  <p className="font-bold text-gray-900 dark:text-white">{activity.description}</p>
+                  <div className="flex items-center gap-3 mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                     <span>{activity.user}</span>
                     <span>•</span>
                     <span>{new Date(activity.timestamp).toLocaleString("ko-KR")}</span>
@@ -281,7 +281,7 @@ export default function BranchDetailPage() {
               </div>
             ))
           ) : (
-            <p className="text-center text-gray-500 py-8">최근 활동이 없습니다</p>
+            <p className="text-center font-medium text-gray-700 dark:text-gray-300 py-8">최근 활동이 없습니다</p>
           )}
         </div>
       </div>
