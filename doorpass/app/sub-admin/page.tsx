@@ -45,7 +45,7 @@ export default function SubAdminDashboardPage() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">대시보드</h1>
-        <p className="text-gray-600 dark:text-gray-400">대리점 현황을 한눈에 확인하세요</p>
+        <p className="font-medium text-gray-700 dark:text-gray-300">대리점 현황을 한눈에 확인하세요</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -91,7 +91,7 @@ export default function SubAdminDashboardPage() {
           >
             <Users className="h-6 w-6 text-blue-500 mb-2" />
             <p className="font-bold text-gray-900 dark:text-white">회원 관리</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">회원 조회 및 승인</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">회원 조회 및 승인</p>
           </Link>
 
           <Link
@@ -100,7 +100,7 @@ export default function SubAdminDashboardPage() {
           >
             <Building2 className="h-6 w-6 text-green-500 mb-2" />
             <p className="font-bold text-gray-900 dark:text-white">건물 관리</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">건물 조회 및 수정</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">건물 조회 및 수정</p>
           </Link>
 
           <Link
@@ -109,7 +109,7 @@ export default function SubAdminDashboardPage() {
           >
             <TrendingUp className="h-6 w-6 text-purple-500 mb-2" />
             <p className="font-bold text-gray-900 dark:text-white">Excel 업로드</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">건물 일괄 등록</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">건물 일괄 등록</p>
           </Link>
         </div>
       </div>
