@@ -5,14 +5,14 @@ import { sendTelegramMessage } from '@/lib/telegram'
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user: admin, unauthorized } = await requireAdminApi()
     if (unauthorized) return unauthorized
 
-    const { userId } = await params
-    const userId_int = Number(userId)
+    const { id } = await params
+    const userId_int = Number(id)
     if (isNaN(userId_int)) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
     }

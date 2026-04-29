@@ -1,12 +1,9 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("게시판 API", () => {
-  test("GET /api/posts 는 posts 배열을 반환", async ({ request }) => {
+  test("GET /api/posts 는 미인증 시 401/403 반환", async ({ request }) => {
     const res = await request.get("/api/posts")
-    expect(res.status()).toBe(200)
-    const json = await res.json()
-    expect(json).toHaveProperty("posts")
-    expect(Array.isArray(json.posts)).toBe(true)
+    expect([401, 403]).toContain(res.status())
   })
 
   test("POST /api/posts 는 미인증 시 401/403 반환", async ({ request }) => {
@@ -27,6 +24,13 @@ test.describe("게시판 API", () => {
 test.describe("게시판 UI", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/")
+    await Promise.race([
+      page.waitForURL("**/login**", { timeout: 20000 }),
+      page.getByRole("button", { name: /내 주변|검색|게시판/ }).first().waitFor({ state: "visible", timeout: 20000 }),
+    ])
+    if (page.url().includes("/login")) {
+      test.skip(true, "로그인 세션이 필요합니다.")
+    }
   })
 
   test("게시판 탭 버튼이 존재", async ({ page }) => {

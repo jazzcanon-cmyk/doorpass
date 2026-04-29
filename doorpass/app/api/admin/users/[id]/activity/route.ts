@@ -2,13 +2,13 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAdminApi } from "@/lib/auth"
 
-type Params = Promise<{ email: string }>
+type Params = Promise<{ id: string }>
 
 export async function GET(request: Request, { params }: { params: Params }) {
   const { unauthorized } = await requireAdminApi()
   if (unauthorized) return unauthorized
 
-  const { email: encodedEmail } = await params
+  const { id: encodedEmail } = await params
   const email = decodeURIComponent(encodedEmail)
 
   const { searchParams } = new URL(request.url)
