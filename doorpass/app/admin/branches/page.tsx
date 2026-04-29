@@ -104,17 +104,17 @@ export default function BranchesPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Building2 className="h-5 w-5 text-blue-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">총 대리점</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">총 대리점</p>
           </div>
-          <p className="text-3xl font-bold">{branches.length}개</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">{branches.length}개</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Users className="h-5 w-5 text-green-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">총 회원</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">총 회원</p>
           </div>
-          <p className="text-3xl font-bold">
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
             {branches.reduce((sum, b) => sum + (b.stats?.userCount || 0), 0)}명
           </p>
         </div>
@@ -122,9 +122,9 @@ export default function BranchesPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <Home className="h-5 w-5 text-purple-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">총 건물</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">총 건물</p>
           </div>
-          <p className="text-3xl font-bold">
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
             {branches.reduce((sum, b) => sum + (b.stats?.buildingCount || 0), 0)}개
           </p>
         </div>
@@ -132,9 +132,9 @@ export default function BranchesPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
           <div className="flex items-center gap-3 mb-2">
             <TrendingUp className="h-5 w-5 text-orange-500" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">활성 회원</p>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">활성 회원</p>
           </div>
-          <p className="text-3xl font-bold">
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
             {branches.reduce((sum, b) => sum + (b.stats?.activeUsers || 0), 0)}명
           </p>
         </div>
@@ -165,16 +165,16 @@ export default function BranchesPage() {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">회원</span>
-                      <span className="font-semibold">{branch.stats?.userCount || 0}명</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">회원</span>
+                      <span className="font-bold text-gray-900 dark:text-white">{branch.stats?.userCount || 0}명</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">건물</span>
-                      <span className="font-semibold">{branch.stats?.buildingCount || 0}개</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">건물</span>
+                      <span className="font-bold text-gray-900 dark:text-white">{branch.stats?.buildingCount || 0}개</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">활성 회원</span>
-                      <span className="font-semibold">{branch.stats?.activeUsers || 0}명</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">활성 회원</span>
+                      <span className="font-bold text-gray-900 dark:text-white">{branch.stats?.activeUsers || 0}명</span>
                     </div>
                   </div>
 
