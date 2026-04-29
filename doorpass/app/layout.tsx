@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
-  themeColor: '#22c55e',
+  themeColor: '#2E3192',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

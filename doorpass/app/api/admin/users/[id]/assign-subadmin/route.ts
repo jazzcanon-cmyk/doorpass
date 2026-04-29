@@ -14,14 +14,14 @@ const ROLE_LABEL: Record<string, string> = {
   driver: "일반 사용자",
 }
 
-type Params = Promise<{ userId: string }>
+type Params = Promise<{ id: string }>
 
 export async function POST(request: Request, { params }: { params: Params }) {
   const { unauthorized } = await requireAdminApi()
   if (unauthorized) return unauthorized
 
-  const { userId } = await params
-  if (!userId) return NextResponse.json({ error: "userId가 필요합니다." }, { status: 400 })
+  const { id } = await params
+  if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 })
 
   const body = (await request.json().catch(() => ({}))) as {
     role?: string
@@ -39,11 +39,10 @@ export async function POST(request: Request, { params }: { params: Params }) {
   const region =
     role === "sub_admin" ? (managed_region ? String(managed_region).trim() : null) : null
 
-  // userId가 숫자면 approved_users.id, 아니면 URL-인코딩된 email로 처리
-  const decoded = decodeURIComponent(userId)
+  // 세그먼트가 숫자면 approved_users.id, 아니면 URL-인코딩된 email로 처리
+  const decoded = decodeURIComponent(id)
   const numericId = /^\d+$/.test(decoded) ? Number(decoded) : null
 
-  // 1) numericId 우선
   if (numericId !== null) {
     const { data, error } = await supabase
       .from("approved_users")
@@ -65,7 +64,6 @@ export async function POST(request: Request, { params }: { params: Params }) {
     return NextResponse.json({ success: true })
   }
 
-  // 2) email 기반 fallback — 미등록(approved_users 없음)이면 자동 upsert
   const email = decoded.trim().toLowerCase()
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "유효하지 않은 식별자" }, { status: 400 })

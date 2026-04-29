@@ -4,8 +4,8 @@
   "description": "배달/택배 기사를 위한 공동현관 비밀번호 조회 서비스",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#22c55e",
+  "background_color": "#FAFAFA",
+  "theme_color": "#2E3192",
   "orientation": "portrait",
   "lang": "ko",
   "icons": [
