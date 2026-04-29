@@ -36,3 +36,6 @@ next-env.d.ts
 
 # supabase temp
 supabase/.temp/
+
+# local test script artifacts
+test-telegram.js
