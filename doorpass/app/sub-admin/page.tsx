@@ -27,6 +27,14 @@ interface BuildingRow {
 const BATCH_SIZE = 200
 const HEADERS = ["건물명", "주소", "비밀번호", "메모", "위도", "경도", "지역"] as const
 
+/** 건물명 미입력 시 주소 마지막 토큰으로 표시명 생성 (메인 앱 toBuilding과 동일 계열) */
+function displayNameFromAddress(address: string): string {
+  const t = address.trim()
+  if (!t) return ""
+  const parts = t.split(/\s+/).filter(Boolean)
+  return parts[parts.length - 1] ?? t
+}
+
 async function parseExcel(file: File, defaultRegion: string): Promise<BuildingRow[]> {
   const ExcelJS = (await import("exceljs")).default
   const wb = new ExcelJS.Workbook()
@@ -38,22 +46,27 @@ async function parseExcel(file: File, defaultRegion: string): Promise<BuildingRo
   // 1행은 헤더, 2행부터 데이터
   ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return
-    const cell = (n: number) => row.getCell(n).value
     const text = (n: number) => {
-      const v = cell(n)
-      if (v == null) return ""
-      if (typeof v === "object" && "text" in v) return String((v as { text: unknown }).text ?? "")
-      return String(v)
+      const t = row.getCell(n).text
+      if (t == null || t === "") return ""
+      return String(t).trim()
     }
     const num = (n: number) => {
-      const v = cell(n)
+      const c = row.getCell(n)
+      const v = c.value
+      if (v === undefined || v === null || v === "") return NaN
       if (typeof v === "number") return v
-      const parsed = parseFloat(String(v ?? ""))
-      return isNaN(parsed) ? NaN : parsed
+      const parsed = parseFloat(String(c.text ?? v).trim())
+      return Number.isNaN(parsed) ? NaN : parsed
     }
+
+    const address = text(2).trim()
+    const rawName = text(1).trim()
+    const name = rawName || displayNameFromAddress(address)
+
     rows.push({
-      name: text(1).trim(),
-      address: text(2).trim(),
+      name,
+      address,
       password: text(3).trim(),
       memo: text(4).trim(),
       latitude: num(5),
@@ -139,11 +152,21 @@ export default function SubAdminPage() {
         return
       }
 
-      const invalid = buildings.findIndex(
-        (b) => !b.name || !b.address || isNaN(b.latitude) || isNaN(b.longitude)
-      )
-      if (invalid >= 0) {
-        toast.error(`행 ${invalid + 2}: 필수 필드(건물명/주소/위도/경도)가 비어있거나 잘못되었습니다.`)
+      const invalidRows: number[] = []
+      buildings.forEach((b, idx) => {
+        const hasAddress = Boolean(b.address?.trim())
+        const hasLat = Number.isFinite(b.latitude) && b.latitude !== 0
+        const hasLng = Number.isFinite(b.longitude) && b.longitude !== 0
+        if (!hasAddress) {
+          console.error(`행 ${idx + 2}: 주소가 비어 있습니다.`)
+          invalidRows.push(idx)
+        } else if (!hasLat || !hasLng) {
+          console.error(`행 ${idx + 2}: 위도 또는 경도가 비어 있거나 잘못되었습니다.`)
+          invalidRows.push(idx)
+        }
+      })
+      if (invalidRows.length > 0) {
+        toast.error("일부 행에 필수 필드(주소/위도/경도)가 누락되었습니다. 확인 후 다시 시도하세요.")
         return
       }
 

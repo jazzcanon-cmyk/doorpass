@@ -48,27 +48,54 @@ export async function POST(request: Request) {
     )
   }
 
-  // 검증 + 정규화
+  const displayNameFromAddress = (address: string) => {
+    const t = address.trim()
+    if (!t) return ""
+    const parts = t.split(/\s+/).filter(Boolean)
+    return parts[parts.length - 1] ?? t
+  }
+
+  // 검증 + 정규화 (필수: 주소·위도·경도 / 건물명·비밀번호·메모는 선택)
   const rows: Record<string, unknown>[] = []
   for (let i = 0; i < buildings.length; i++) {
     const b = buildings[i]
-    const lat = typeof b.latitude === "string" ? parseFloat(b.latitude) : b.latitude
-    const lng = typeof b.longitude === "string" ? parseFloat(b.longitude) : b.longitude
-    if (!b.name || !b.address || lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
+    const address = String(b.address ?? "").trim()
+    const latRaw = typeof b.latitude === "string" ? parseFloat(b.latitude) : b.latitude
+    const lngRaw = typeof b.longitude === "string" ? parseFloat(b.longitude) : b.longitude
+    const lat = Number(latRaw)
+    const lng = Number(lngRaw)
+
+    if (!address) {
       return NextResponse.json(
-        {
-          error: `행 ${i + 1}: 필수 필드 누락 (건물명, 주소, 위도, 경도)`,
-        },
+        { error: `행 ${i + 1}: 주소가 비어 있습니다.` },
         { status: 400 }
       )
     }
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      Number.isNaN(lat) ||
+      Number.isNaN(lng) ||
+      lat === 0 ||
+      lng === 0
+    ) {
+      return NextResponse.json(
+        { error: `행 ${i + 1}: 위도 또는 경도가 비어 있거나 잘못되었습니다.` },
+        { status: 400 }
+      )
+    }
+
+    const rawName = b.name != null ? String(b.name).trim() : ""
+    const name = rawName || displayNameFromAddress(address) || address
+
+    const pwd = b.password != null ? String(b.password).trim() : ""
     rows.push({
-      name: String(b.name).trim(),
-      address: String(b.address).trim(),
-      password: b.password ? encryptPassword(String(b.password)) : null,
-      memo: b.memo ? String(b.memo).trim() : null,
-      lat: Number(lat),
-      lng: Number(lng),
+      name,
+      address,
+      password: pwd ? encryptPassword(pwd) : null,
+      memo: b.memo != null && String(b.memo).trim() ? String(b.memo).trim() : null,
+      lat,
+      lng,
       region: b.region ? String(b.region).trim() : null,
       uploaded_by: user!.email,
     })
