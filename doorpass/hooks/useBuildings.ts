@@ -4,6 +4,19 @@ import { calculateDistance } from "@/lib/geo-utils"
 import { trackSearch } from "@/lib/analytics"
 import type { Building, CurrentUser } from "@/types/building"
 
+function trackUserActivity(
+  actionType: "search" | "building_view",
+  targetInfo: Record<string, unknown>,
+  pageUrl: string
+) {
+  void fetch("/api/activity/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actionType, targetInfo, pageUrl }),
+    keepalive: true,
+  }).catch(() => {})
+}
+
 export function useBuildings(currentUser: CurrentUser | null) {
   const [allBuildings, setAllBuildings] = useState<Building[]>([])
   const [viewportBuildings, setViewportBuildings] = useState<Building[]>([])
@@ -76,7 +89,14 @@ export function useBuildings(currentUser: CurrentUser | null) {
       if (q.length >= 2) {
         if (searchTrackRef.current) clearTimeout(searchTrackRef.current)
         searchTrackRef.current = setTimeout(
-          () => trackSearch(query.trim(), filtered.length, currentUser?.email),
+          () => {
+            trackSearch(query.trim(), filtered.length, currentUser?.email)
+            trackUserActivity(
+              "search",
+              { keyword: query.trim(), results_count: filtered.length },
+              window.location.pathname
+            )
+          },
           1500
         )
       }

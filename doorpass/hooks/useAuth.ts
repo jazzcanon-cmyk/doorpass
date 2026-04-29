@@ -55,6 +55,12 @@ export function useAuth() {
   }, [])
 
   const handleLogout = useCallback(async () => {
+    await fetch("/api/activity/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionType: "logout", pageUrl: window.location.pathname }),
+      keepalive: true,
+    }).catch(() => {})
     await supabase.auth.signOut()
     router.replace("/login")
   }, [router])

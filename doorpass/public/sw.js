@@ -1,4 +1,4 @@
-const CACHE_NAME = 'doorpass-v1'
+const CACHE_NAME = 'doorpass-v2'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -25,7 +25,10 @@ self.addEventListener('activate', (event) => {
 // 네트워크 우선, 실패 시 캐시
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
-  if (event.request.url.includes('/api/')) return // API는 항상 네트워크
+  const url = new URL(event.request.url)
+  if (url.origin !== self.location.origin) return
+  if (url.pathname.startsWith('/api/')) return // API는 항상 네트워크
+  if (url.pathname.startsWith('/_next/')) return // Next 빌드 산출물은 SW 캐시 제외
 
   event.respondWith(
     fetch(event.request)

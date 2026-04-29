@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, canEditBuilding } from '@/lib/auth';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
 import { encryptPassword } from '@/lib/encryption';
+import { trackActivity } from '@/lib/activity-tracker';
+import { getIp } from '@/lib/activity-logger';
 
 export async function POST(
   request: NextRequest,
@@ -41,6 +43,20 @@ export async function POST(
     if (updateError) {
       console.error('업데이트 오류:', updateError);
       return NextResponse.json({ error: '비밀번호 업데이트에 실패했습니다.' }, { status: 500 });
+    }
+
+    if (user?.email) {
+      void trackActivity({
+        userEmail: user.email,
+        actionType: 'password_decrypt',
+        targetInfo: {
+          building_id: buildingId,
+          building_name: updatedBuilding.name ?? null,
+        },
+        pageUrl: `/api/buildings/${buildingId}/password`,
+        ipAddress: getIp(request),
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
     }
 
     return NextResponse.json({

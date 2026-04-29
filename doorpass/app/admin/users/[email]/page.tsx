@@ -30,7 +30,9 @@ interface ActivityLog {
   user_email: string
   activity_type: string
   activity_data: Record<string, unknown>
+  page_url: string | null
   ip_address: string | null
+  user_agent: string | null
   created_at: string
 }
 
@@ -43,6 +45,10 @@ const ACTIVITY_META: Record<string, { icon: string; label: string; color: string
   calendar_memo:   { icon: "📅", label: "캘린더 메모",  color: "text-cyan-400" },
   notice_view:     { icon: "📣", label: "공지 조회",    color: "text-orange-400" },
   resource_view:   { icon: "📁", label: "자료 조회",    color: "text-indigo-400" },
+  search:          { icon: "🔎", label: "검색",         color: "text-sky-400" },
+  page_view:       { icon: "📄", label: "페이지 방문",  color: "text-zinc-400" },
+  password_decrypt:{ icon: "🔓", label: "비밀번호 확인", color: "text-emerald-400" },
+  logout:          { icon: "👋", label: "로그아웃",      color: "text-amber-400" },
 }
 
 const ACTIVITY_TYPES = Object.entries(ACTIVITY_META).map(([k, v]) => ({ key: k, label: v.label }))
@@ -58,6 +64,10 @@ function activityDetail(log: ActivityLog): string {
     case "calendar_memo":  return `"${String(d.content ?? "").slice(0, 40)}"`
     case "notice_view":    return `${String(d.count ?? "")}개 조회`
     case "resource_view":  return `${String(d.count ?? "")}개 조회`
+    case "search":         return `"${String(d.keyword ?? "")}" · ${String(d.results_count ?? 0)}건`
+    case "page_view":      return String(log.page_url ?? d.page_url ?? "")
+    case "password_decrypt": return `${String(d.building_name ?? d.building_id ?? "")}`
+    case "logout":         return "세션 종료"
     default:               return ""
   }
 }

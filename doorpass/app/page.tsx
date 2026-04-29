@@ -50,7 +50,23 @@ export default function Home() {
 
   const handleBuildingSelect = useCallback((b: Building | null) => {
     setSelectedBuilding(b)
-    if (b) trackBuildingView(b.id, b.name || b.address, currentUser?.email)
+    if (b) {
+      trackBuildingView(b.id, b.name || b.address, currentUser?.email)
+      void fetch("/api/activity/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actionType: "building_view",
+          targetInfo: {
+            building_id: b.id,
+            building_name: b.name || b.address,
+            building_address: b.address,
+          },
+          pageUrl: window.location.pathname,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+    }
   }, [currentUser])
 
   const handleBuildingUpdate = useCallback((id: string, updated: Partial<Building>) => {
@@ -63,6 +79,16 @@ export default function Home() {
     setActiveTab(tab)
     setSelectedBuilding(null)
   }, [])
+
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    void fetch("/api/activity/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionType: "page_view", pageUrl: window.location.pathname }),
+      keepalive: true,
+    }).catch(() => {})
+  }, [authStatus])
 
   if (authStatus === "loading") return <LoadingScreen />
 

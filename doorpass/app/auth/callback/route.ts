@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { logActivity } from "@/lib/activity-logger"
+import { trackActivity } from "@/lib/activity-tracker"
 
 function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/"
@@ -71,6 +72,15 @@ export async function GET(request: Request) {
   if (data.user.email) {
     logActivity(data.user.email, "login", {
       provider: data.user.app_metadata?.provider ?? "unknown",
+    })
+    void trackActivity({
+      userEmail: data.user.email,
+      actionType: "login",
+      targetInfo: {
+        provider: data.user.app_metadata?.provider ?? "unknown",
+      },
+      pageUrl: "/auth/callback",
+      userAgent: request.headers.get("user-agent") ?? undefined,
     })
   }
 
