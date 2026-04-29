@@ -15,7 +15,7 @@ const SCENARIOS: Record<string, SlackMessageOptions> = {
     ],
   },
   post: {
-    text: "📝 [신정대리점] 새 게시글",
+    text: "📝 [DoorPass] 새 게시글",
     color: "#36a64f",
     fields: [
       { title: "제목", value: "테스트 게시글입니다", short: false },

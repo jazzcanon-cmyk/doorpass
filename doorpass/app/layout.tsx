@@ -17,8 +17,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'DoorPass - 공동현관 비밀번호',
-  description: '전국 공동현관 비밀번호 공유 서비스',
+  title: 'DoorPass | 공동현관 비밀번호',
+  description: '배달/택배 기사를 위한 공동현관 비밀번호 조회 서비스',
   generator: 'v0.app',
   manifest: '/manifest.json',
   appleWebApp: {

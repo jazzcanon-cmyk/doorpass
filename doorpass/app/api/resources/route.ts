@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
     const TYPE_LABELS: Record<string, string> = { link: "링크", file: "파일", image: "이미지", document: "문서", text: "글" }
     sendTelegramMessage(
-      `📁 [신정대리점] 새 자료 등록: ${insertData.title}\n유형: ${TYPE_LABELS[resource_type] ?? resource_type}\n등록자: ${insertData.author}\n시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+      `📁 [DoorPass] 새 자료 등록: ${insertData.title}\n유형: ${TYPE_LABELS[resource_type] ?? resource_type}\n등록자: ${insertData.author}\n시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
     ).catch((err) => console.error("[Telegram] 자료실 알림 전송 실패:", err))
 
     return NextResponse.json({ success: true })

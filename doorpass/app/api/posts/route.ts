@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     category === 'resources' ? '자료실'   : '일반'
 
   sendTelegramMessage(
-    `[신정대리점] 새 게시글\n📋 제목: ${title}\n👤 작성자: ${author || '익명'}\n📁 카테고리: ${categoryLabel}`,
+    `[DoorPass] 새 게시글\n📋 제목: ${title}\n👤 작성자: ${author || '익명'}\n📁 카테고리: ${categoryLabel}`,
     "new_user_notification"
   ).catch(console.error)
 

@@ -83,7 +83,7 @@ export default function LoginPage() {
           DoorPass
         </h1>
         <p className="mt-1.5 font-medium" style={{ color: "#0066B3", fontSize: 13, letterSpacing: "0.04em" }}>
-          택배 관리 시스템
+          공동현관 비밀번호 서비스
         </p>
       </div>
 
