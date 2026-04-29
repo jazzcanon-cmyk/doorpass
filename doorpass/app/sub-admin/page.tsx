@@ -24,22 +24,60 @@ interface BuildingRow {
 }
 
 const BATCH_SIZE = 200
+const HEADERS = ["건물명", "주소", "비밀번호", "메모", "위도", "경도", "지역"] as const
 
-function parseCSV(text: string, defaultRegion: string): BuildingRow[] {
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim())
-  if (lines.length <= 1) return []
-  return lines.slice(1).map((line) => {
-    const v = line.split(",")
-    return {
-      name: (v[0] ?? "").trim(),
-      address: (v[1] ?? "").trim(),
-      password: (v[2] ?? "").trim(),
-      memo: (v[3] ?? "").trim(),
-      latitude: parseFloat(v[4] ?? ""),
-      longitude: parseFloat(v[5] ?? ""),
-      region: (v[6] ?? "").trim() || defaultRegion,
+async function parseExcel(file: File, defaultRegion: string): Promise<BuildingRow[]> {
+  const ExcelJS = (await import("exceljs")).default
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(await file.arrayBuffer())
+  const ws = wb.worksheets[0]
+  if (!ws) return []
+
+  const rows: BuildingRow[] = []
+  // 1행은 헤더, 2행부터 데이터
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return
+    const cell = (n: number) => row.getCell(n).value
+    const text = (n: number) => {
+      const v = cell(n)
+      if (v == null) return ""
+      if (typeof v === "object" && "text" in v) return String((v as { text: unknown }).text ?? "")
+      return String(v)
     }
+    const num = (n: number) => {
+      const v = cell(n)
+      if (typeof v === "number") return v
+      const parsed = parseFloat(String(v ?? ""))
+      return isNaN(parsed) ? NaN : parsed
+    }
+    rows.push({
+      name: text(1).trim(),
+      address: text(2).trim(),
+      password: text(3).trim(),
+      memo: text(4).trim(),
+      latitude: num(5),
+      longitude: num(6),
+      region: text(7).trim() || defaultRegion,
+    })
   })
+  return rows
+}
+
+async function downloadTemplate() {
+  const ExcelJS = (await import("exceljs")).default
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet("Buildings")
+  ws.addRow(HEADERS as unknown as string[])
+  ws.addRow(["신정마을아파트", "울산 남구 신정동 123", "1234", "1동 출입구", 35.5384, 129.3114, "울산"])
+  ws.addRow(["삼산현대아파트", "울산 남구 삼산동 456", "5678", "정문", 35.5398, 129.3356, "울산"])
+  ws.columns = HEADERS.map(() => ({ width: 20 }))
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  const link = document.createElement("a")
+  link.href = URL.createObjectURL(blob)
+  link.download = "doorpass_template.xlsx"
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 export default function SubAdminPage() {
@@ -70,16 +108,21 @@ export default function SubAdminPage() {
       .finally(() => setLoading(false))
   }, [router])
 
-  const downloadTemplate = () => {
-    const csv = `건물명,주소,비밀번호,메모,위도,경도,지역
-신정마을아파트,울산 남구 신정동 123,1234,1동 출입구,35.5384,129.3114,울산
-삼산현대아파트,울산 남구 삼산동 456,5678,정문,35.5398,129.3356,울산`
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(blob)
-    link.download = "doorpass_template.csv"
-    link.click()
-    URL.revokeObjectURL(link.href)
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadTemplate()
+    } catch (err) {
+      console.error(err)
+      toast.error("템플릿 생성에 실패했습니다.")
+    }
+  }
+
+  const parseFile = async (file: File): Promise<BuildingRow[]> => {
+    const ext = file.name.split(".").pop()?.toLowerCase()
+    if (ext === "xlsx" || ext === "xls") {
+      return parseExcel(file, me?.managed_region ?? "")
+    }
+    throw new Error("Excel 파일(.xlsx, .xls)만 업로드 가능합니다.")
   }
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,15 +131,13 @@ export default function SubAdminPage() {
 
     setUploading(true)
     try {
-      const text = await file.text()
-      const buildings = parseCSV(text, me?.managed_region ?? "")
+      const buildings = await parseFile(file)
 
       if (buildings.length === 0) {
         toast.error("파일에 데이터가 없습니다.")
         return
       }
 
-      // 클라이언트 검증
       const invalid = buildings.findIndex(
         (b) => !b.name || !b.address || isNaN(b.latitude) || isNaN(b.longitude)
       )
@@ -200,11 +241,11 @@ export default function SubAdminPage() {
         <div className="bg-white/10 border border-white/20 rounded-2xl p-6 mb-6 backdrop-blur-sm space-y-5">
           <div>
             <p className="text-white/80 mb-3 text-sm">
-              엑셀 템플릿을 다운로드해 건물 정보를 입력한 뒤 업로드하세요.
+              Excel 템플릿을 다운로드해 건물 정보를 입력한 뒤 업로드하세요.
             </p>
-            <Button onClick={downloadTemplate} variant="outline" className="w-full sm:w-auto">
+            <Button onClick={handleDownloadTemplate} variant="outline" className="w-full sm:w-auto">
               <Download className="h-4 w-4 mr-2" />
-              CSV 템플릿 다운로드
+              Excel 템플릿 다운로드
             </Button>
           </div>
 
@@ -222,14 +263,14 @@ export default function SubAdminPage() {
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  CSV 파일 업로드
+                  엑셀 파일 업로드
                 </>
               )}
             </Button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.xls"
               onChange={onFileChange}
               disabled={uploading}
               className="hidden"
@@ -249,7 +290,7 @@ export default function SubAdminPage() {
           </div>
 
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-sm text-blue-200">
-            💡 <strong>팁:</strong> 1,000개 이상도 한 번에 업로드 가능합니다. 자동으로 {BATCH_SIZE}개씩 나눠 처리합니다.
+            💡 <strong>팁:</strong> Excel 파일(.xlsx, .xls)만 지원합니다. 한 번에 1,000개 이상도 업로드 가능합니다. (자동으로 {BATCH_SIZE}개씩 처리)
           </div>
         </div>
 
