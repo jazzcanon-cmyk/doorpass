@@ -101,7 +101,7 @@ export default function SettingsPage() {
             {(role === "admin" || role === "sub_admin") && (
               <Link href="/sub-admin" className="block">
                 <Button variant="outline" className="w-full justify-center">
-                  🏢 부관리자 화면 (CSV 업로드)
+                  🏢 부관리자 화면 (Excel 업로드)
                 </Button>
               </Link>
             )}
