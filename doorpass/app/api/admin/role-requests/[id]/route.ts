@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAdminApi } from "@/lib/auth"
+import { requireManagerApi } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
@@ -8,7 +8,7 @@ const supabase = supabaseAdmin
 type Params = Promise<{ id: string }>
 
 export async function POST(request: Request, { params }: { params: Params }) {
-  const { user, unauthorized } = await requireAdminApi()
+  const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   const { id } = await params
@@ -33,6 +33,22 @@ export async function POST(request: Request, { params }: { params: Params }) {
   if (!roleRequest) return NextResponse.json({ error: "Request not found" }, { status: 404 })
   if (roleRequest.status !== "pending") {
     return NextResponse.json({ error: "Request already processed" }, { status: 400 })
+  }
+
+  if (role === "sub_admin" && user?.email) {
+    const { data: me } = await supabase
+      .from("approved_users")
+      .select("branch_id")
+      .eq("email", user.email)
+      .maybeSingle()
+    const { data: target } = await supabase
+      .from("approved_users")
+      .select("branch_id")
+      .eq("email", roleRequest.user_email)
+      .maybeSingle()
+    if (!me?.branch_id || !target?.branch_id || me.branch_id !== target.branch_id) {
+      return NextResponse.json({ error: "다른 대리점 요청은 처리할 수 없습니다." }, { status: 403 })
+    }
   }
 
   const newStatus = action === "approve" ? "approved" : "rejected"

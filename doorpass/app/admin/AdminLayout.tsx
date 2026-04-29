@@ -6,7 +6,7 @@ import { useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   LayoutDashboard, BarChart2, Building2, Users,
-  MessageSquare, Settings, Menu, X, ChevronRight,
+  MessageSquare, Settings, Menu, X, ChevronRight, Clock,
   LogOut, Shield, ShieldCheck,
 } from "lucide-react"
 
@@ -15,6 +15,7 @@ const NAV: { href: string; label: string; icon: LucideIcon; exact?: boolean }[] 
   { href: "/admin/analytics", label: "📈 분석", icon: BarChart2 },
   { href: "/admin/buildings/import", label: "🏢 건물 관리", icon: Building2 },
   { href: "/admin/users", label: "👥 사용자 관리", icon: Users },
+  { href: "/admin/pending-approvals", label: "⏳ 승인 대기", icon: Clock },
   { href: "/admin/role-requests", label: "🛡️ 권한 요청", icon: ShieldCheck },
   { href: "/admin/telegram", label: "📱 Telegram 메시지", icon: MessageSquare },
   { href: "/admin/settings", label: "⚙️ 설정", icon: Settings },

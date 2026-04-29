@@ -31,6 +31,27 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email })
       setAuthStatus("ok")
 
+      Promise.all([
+        fetch("/api/users/login-count", { signal: controller.signal }).then((r) => r.json()).catch(() => ({ count: 0 })),
+        fetch("/api/users/approval-status", { signal: controller.signal }).then((r) => r.json()).catch(() => ({ status: "none" })),
+      ]).then(([loginCountData, approvalStatusData]) => {
+        if (cancelled) return
+        const count = Number(loginCountData?.count ?? 0)
+        const status = String(approvalStatusData?.status ?? "none")
+
+        // 2차 로그인부터는 승인 프로세스 적용
+        if (count > 1) {
+          if (status === "none") {
+            router.replace("/select-branch")
+            return
+          }
+          if (status === "pending" || status === "rejected") {
+            router.replace("/pending-approval")
+            return
+          }
+        }
+      }).catch(() => {})
+
       fetch("/api/users/welcome", { signal: controller.signal })
         .then((r) => r.json())
         .then(({ welcome_shown }) => {

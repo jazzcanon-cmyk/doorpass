@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
-import { requireAdminApi } from "@/lib/auth"
+import { requireManagerApi } from "@/lib/auth"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase-route"
 
 type Role = "admin" | "driver"
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAdminApi()
+  const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   const body = (await request.json()) as { name?: string; phone?: string | null; email?: string | null }
@@ -20,6 +20,14 @@ export async function POST(request: Request) {
     is_active: false,
   }
   if (body.email?.toString().trim()) row.email = body.email.toString().trim()
+  if (role === "sub_admin" && user?.email) {
+    const { data: current } = await supabase
+      .from("approved_users")
+      .select("branch_id")
+      .eq("email", user.email)
+      .maybeSingle()
+    row.branch_id = current?.branch_id ?? null
+  }
 
   const { error } = await supabase.from("approved_users").insert(row)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -27,21 +35,42 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const { unauthorized } = await requireAdminApi()
+  const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   const supabase = await createSupabaseRouteHandlerClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from("approved_users")
-    .select("*")
+    .select(`
+      *,
+      branches (
+        id,
+        name,
+        region
+      )
+    `)
     .order("created_at", { ascending: false })
+
+  if (role === "sub_admin" && user?.email) {
+    const { data: current } = await supabase
+      .from("approved_users")
+      .select("branch_id")
+      .eq("email", user.email)
+      .maybeSingle()
+    if (!current?.branch_id) {
+      return NextResponse.json({ users: [] })
+    }
+    query = query.eq("branch_id", current.branch_id)
+  }
+
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ users: data ?? [] })
 }
 
 export async function PATCH(request: Request) {
-  const { unauthorized } = await requireAdminApi()
+  const { unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   const body = (await request.json()) as {
@@ -96,7 +125,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { unauthorized } = await requireAdminApi()
+  const { unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   const idParam = new URL(request.url).searchParams.get("id")

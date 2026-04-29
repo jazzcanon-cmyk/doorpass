@@ -1,10 +1,10 @@
-import { requireAdmin } from "@/lib/auth"
+import { requireManager } from "@/lib/auth"
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { AdminLayout } from "./AdminLayout"
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
-  await requireAdmin()
+  await requireManager()
 
   const cookieStore = await cookies()
   const supabase = createServerClient(

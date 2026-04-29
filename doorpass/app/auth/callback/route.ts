@@ -6,6 +6,7 @@ import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { logActivity } from "@/lib/activity-logger"
 import { trackActivity } from "@/lib/activity-tracker"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/"
@@ -70,6 +71,12 @@ export async function GET(request: Request) {
     "new_signup_notification"
   ).catch(console.error)
   if (data.user.email) {
+    try {
+      await supabaseAdmin.from("login_history").insert({ user_email: data.user.email })
+    } catch {
+      // 로그인 기록 저장 실패는 로그인 자체를 막지 않는다.
+    }
+
     logActivity(data.user.email, "login", {
       provider: data.user.app_metadata?.provider ?? "unknown",
     })

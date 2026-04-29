@@ -9,14 +9,16 @@ export async function GET() {
 
   let name: string | null = null
   let managed_region: string | null = null
+  let branch_id: string | null = null
   if (user!.email) {
     const { data } = await supabaseAdmin
       .from("approved_users")
-      .select("name, managed_region")
+      .select("name, managed_region, branch_id")
       .eq("email", user!.email)
       .maybeSingle()
     name = (data?.name as string | undefined) ?? null
     managed_region = (data?.managed_region as string | undefined) ?? null
+    branch_id = (data?.branch_id as string | undefined) ?? null
   }
 
   return NextResponse.json({
@@ -24,6 +26,7 @@ export async function GET() {
     email: user!.email ?? null,
     name,
     managed_region,
+    branchId: branch_id,
     isAdmin,
     role,
     canEdit: role === "admin" || role === "sub_admin" || role === "editor",

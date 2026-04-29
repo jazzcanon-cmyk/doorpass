@@ -191,6 +191,7 @@ export default function SubAdminPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             buildings: batch,
+            isLastBatch: isLast,
             batchInfo: {
               currentBatch: i + 1,
               totalBatches: batches.length,

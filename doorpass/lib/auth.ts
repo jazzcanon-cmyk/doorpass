@@ -197,6 +197,81 @@ export async function requireAdmin() {
 }
 
 /**
+ * admin 또는 sub_admin 전용 페이지 보호.
+ */
+export async function requireManager() {
+  const cookieStore = await cookies()
+  const supabase = makeSupabaseServer(cookieStore)
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
+    supabase,
+    user as User,
+    "id, is_active, role"
+  )
+
+  if (approved && approved.is_active === false) {
+    redirect("/")
+  }
+
+  if (!approved || (approved.role !== "admin" && approved.role !== "sub_admin")) {
+    redirect("/")
+  }
+}
+
+/**
+ * API 라우트에서 admin 또는 sub_admin 권한 검증.
+ */
+export async function requireManagerApi() {
+  const cookieStore = await cookies()
+  const supabase = makeSupabaseServer(cookieStore)
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      user: null,
+      role: null as UserRole | null,
+      unauthorized: NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 }),
+    }
+  }
+
+  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
+    supabase,
+    user as User,
+    "id, is_active, role"
+  )
+
+  if (approved && approved.is_active === false) {
+    return {
+      user: null,
+      role: null as UserRole | null,
+      unauthorized: NextResponse.json({ error: "관리자에 의해 사용이 제한된 계정입니다." }, { status: 403 }),
+    }
+  }
+
+  if (!approved || (approved.role !== "admin" && approved.role !== "sub_admin")) {
+    return {
+      user: null,
+      role: null as UserRole | null,
+      unauthorized: NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 }),
+    }
+  }
+
+  const role = approved.role === "admin" || approved.role === "sub_admin" ? approved.role : "driver"
+  return { user, role: role as UserRole, unauthorized: null }
+}
+
+/**
  * approved_users 테이블에서 사용자 역할 조회.
  * 미등록 사용자는 'driver' 기본값.
  */

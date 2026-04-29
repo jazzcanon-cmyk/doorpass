@@ -15,6 +15,7 @@ interface IncomingBuilding {
   latitude?: number | string
   longitude?: number | string
   region?: string
+  branch_id?: string
 }
 
 interface BatchInfo {
@@ -32,11 +33,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CSV 업로드 권한이 없습니다." }, { status: 403 })
   }
 
+  const { data: approver } = await supabase
+    .from("approved_users")
+    .select("role, branch_id")
+    .eq("email", user!.email)
+    .maybeSingle()
+
+  const role = String(approver?.role ?? "")
+  if (role !== "admin" && role !== "sub_admin") {
+    return NextResponse.json({ error: "CSV 업로드 권한이 없습니다." }, { status: 403 })
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     buildings?: IncomingBuilding[]
     batchInfo?: BatchInfo
+    isLastBatch?: boolean
   }
-  const { buildings, batchInfo } = body
+  const { buildings, batchInfo, isLastBatch } = body
 
   if (!Array.isArray(buildings) || buildings.length === 0) {
     return NextResponse.json({ error: "buildings 배열이 필요합니다." }, { status: 400 })
@@ -97,6 +110,7 @@ export async function POST(request: Request) {
       lat,
       lng,
       region: b.region ? String(b.region).trim() : null,
+      branch_id: approver?.branch_id ?? null,
       uploaded_by: user!.email,
     })
   }
@@ -111,9 +125,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "DB 삽입 실패: " + error.message }, { status: 500 })
   }
 
-  if (batchInfo?.isLastBatch) {
+  if (batchInfo?.isLastBatch || isLastBatch) {
     sendTelegramMessage(
-      `📤 건물 CSV 업로드 완료\n👤 ${user!.email}\n📊 총 ${batchInfo.totalCount ?? data?.length ?? 0}개 건물 업로드`,
+      `📁 [DoorPass] 건물 일괄 업로드 완료\n\n👤 업로더: ${user!.email}\n🏢 대리점: ${approver?.branch_id ?? "-"}\n📊 건물 수: ${batchInfo?.totalCount ?? data?.length ?? 0}개\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`,
       "comment_notification"
     ).catch(console.error)
   }
