@@ -136,7 +136,7 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail,
           <span className="text-[11px] text-white/50">{formatDate(u.last_sign_in_at)}</span>
           <span className="text-[10px] text-white/20 mt-0.5">가입 {formatDate(u.created_at)}</span>
         </div>
-        {onAssignRole && u.approved_id != null && (
+        {onAssignRole && (u.approved_id != null || !!u.email) && (
           <button
             type="button"
             onClick={onAssignRole}

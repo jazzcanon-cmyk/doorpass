@@ -84,8 +84,8 @@ export function AllUsersTab() {
   }
 
   const openAssign = (u: AuthUser) => {
-    if (!u.approved_id) {
-      toast.error("approved_users에 등록되지 않은 사용자입니다. '등록 관리' 탭에서 먼저 추가하세요.")
+    if (!u.approved_id && !u.email) {
+      toast.error("이메일이 없어 역할을 지정할 수 없습니다. '등록 관리' 탭에서 먼저 추가하세요.")
       return
     }
     setAssigning(u)
@@ -96,12 +96,24 @@ export function AllUsersTab() {
     role: "admin" | "sub_admin" | "editor" | "driver",
     managed_region: string | null
   ) => {
-    if (!assigning?.approved_id) return
+    if (!assigning) return
+    const identifier = assigning.approved_id != null
+      ? String(assigning.approved_id)
+      : encodeURIComponent(assigning.email ?? "")
+    if (!identifier) {
+      toast.error("식별자가 없습니다.")
+      return
+    }
     setSavingRole(true)
     try {
-      await adminApi(`/api/admin/users/${assigning.approved_id}/assign-subadmin`, {
+      await adminApi(`/api/admin/users/${identifier}/assign-subadmin`, {
         method: "POST",
-        body: JSON.stringify({ role, managed_region }),
+        body: JSON.stringify({
+          role,
+          managed_region,
+          email: assigning.email,
+          name: assigning.name,
+        }),
       })
       const labels: Record<string, string> = {
         admin: "관리자",
