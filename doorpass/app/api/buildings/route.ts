@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAdminApi, requireAuth, canRevealBuildingPassword } from "@/lib/auth"
+import { requireAuth, canRevealBuildingPassword } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 
@@ -194,14 +194,43 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAdminApi()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
-  try {
-    const { name, address, password, lat, lng, memo } = await request.json()
+  // 승인된 사용자인지 확인
+  const { data: approvedUser } = await supabaseAdmin
+    .from("approved_users")
+    .select("role, branch_id, name")
+    .eq("email", user!.email)
+    .maybeSingle()
 
-    if (!address) {
-      return NextResponse.json({ error: "address는 필수입니다." }, { status: 400 })
+  if (!approvedUser) {
+    return NextResponse.json({ error: "승인된 사용자만 건물을 등록할 수 있습니다." }, { status: 403 })
+  }
+
+  try {
+    const body = (await request.json()) as {
+      name?: string
+      address?: string
+      password?: string
+      lat?: number
+      lng?: number
+      memo?: string
+      region?: string
+      branch_id?: string | null
+      uploaded_by?: string
+    }
+    const { name, address, password, memo, region } = body
+    const lat = body.lat
+    const lng = body.lng
+    const branch_id = body.branch_id ?? approvedUser.branch_id ?? null
+    const uploaded_by = body.uploaded_by ?? user!.email
+
+    if (!address?.trim()) {
+      return NextResponse.json({ error: "주소는 필수입니다." }, { status: 400 })
+    }
+    if (!password || password.length < 4) {
+      return NextResponse.json({ error: "비밀번호는 4자리 이상이어야 합니다." }, { status: 400 })
     }
 
     if (lat !== undefined && lng !== undefined) {
@@ -212,20 +241,33 @@ export async function POST(request: Request) {
         latNum < 33.0 || latNum > 38.6 ||
         lngNum < 124.6 || lngNum > 131.9
       ) {
-        return NextResponse.json({ error: "유효하지 않은 좌표입니다. (한국 범위: 위도 33~38.6, 경도 124.6~131.9)" }, { status: 400 })
+        return NextResponse.json(
+          { error: "유효하지 않은 좌표입니다. (한국 범위: 위도 33~38.6, 경도 124.6~131.9)" },
+          { status: 400 }
+        )
       }
     }
 
     const { data, error } = await supabase
       .from("buildings")
-      .insert({ name, address, password: password ? encryptPassword(password) : null, lat, lng, memo })
+      .insert({
+        name: name?.trim() || null,
+        address: address.trim(),
+        password: encryptPassword(password),
+        lat: lat ?? 0,
+        lng: lng ?? 0,
+        memo: memo?.trim() || null,
+        region: region || null,
+        branch_id,
+      })
       .select()
       .single()
 
     if (error) throw new Error(error.message)
 
+    const displayName = name?.trim() || address.split(" ").slice(-1)[0] || "-"
     sendTelegramMessage(
-      `🏠 새로운 건물이 등록되었습니다!\n건물명: ${name || address?.split(" ").slice(-1)[0] || "-"}\n주소: ${address || "-"}${memo ? `\n메모: ${memo}` : ""}`,
+      `🏠 [새 건물 등록]\n건물명: ${displayName}\n주소: ${address.trim()}\n등록자: ${uploaded_by ?? "-"}${memo ? `\n메모: ${memo}` : ""}${region ? `\n지역: ${region}` : ""}`,
       "comment_notification"
     ).catch(console.error)
 

@@ -1,5 +1,5 @@
 "use client"
-import { Search, AlertCircle } from "lucide-react"
+import { Search, AlertCircle, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { BuildingCard } from "@/components/building-card"
 import type { Building } from "@/types/building"
@@ -11,6 +11,7 @@ interface SearchTabProps {
   canRevealBuildingPassword: boolean
   onSearch: (query: string) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
+  onAddBuilding?: () => void
 }
 
 export function SearchTab({
@@ -20,10 +21,23 @@ export function SearchTab({
   canRevealBuildingPassword,
   onSearch,
   onBuildingUpdate,
+  onAddBuilding,
 }: SearchTabProps) {
   return (
     <>
       <section className="container mx-auto px-4 py-4">
+        {onAddBuilding && (
+          <div className="mb-3">
+            <button
+              type="button"
+              onClick={onAddBuilding}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-500 hover:bg-green-400 active:bg-green-600 text-white text-sm font-semibold transition-colors shadow-md shadow-green-900/30"
+            >
+              <Plus className="h-4 w-4" />
+              새 건물 등록
+            </button>
+          </div>
+        )}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
           <Input

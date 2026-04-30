@@ -33,10 +33,14 @@ export function useAuth() {
 
       void fetch("/api/users/me", { signal: controller.signal })
         .then((r) => r.json())
-        .then((data: { canRevealBuildingPassword?: boolean }) => {
+        .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null }) => {
           if (cancelled) return
           setCurrentUser((prev) =>
-            prev ? { ...prev, canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword) } : null
+            prev ? {
+              ...prev,
+              canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
+              branchId: data?.branchId ?? null,
+            } : null
           )
         })
         .catch(() => {})

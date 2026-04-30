@@ -7,6 +7,7 @@ import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
 import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
+import { NewBuildingModal } from "@/components/NewBuildingModal"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
@@ -32,6 +33,7 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<TabType>("nearby")
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+  const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
 
   const error = locationError ?? buildingsError
 
@@ -144,6 +146,21 @@ export default function Home() {
           canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
           onSearch={handleSearch}
           onBuildingUpdate={handleBuildingUpdate}
+          onAddBuilding={
+            currentUser?.canRevealBuildingPassword === true
+              ? () => setIsAddBuildingOpen(true)
+              : undefined
+          }
+        />
+      )}
+
+      {currentUser && (
+        <NewBuildingModal
+          open={isAddBuildingOpen}
+          onClose={() => setIsAddBuildingOpen(false)}
+          branchId={currentUser.branchId}
+          userEmail={currentUser.email}
+          onSuccess={fetchBuildings}
         />
       )}
 
