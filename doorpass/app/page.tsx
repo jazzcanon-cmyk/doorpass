@@ -56,17 +56,13 @@ export default function Home() {
     setSelectedBuilding(b)
     if (b) {
       trackBuildingView(b.id, b.name || b.address, currentUser?.email)
-      void fetch("/api/activity/track", {
+      void fetch("/api/activity/log-view", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          actionType: "building_view",
-          targetInfo: {
-            building_id: b.id,
-            building_name: b.name || b.address,
-            building_address: b.address,
-          },
-          pageUrl: window.location.pathname,
+          building_id: b.id,
+          building_name: b.name || b.address,
+          building_address: b.address,
         }),
         keepalive: true,
       }).catch(() => {})

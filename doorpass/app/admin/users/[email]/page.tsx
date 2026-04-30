@@ -57,7 +57,12 @@ function activityDetail(log: ActivityLog): string {
   const d = log.activity_data
   switch (log.activity_type) {
     case "login":          return `방식: ${String(d.provider ?? "unknown")}`
-    case "building_view":  return `${String(d.count ?? "")}개 건물`
+    case "building_view": {
+      const name = String(d.building_name ?? d.building_name ?? "")
+      const addr = String(d.building_address ?? "")
+      if (name) return addr ? `${name} · ${addr}` : name
+      return d.count ? `${String(d.count)}개 건물` : "건물 조회"
+    }
     case "post_create":    return `"${String(d.title ?? "").slice(0, 40)}"`
     case "comment_create": return `"${String(d.content ?? "").slice(0, 40)}"`
     case "like":           return `댓글 #${String(d.comment_id ?? "")} ${d.liked ? "좋아요" : "취소"}`
