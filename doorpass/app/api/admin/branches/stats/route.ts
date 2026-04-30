@@ -15,6 +15,22 @@ export async function GET() {
 
     if (branchesError) throw branchesError
 
+    // manager_email 목록을 한 번에 조회해서 이름 매핑
+    const managerEmails = (branches || [])
+      .map((b) => b.manager_email)
+      .filter((e): e is string => Boolean(e))
+
+    const managerNameMap: Record<string, string> = {}
+    if (managerEmails.length > 0) {
+      const { data: managers } = await supabaseAdmin
+        .from("approved_users")
+        .select("email, name")
+        .in("email", managerEmails)
+      for (const m of managers || []) {
+        if (m.email && m.name) managerNameMap[m.email] = m.name
+      }
+    }
+
     const branchesWithStats = await Promise.all(
       (branches || []).map(async (branch) => {
         const { data: users, count: userCount } = await supabaseAdmin
@@ -42,8 +58,13 @@ export async function GET() {
           activeUsers = new Set((recentLogins || []).map((l) => l.user_email).filter(Boolean)).size
         }
 
+        const resolvedName = branch.manager_email
+          ? (managerNameMap[branch.manager_email] ?? branch.manager_name ?? null)
+          : null
+
         return {
           ...branch,
+          manager_name: resolvedName,
           stats: {
             userCount: userCount || 0,
             buildingCount: buildingCount || 0,

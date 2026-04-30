@@ -181,7 +181,9 @@ export default function BranchesPage() {
                   {branch.manager_email && (
                     <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">부관리자</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{branch.manager_name || branch.manager_email}</p>
+                      {branch.manager_name?.trim() && (
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{branch.manager_name.trim()}</p>
+                      )}
                       <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{branch.manager_email}</p>
                     </div>
                   )}
