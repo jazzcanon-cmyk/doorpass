@@ -143,7 +143,7 @@ export default function SettingsPage() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={4}
-                className="w-full rounded-xl bg-white/[0.05] border border-white/10 p-3 text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 mb-3"
+                className="w-full rounded-xl bg-white/[0.05] border border-white/10 p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 mb-3"
               />
               <Button onClick={submit} disabled={submitting} className="w-full">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "권한 요청"}
