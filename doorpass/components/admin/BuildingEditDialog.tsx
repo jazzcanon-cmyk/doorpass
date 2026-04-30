@@ -152,7 +152,7 @@ export function BuildingEditDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={busy}
-                className="bg-white dark:bg-gray-900"
+                className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -174,7 +174,7 @@ export function BuildingEditDialog({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy}
-                className="bg-white dark:bg-gray-900"
+                className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -188,7 +188,7 @@ export function BuildingEditDialog({
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 disabled={busy}
-                className="resize-y bg-white dark:bg-gray-900"
+                className="resize-y bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </div>
 

@@ -290,7 +290,7 @@ export default function BranchDetailPage() {
                 type="email"
                 value={editForm.manager_email}
                 onChange={(e) => setEditForm({ ...editForm, manager_email: e.target.value })}
-                className="w-full px-4 py-2 border rounded-lg"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 placeholder="manager@example.com"
               />
             </div>

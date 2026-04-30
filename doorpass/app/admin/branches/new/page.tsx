@@ -67,7 +67,7 @@ export default function NewBranchPage() {
                   type="text"
                   value={form.id}
                   onChange={(e) => setForm({ ...form, id: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="예: donggu"
                   required
                 />
@@ -82,7 +82,7 @@ export default function NewBranchPage() {
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="예: 동구대리점"
                   required
                 />
@@ -95,7 +95,7 @@ export default function NewBranchPage() {
                 <select
                   value={form.region}
                   onChange={(e) => setForm({ ...form, region: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   required
                 >
                   <option value="">선택하세요</option>
@@ -114,7 +114,7 @@ export default function NewBranchPage() {
                   type="email"
                   value={form.manager_email}
                   onChange={(e) => setForm({ ...form, manager_email: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="manager@example.com"
                 />
                 <p className="text-sm text-gray-500 mt-1">부관리자로 지정할 사용자 이메일 (나중에 변경 가능)</p>
