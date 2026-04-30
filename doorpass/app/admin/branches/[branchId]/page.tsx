@@ -23,6 +23,7 @@ import {
   Search,
   UserCog,
   Loader2,
+  ChevronRight,
 } from "lucide-react"
 import {
   LineChart,
@@ -173,7 +174,7 @@ export default function BranchDetailPage() {
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) throw new Error(data.error || "수정 실패")
 
-      alert("수정 완료!")
+      toast.success("대리점 정보가 수정되었습니다.")
       setIsEditing(false)
       await fetchBranchDetail()
     } catch (error) {
@@ -188,6 +189,19 @@ export default function BranchDetailPage() {
 
   return (
     <div className="p-6">
+      {/* 브레드크럼 */}
+      <nav className="flex items-center gap-1.5 text-sm mb-4">
+        <button
+          type="button"
+          onClick={() => router.push("/admin/branches")}
+          className="text-white/40 hover:text-white/70 transition-colors"
+        >
+          대리점 관리
+        </button>
+        <ChevronRight className="h-3.5 w-3.5 text-white/20 flex-shrink-0" />
+        <span className="text-white font-medium truncate">{branch.name}</span>
+      </nav>
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Button onClick={() => router.push("/admin/branches")} variant="outline" size="icon">
@@ -199,20 +213,20 @@ export default function BranchDetailPage() {
                 type="text"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="text-2xl font-bold border-b-2 border-blue-500 bg-transparent text-gray-900 dark:text-white"
+                className="text-2xl font-bold border-b-2 border-blue-500 bg-transparent text-white"
               />
             ) : (
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{branch.name}</h1>
+              <h1 className="text-2xl font-bold text-white">{branch.name}</h1>
             )}
             {isEditing ? (
               <input
                 type="text"
                 value={editForm.region}
                 onChange={(e) => setEditForm({ ...editForm, region: e.target.value })}
-                className="font-medium text-gray-700 dark:text-gray-300 border-b border-gray-300 bg-transparent"
+                className="font-medium text-gray-300 border-b border-white/20 bg-transparent"
               />
             ) : (
-              <p className="font-medium text-gray-700 dark:text-gray-300">{branch.region}</p>
+              <p className="font-medium text-gray-300">{branch.region}</p>
             )}
           </div>
         </div>
