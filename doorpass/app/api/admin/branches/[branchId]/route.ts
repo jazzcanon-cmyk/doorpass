@@ -97,9 +97,21 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       }))
     }
 
+    // approved_users에서 실제 이름 조회 (branches.manager_name이 null일 수 있으므로)
+    let resolvedManagerName: string | null = branch.manager_name ?? null
+    if (branch.manager_email && !resolvedManagerName) {
+      const { data: managerUser } = await supabaseAdmin
+        .from("approved_users")
+        .select("name")
+        .eq("email", branch.manager_email)
+        .maybeSingle()
+      resolvedManagerName = managerUser?.name ?? null
+    }
+
     return NextResponse.json({
       branch: {
         ...branch,
+        manager_name: resolvedManagerName,
         stats: {
           userCount: userCount || 0,
           buildingCount: buildingCount || 0,

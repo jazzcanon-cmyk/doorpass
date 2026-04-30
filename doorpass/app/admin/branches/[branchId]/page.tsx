@@ -297,7 +297,11 @@ export default function BranchDetailPage() {
           </div>
         ) : branch.manager_email ? (
           <div>
-            <p className="font-bold text-gray-900 dark:text-white">{branch.manager_name || "이름 없음"}</p>
+            <p className="font-bold text-gray-900 dark:text-white">
+              {branch.manager_name?.trim()
+                ? branch.manager_name.trim()
+                : branch.manager_email.split("@")[0]}
+            </p>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{branch.manager_email}</p>
           </div>
         ) : (
