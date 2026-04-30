@@ -135,11 +135,11 @@ export default function SubAdminUsersPage() {
                 <select
                   value={user.role}
                   onChange={(e) => void handleRoleChange(user.email, e.target.value)}
-                  className="px-3 py-2 border rounded-lg text-sm font-medium bg-white dark:bg-gray-900"
+                  className="min-w-[120px] px-3 py-1.5 rounded-md text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
                 >
-                  <option value="driver">기사</option>
-                  <option value="editor">편집자</option>
-                  <option value="sub_admin">부관리자</option>
+                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="driver">기사</option>
+                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="editor">편집자</option>
+                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="sub_admin">부관리자</option>
                 </select>
 
                 <Button onClick={() => void handleBlockUser(user.email, user.name || user.email)} variant="destructive" size="sm">
