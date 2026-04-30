@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -9,7 +9,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
+import { Loader2, Search } from "lucide-react"
+
+declare global {
+  interface Window {
+    daum?: {
+      Postcode: new (options: {
+        oncomplete: (data: { roadAddress: string; jibunAddress: string }) => void
+        theme?: Record<string, string>
+      }) => { open: () => void }
+    }
+  }
+}
 
 interface NewBuildingModalProps {
   open: boolean
@@ -44,6 +55,29 @@ export function NewBuildingModal({
     region: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 카카오 우편번호 스크립트 동적 로드 (한 번만)
+  useEffect(() => {
+    const SCRIPT_ID = "kakao-postcode-script"
+    if (document.getElementById(SCRIPT_ID)) return
+    const script = document.createElement("script")
+    script.id = SCRIPT_ID
+    script.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+    script.async = true
+    document.head.appendChild(script)
+  }, [])
+
+  const openAddressSearch = () => {
+    if (!window.daum?.Postcode) {
+      toast.error("주소 검색을 불러오는 중입니다. 잠시 후 다시 시도해주세요.")
+      return
+    }
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        setForm((prev) => ({ ...prev, address: data.roadAddress || data.jibunAddress }))
+      },
+    }).open()
+  }
 
   const resetAndClose = () => {
     setForm({ name: "", address: "", password: "", memo: "", region: "" })
@@ -125,14 +159,24 @@ export function NewBuildingModal({
             <label className={LABEL_CLS}>
               주소 <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="예) 울산시 남구 삼산로 123"
-              className={INPUT_CLS}
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="예) 울산시 남구 삼산로 123"
+                className={`${INPUT_CLS} flex-1`}
+                required
+              />
+              <button
+                type="button"
+                onClick={openAddressSearch}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shrink-0"
+              >
+                <Search className="h-3.5 w-3.5" />
+                주소검색
+              </button>
+            </div>
           </div>
 
           <div>
