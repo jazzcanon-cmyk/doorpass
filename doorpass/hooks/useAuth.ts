@@ -28,8 +28,18 @@ export function useAuth() {
         user.user_metadata?.full_name ??
         (email ? email.split("@")[0] : "익명")
 
-      setCurrentUser({ userId, userName, email })
+      setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
+
+      void fetch("/api/users/me", { signal: controller.signal })
+        .then((r) => r.json())
+        .then((data: { canRevealBuildingPassword?: boolean }) => {
+          if (cancelled) return
+          setCurrentUser((prev) =>
+            prev ? { ...prev, canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword) } : null
+          )
+        })
+        .catch(() => {})
 
       Promise.all([
         fetch("/api/users/login-count", { signal: controller.signal }).then((r) => r.json()).catch(() => ({ count: 0 })),

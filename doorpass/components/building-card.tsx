@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Navigation, Pencil, X, Check, MapPin, Lock } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
+import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
 
 interface Building {
   id: string
@@ -23,6 +24,8 @@ interface Building {
 interface BuildingCardProps {
   building: Building
   showDistance?: boolean
+  /** 승인·역할이 갖춰진 사용자만 실제 비밀번호 노출 (서버와 동일 기준) */
+  canRevealBuildingPassword?: boolean
   onUpdate?: (buildingId: string, updated: Partial<Building>) => void
 }
 
@@ -87,13 +90,24 @@ function EditableRow({
   )
 }
 
-export function BuildingCard({ building, showDistance = true, onUpdate }: BuildingCardProps) {
+export function BuildingCard({
+  building,
+  showDistance = true,
+  canRevealBuildingPassword = false,
+  onUpdate,
+}: BuildingCardProps) {
   const { canEdit } = useIsAdmin()
   const [showPopup, setShowPopup] = useState(false)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
 
+  useEffect(() => {
+    setCurrentBuilding(building)
+  }, [building])
+
   const saveField = async (field: "name" | "password" | "memo", value: string) => {
+    if (field === "password" && !canRevealBuildingPassword) return
     setSaving(true)
     try {
       const res = await fetch("/api/buildings/update", {
@@ -160,11 +174,28 @@ export function BuildingCard({ building, showDistance = true, onUpdate }: Buildi
                   <span className="text-muted-foreground">{currentBuilding.address}</span>
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="font-mono text-base font-bold text-yellow-400 whitespace-nowrap">
-                  {currentBuilding.password}
-                </span>
-                <MapPin className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-base font-bold text-yellow-400 whitespace-nowrap">
+                    {currentBuilding.password}
+                  </span>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </div>
+                {!canRevealBuildingPassword && (
+                  <p className="text-[10px] text-muted-foreground text-right max-w-[200px] leading-snug">
+                    승인 후 열람 가능 —{" "}
+                    <button
+                      type="button"
+                      className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowApprovalModal(true)
+                      }}
+                    >
+                      승인 요청하기
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -211,8 +242,20 @@ export function BuildingCard({ building, showDistance = true, onUpdate }: Buildi
                 value={currentBuilding.password || ""}
                 onSave={(v) => saveField("password", v)}
                 saving={saving}
-                canEdit={canEdit}
+                canEdit={canEdit && canRevealBuildingPassword}
               />
+              {!canRevealBuildingPassword && (
+                <p className="text-[11px] text-muted-foreground mt-1 pl-[4.5rem]">
+                  승인 후 열람 가능 —{" "}
+                  <button
+                    type="button"
+                    className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
+                    onClick={() => setShowApprovalModal(true)}
+                  >
+                    승인 요청하기
+                  </button>
+                </p>
+              )}
               <EditableRow
                 label="메모"
                 value={currentBuilding.memo || ""}
@@ -270,6 +313,8 @@ export function BuildingCard({ building, showDistance = true, onUpdate }: Buildi
           </div>
         </div>
       )}
+
+      <ApprovalRequestModal open={showApprovalModal} onOpenChange={setShowApprovalModal} />
     </>
   )
 }

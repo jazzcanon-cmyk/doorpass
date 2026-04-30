@@ -8,11 +8,19 @@ interface SearchTabProps {
   searchQuery: string
   searchResults: Building[]
   allBuildings: Building[]
+  canRevealBuildingPassword: boolean
   onSearch: (query: string) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
 }
 
-export function SearchTab({ searchQuery, searchResults, allBuildings, onSearch, onBuildingUpdate }: SearchTabProps) {
+export function SearchTab({
+  searchQuery,
+  searchResults,
+  allBuildings,
+  canRevealBuildingPassword,
+  onSearch,
+  onBuildingUpdate,
+}: SearchTabProps) {
   return (
     <>
       <section className="container mx-auto px-4 py-4">
@@ -46,7 +54,13 @@ export function SearchTab({ searchQuery, searchResults, allBuildings, onSearch, 
               검색 결과 {searchResults.length}건
             </p>
             {searchResults.map((b) => (
-              <BuildingCard key={b.id} building={b} showDistance={false} onUpdate={onBuildingUpdate} />
+              <BuildingCard
+                key={b.id}
+                building={b}
+                showDistance={false}
+                canRevealBuildingPassword={canRevealBuildingPassword}
+                onUpdate={onBuildingUpdate}
+              />
             ))}
           </div>
         )}

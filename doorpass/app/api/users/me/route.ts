@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth, getUserRole } from "@/lib/auth"
+import { requireAuth, getUserRole, canRevealBuildingPassword } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 // /api/me 와 동일 정보를 제공하는 alias (사용자 설정 페이지 호환용)
@@ -29,8 +29,11 @@ export async function GET() {
         branchId: null,
         canEdit: false,
         canUploadCSV: false,
+        canRevealBuildingPassword: false,
       })
     }
+
+    const canReveal = await canRevealBuildingPassword(user!.email)
 
     return NextResponse.json({
       email: userData.email,
@@ -40,6 +43,7 @@ export async function GET() {
       branch: userData.branches ?? null,
       canEdit: ["admin", "sub_admin", "editor"].includes(String(userData.role ?? role)),
       canUploadCSV: ["admin", "sub_admin"].includes(String(userData.role ?? role)),
+      canRevealBuildingPassword: canReveal,
     })
   } catch (error) {
     console.error("[Users Me] 오류:", error)

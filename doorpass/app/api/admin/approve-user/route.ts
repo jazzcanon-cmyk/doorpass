@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { requireManagerApi } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { executePendingApprovalById } from "@/lib/pending-approval-actions"
+import { sendApprovalResultEmail } from "@/lib/email"
 
 export async function POST(request: Request) {
   const { user, role, unauthorized } = await requireManagerApi()
@@ -42,53 +44,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
     }
 
-    if (action === "approve") {
-      const { data: existing } = await supabaseAdmin
-        .from("approved_users")
-        .select("id")
-        .eq("email", approval.user_email)
-        .maybeSingle()
-
-      if (existing) {
-        const { error: updateError } = await supabaseAdmin
-          .from("approved_users")
-          .update({
-            is_active: true,
-            branch_id: approval.selected_branch_id,
-            first_login_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id)
-        if (updateError) throw updateError
-      } else {
-        const { error: insertError } = await supabaseAdmin
-          .from("approved_users")
-          .insert({
-            email: approval.user_email,
-            name: approval.user_name,
-            role: "driver",
-            is_active: true,
-            branch_id: approval.selected_branch_id,
-            first_login_at: new Date().toISOString(),
-          })
-        if (insertError) throw insertError
-      }
+    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown")
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.httpStatus })
     }
 
-    const { error: statusError } = await supabaseAdmin
-      .from("pending_approvals")
-      .update({
-        status: action === "approve" ? "approved" : "rejected",
-        reviewed_by: user!.email,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", approvalId)
-    if (statusError) throw statusError
+    const row = result.approval
 
     await sendTelegramMessage(
       action === "approve"
-        ? `✅ 회원 승인 완료\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name}\n👔 승인자: ${user!.email}\n📅 승인일시: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
-        : `❌ 회원 승인 거부\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name}\n👔 처리자: ${user!.email}`
-    )
+        ? `✅ 회원 승인 완료\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 승인자: ${user!.email}\n📅 승인일시: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+        : `❌ 회원 승인 거부\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 처리자: ${user!.email}`
+    ).catch(console.error)
+
+    await sendApprovalResultEmail({
+      toEmail: row.user_email,
+      approved: action === "approve",
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

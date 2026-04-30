@@ -319,6 +319,27 @@ export async function getUserRole(userEmail: string | null | undefined): Promise
 }
 
 /**
+ * 메인 지도 등에서 건물 비밀번호 평문 노출 여부.
+ * approved_users에 행이 있고, 차단이 아니며, 활성(is_active !== false)이고 role이 비어 있지 않을 때만 true.
+ * (요청 문구의 status=active는 DB의 is_active 승인 상태에 대응)
+ */
+export async function canRevealBuildingPassword(email: string | null | undefined): Promise<boolean> {
+  if (!email?.trim()) return false
+  const { data } = await supabaseAdmin
+    .from("approved_users")
+    .select("is_active, is_blocked, role")
+    .eq("email", email.trim())
+    .maybeSingle()
+
+  if (!data) return false
+  if (data.is_blocked === true) return false
+  if (data.is_active === false) return false
+  const role = data.role as string | null | undefined
+  if (role == null || String(role).trim() === "") return false
+  return true
+}
+
+/**
  * 건물 정보 수정 권한 (admin / sub_admin / editor)
  */
 export async function canEditBuilding(userEmail: string | null | undefined): Promise<boolean> {

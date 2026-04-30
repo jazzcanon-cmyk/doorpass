@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Pencil, Check, Navigation, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
+import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
 
 interface Building {
   id: string
@@ -22,17 +23,30 @@ interface Building {
 
 interface SelectedBuildingInfoProps {
   building: Building
+  canRevealBuildingPassword: boolean
   onClose: () => void
   onPasswordUpdate?: (buildingId: string, newPassword: string) => void
 }
 
-export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: SelectedBuildingInfoProps) {
+export function SelectedBuildingInfo({
+  building,
+  canRevealBuildingPassword,
+  onClose,
+  onPasswordUpdate,
+}: SelectedBuildingInfoProps) {
   const { canEdit } = useIsAdmin()
   const [isEditing, setIsEditing] = useState(false)
   const [editPassword, setEditPassword] = useState(building.password)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+
+  useEffect(() => {
+    setEditPassword(building.password)
+    setIsEditing(false)
+  }, [building])
 
   const handleEdit = () => {
+    if (!canRevealBuildingPassword) return
     setIsEditing(true)
     setEditPassword(building.password)
   }
@@ -43,6 +57,7 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
   }
 
   const handleSave = async () => {
+    if (!canRevealBuildingPassword) return
     if (editPassword === building.password) {
       setIsEditing(false)
       return
@@ -79,6 +94,7 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
   }
 
   return (
+    <>
     <Card className="mt-3 border-primary/50 bg-card animate-in slide-in-from-bottom-2 duration-200">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -100,63 +116,75 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2 mt-3">
-              {isEditing ? (
-                <>
-                  <Input
-                    type="text"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                    className="flex-1 h-10 text-sm bg-secondary border-primary/50"
-                    autoFocus
-                  />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={handleSave}
-                    disabled={isUpdating}
-                    className="h-10 w-10 shrink-0"
-                  >
-                    <Check className="h-4 w-4 text-primary" />
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={handleCancel}
-                    disabled={isUpdating}
-                    className="h-10 w-10 shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="font-mono text-lg font-bold text-yellow-400">
-                    {building.password}
-                  </span>
-                  <div className="flex-1" />
-                  {canEdit && (
+            <div className="flex flex-col gap-2 mt-3">
+              <div className="flex items-center gap-2">
+                {isEditing && canRevealBuildingPassword ? (
+                  <>
+                    <Input
+                      type="text"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      className="flex-1 h-10 text-sm bg-secondary border-primary/50"
+                      autoFocus
+                    />
                     <Button
                       variant="secondary"
                       size="icon"
-                      onClick={handleEdit}
+                      onClick={handleSave}
+                      disabled={isUpdating}
                       className="h-10 w-10 shrink-0"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Check className="h-4 w-4 text-primary" />
                     </Button>
-                  )}
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={openNavigation}
-                    className="h-10 w-10 shrink-0"
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={handleCancel}
+                      disabled={isUpdating}
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-mono text-lg font-bold text-yellow-400">{building.password}</span>
+                    <div className="flex-1" />
+                    {canEdit && canRevealBuildingPassword && (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        onClick={handleEdit}
+                        className="h-10 w-10 shrink-0"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={openNavigation}
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <Navigation className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              {!canRevealBuildingPassword && (
+                <p className="text-[11px] text-white/50 pl-0">
+                  승인 후 열람 가능 —{" "}
+                  <button
+                    type="button"
+                    className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
+                    onClick={() => setShowApprovalModal(true)}
                   >
-                    <Navigation className="h-4 w-4" />
-                  </Button>
-                </>
+                    승인 요청하기
+                  </button>
+                </p>
               )}
             </div>
-            {!canEdit && !isEditing && (
+            {!canEdit && !isEditing && canRevealBuildingPassword && (
               <div className="mt-2 flex items-center gap-2 text-[11px] text-white/50">
                 <Lock className="h-3 w-3 flex-shrink-0" />
                 <span className="flex-1">비밀번호 수정은 편집자만 가능합니다.</span>
@@ -167,5 +195,7 @@ export function SelectedBuildingInfo({ building, onClose, onPasswordUpdate }: Se
         </div>
       </CardContent>
     </Card>
+    <ApprovalRequestModal open={showApprovalModal} onOpenChange={setShowApprovalModal} />
+    </>
   )
 }

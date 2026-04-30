@@ -27,6 +27,7 @@ interface NearbyTabProps {
   allBuildings: Building[]
   viewportBuildings: Building[]
   selectedBuilding: Building | null
+  canRevealBuildingPassword: boolean
   onRetry: () => void
   onBuildingSelect: (b: Building | null) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
@@ -42,6 +43,7 @@ export function NearbyTab({
   allBuildings,
   viewportBuildings,
   selectedBuilding,
+  canRevealBuildingPassword,
   onRetry,
   onBuildingSelect,
   onBuildingUpdate,
@@ -69,6 +71,7 @@ export function NearbyTab({
           {selectedBuilding && (
             <SelectedBuildingInfo
               building={selectedBuilding}
+              canRevealBuildingPassword={canRevealBuildingPassword}
               onClose={() => onBuildingSelect(null)}
               onPasswordUpdate={(id, pw) => onBuildingUpdate(id, { password: pw })}
             />
@@ -106,7 +109,13 @@ export function NearbyTab({
         ) : (
           <div className="space-y-3">
             {nearbyBuildings.map((b) => (
-              <BuildingCard key={b.id} building={b} showDistance onUpdate={onBuildingUpdate} />
+              <BuildingCard
+                key={b.id}
+                building={b}
+                showDistance
+                canRevealBuildingPassword={canRevealBuildingPassword}
+                onUpdate={onBuildingUpdate}
+              />
             ))}
           </div>
         )}

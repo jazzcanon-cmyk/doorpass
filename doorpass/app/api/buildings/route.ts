@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAdminApi, requireAuth } from "@/lib/auth"
+import { requireAdminApi, requireAuth, canRevealBuildingPassword } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 
@@ -18,12 +18,25 @@ interface BuildingRow {
 const supabase = supabaseAdmin
 
 const MANAGEMENT_PAGE_SIZE = 100
+const MASKED_BUILDING_PASSWORD = "●●●●"
 
 function escapeIlikePattern(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")
 }
 
-function toBuilding(b: BuildingRow) {
+function toBuilding(b: BuildingRow, revealPassword: boolean) {
+  if (!revealPassword) {
+    return {
+      id: String(b.id),
+      name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
+      address: b.address ?? "",
+      password: MASKED_BUILDING_PASSWORD,
+      latitude: b.lat,
+      longitude: b.lng,
+      memo: b.memo ?? "",
+    }
+  }
+
   const rawPassword = b.password ?? ""
   let password = rawPassword
   try {
@@ -55,6 +68,8 @@ export async function GET(request: Request) {
   const maxLng = searchParams.get("maxLng")
 
   try {
+    const revealPassword = await canRevealBuildingPassword(user?.email)
+
     // 뷰포트 범위가 주어지면 단일 필터 쿼리로 처리
     if (minLat && maxLat && minLng && maxLng) {
       const { data, error } = await supabase
@@ -68,7 +83,9 @@ export async function GET(request: Request) {
 
       if (error) throw new Error(error.message)
       logActivity(user!.email!, "building_view", { count: data?.length ?? 0 }, getIp(request))
-      return NextResponse.json({ buildings: (data ?? []).map(toBuilding) })
+      return NextResponse.json({
+        buildings: (data ?? []).map((row) => toBuilding(row as BuildingRow, revealPassword)),
+      })
     }
 
     const hasPageParam = searchParams.has("page")
@@ -164,7 +181,9 @@ export async function GET(request: Request) {
       from += pageSize
     }
 
-    return NextResponse.json({ buildings: allBuildings.map(toBuilding) })
+    return NextResponse.json({
+      buildings: allBuildings.map((row) => toBuilding(row, revealPassword)),
+    })
   } catch (error) {
     console.error("Error fetching buildings:", error)
     return NextResponse.json(

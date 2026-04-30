@@ -128,6 +128,7 @@ export default function Home() {
           allBuildings={allBuildings}
           viewportBuildings={viewportBuildings}
           selectedBuilding={selectedBuilding}
+          canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
           onRetry={refreshLocation}
           onBuildingSelect={handleBuildingSelect}
           onBuildingUpdate={handleBuildingUpdate}
@@ -140,6 +141,7 @@ export default function Home() {
           searchQuery={searchQuery}
           searchResults={searchResults}
           allBuildings={allBuildings}
+          canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
           onSearch={handleSearch}
           onBuildingUpdate={handleBuildingUpdate}
         />
