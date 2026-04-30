@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { MapPin, Building2 } from "lucide-react"
+import { MapPin, Building2, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface Branch {
@@ -15,6 +15,8 @@ export default function SelectBranchPage() {
   const router = useRouter()
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedBranch, setSelectedBranch] = useState("")
+  const [termsChecked, setTermsChecked] = useState(false)
+  const [purposeChecked, setPurposeChecked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -32,11 +34,10 @@ export default function SelectBranchPage() {
     }, {})
   }, [branches])
 
+  const canSubmit = selectedBranch && termsChecked && purposeChecked
+
   const handleSubmit = async () => {
-    if (!selectedBranch) {
-      alert("대리점을 선택해주세요")
-      return
-    }
+    if (!canSubmit) return
     setIsLoading(true)
     try {
       const res = await fetch("/api/users/request-approval", {
@@ -102,8 +103,52 @@ export default function SelectBranchPage() {
             ))}
           </div>
 
-          <div className="mt-8">
-            <Button onClick={handleSubmit} disabled={!selectedBranch || isLoading} className="w-full py-6 text-lg">
+          {/* 이용약관 동의 */}
+          <div className="mt-8 space-y-3 border-t border-white/10 pt-6">
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">이용약관 동의</p>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsChecked}
+                onChange={(e) => setTermsChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
+              />
+              <span className="text-sm text-white/80 leading-relaxed">
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline underline-offset-2 hover:text-blue-300 inline-flex items-center gap-0.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  이용약관 <ExternalLink className="h-3 w-3" />
+                </a>
+                에 동의합니다.{" "}
+                <span className="text-red-400 font-medium">(필수)</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={purposeChecked}
+                onChange={(e) => setPurposeChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
+              />
+              <span className="text-sm text-white/80 leading-relaxed">
+                비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
+                <span className="text-red-400 font-medium">(필수)</span>
+              </span>
+            </label>
+          </div>
+
+          <div className="mt-6">
+            <Button
+              onClick={() => void handleSubmit()}
+              disabled={!canSubmit || isLoading}
+              className="w-full py-6 text-lg disabled:opacity-40"
+            >
               {isLoading ? "처리 중..." : "선택 완료"}
             </Button>
           </div>

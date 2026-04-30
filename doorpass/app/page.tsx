@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
+import { TermsAgreementModal } from "@/components/TermsAgreementModal"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
@@ -34,6 +35,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("nearby")
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   const error = locationError ?? buildingsError
 
@@ -82,6 +84,17 @@ export default function Home() {
     setSelectedBuilding(null)
   }, [])
 
+  // 기존 회원 약관 동의 확인
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    void fetch("/api/users/terms-check")
+      .then((r) => r.json())
+      .then((data: { agreed?: boolean }) => {
+        if (data.agreed === false) setShowTermsModal(true)
+      })
+      .catch(() => {})
+  }, [authStatus])
+
   useEffect(() => {
     if (authStatus !== "ok") return
     void fetch("/api/activity/track", {
@@ -96,6 +109,10 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+      {showTermsModal && (
+        <TermsAgreementModal onAgreed={() => setShowTermsModal(false)} />
+      )}
+
       <WelcomeDialog
         open={showWelcome}
         userName={currentUser?.userName ?? ""}

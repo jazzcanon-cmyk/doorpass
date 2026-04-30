@@ -9,6 +9,12 @@ export async function POST(request: Request) {
   const { unauthorized, user } = await requireAuth()
   if (unauthorized) return unauthorized
 
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    null
+  const userAgent = request.headers.get("user-agent") ?? null
+
   try {
     const body = (await request.json().catch(() => ({}))) as { branchId?: string }
     const branchId = String(body.branchId ?? "").trim()
@@ -35,6 +41,12 @@ export async function POST(request: Request) {
     if (existing) {
       return NextResponse.json({ message: "이미 승인 요청이 진행 중입니다." })
     }
+
+    // 약관 동의 기록 저장 (이미 존재해도 무시)
+    await supabaseAdmin.from("terms_agreements").upsert(
+      { user_email: user!.email, ip_address: ip, user_agent: userAgent, version: "v1.0" },
+      { onConflict: "user_email", ignoreDuplicates: true }
+    )
 
     const linkToken = randomUUID()
 
