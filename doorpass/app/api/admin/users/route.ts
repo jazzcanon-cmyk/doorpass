@@ -34,9 +34,13 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true })
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
+
+  const { searchParams } = new URL(request.url)
+  const excludeAdmin = searchParams.get("excludeAdmin") === "true"
+  const search = searchParams.get("search")?.trim().toLowerCase() ?? ""
 
   const supabase = await createSupabaseRouteHandlerClient()
   let query = supabase
@@ -63,10 +67,24 @@ export async function GET() {
     query = query.eq("branch_id", current.branch_id)
   }
 
+  if (excludeAdmin) {
+    query = query.neq("role", "admin")
+  }
+
   const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ users: data ?? [] })
+
+  let users = data ?? []
+  if (search) {
+    users = users.filter((u) => {
+      const name = String(u.name ?? "").toLowerCase()
+      const email = String(u.email ?? "").toLowerCase()
+      return name.includes(search) || email.includes(search)
+    })
+  }
+
+  return NextResponse.json({ users })
 }
 
 export async function PATCH(request: Request) {

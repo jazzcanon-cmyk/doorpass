@@ -1,8 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   ArrowLeft,
   Users,
@@ -13,6 +20,9 @@ import {
   Edit,
   Save,
   X,
+  Search,
+  UserCog,
+  Loader2,
 } from "lucide-react"
 import {
   LineChart,
@@ -49,6 +59,13 @@ interface BranchDetail {
   }
 }
 
+interface UserCandidate {
+  id: number
+  email: string
+  name: string | null
+  role: string
+}
+
 export default function BranchDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -63,12 +80,14 @@ export default function BranchDetailPage() {
     manager_email: "",
   })
 
-  useEffect(() => {
-    if (!branchId) return
-    void fetchBranchDetail()
-  }, [branchId])
+  // 부관리자 지정 모달 상태
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<UserCandidate[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isAssigning, setIsAssigning] = useState<string | null>(null)
 
-  const fetchBranchDetail = async () => {
+  const fetchBranchDetail = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await fetch(`/api/admin/branches/${branchId}`)
@@ -87,6 +106,60 @@ export default function BranchDetailPage() {
     } finally {
       setIsLoading(false)
     }
+  }, [branchId, router])
+
+  useEffect(() => {
+    if (!branchId) return
+    void fetchBranchDetail()
+  }, [branchId, fetchBranchDetail])
+
+  const searchUsers = useCallback(async (q: string) => {
+    setIsSearching(true)
+    try {
+      const params = new URLSearchParams({ excludeAdmin: "true" })
+      if (q) params.set("search", q)
+      const res = await fetch(`/api/admin/users?${params}`)
+      const data = (await res.json().catch(() => ({}))) as { users?: UserCandidate[] }
+      setSearchResults(data.users ?? [])
+    } catch {
+      toast.error("회원 목록을 불러오지 못했습니다.")
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isAssignModalOpen) return
+    const timer = setTimeout(() => void searchUsers(searchQuery), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, isAssignModalOpen, searchUsers])
+
+  const handleOpenAssignModal = () => {
+    setSearchQuery("")
+    setSearchResults([])
+    setIsAssignModalOpen(true)
+    void searchUsers("")
+  }
+
+  const handleAssign = async (userEmail: string) => {
+    if (!branch) return
+    setIsAssigning(userEmail)
+    try {
+      const res = await fetch("/api/admin/assign-sub-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchId, userEmail }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? "지정 실패")
+      toast.success("부관리자가 지정되었습니다.")
+      setIsAssignModalOpen(false)
+      await fetchBranchDetail()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "부관리자 지정에 실패했습니다.")
+    } finally {
+      setIsAssigning(null)
+    }
   }
 
   const handleSave = async () => {
@@ -97,7 +170,7 @@ export default function BranchDetailPage() {
         body: JSON.stringify(editForm),
       })
 
-      const data = await res.json().catch(() => ({}))
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) throw new Error(data.error || "수정 실패")
 
       alert("수정 완료!")
@@ -200,7 +273,15 @@ export default function BranchDetailPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border mb-8">
-        <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">부관리자 정보</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">부관리자 정보</h2>
+          {!isEditing && (
+            <Button onClick={handleOpenAssignModal} variant="outline" size="sm">
+              <UserCog className="h-4 w-4 mr-2" />
+              {branch.manager_email ? "부관리자 변경" : "부관리자 지정"}
+            </Button>
+          )}
+        </div>
         {isEditing ? (
           <div className="space-y-4">
             <div>
@@ -223,6 +304,75 @@ export default function BranchDetailPage() {
           <p className="font-medium text-gray-700 dark:text-gray-300">부관리자가 지정되지 않았습니다</p>
         )}
       </div>
+
+      {/* 부관리자 지정 모달 */}
+      <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle>
+              {branch.manager_email ? "부관리자 변경" : "부관리자 지정"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="이름 또는 이메일로 검색"
+              className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="max-h-80 overflow-y-auto space-y-2">
+            {isSearching ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+              </div>
+            ) : searchResults.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                검색 결과가 없습니다
+              </p>
+            ) : (
+              searchResults.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                      {u.name || u.email}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
+                    <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${
+                      u.role === "sub_admin"
+                        ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    }`}>
+                      {u.role === "sub_admin" ? "부관리자" : u.role === "editor" ? "편집자" : "일반"}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={isAssigning === u.email || branch.manager_email === u.email}
+                    onClick={() => void handleAssign(u.email)}
+                    className="ml-3 shrink-0"
+                  >
+                    {isAssigning === u.email ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : branch.manager_email === u.email ? (
+                      "현재 부관리자"
+                    ) : (
+                      "지정"
+                    )}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
