@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   LayoutDashboard, BarChart2, Building2, Users,
@@ -29,7 +29,7 @@ const LABEL: Record<string, string> = {
   "role-requests": "권한 요청",
 }
 
-function Breadcrumb({ pathname }: { pathname: string }) {
+function Breadcrumb({ pathname, branchMap }: { pathname: string; branchMap: Record<string, string> }) {
   const segs = pathname.split("/").filter(Boolean)
   return (
     <div className="flex items-center gap-1.5 text-sm min-w-0">
@@ -37,7 +37,7 @@ function Breadcrumb({ pathname }: { pathname: string }) {
         <span key={i} className="flex items-center gap-1.5 min-w-0">
           {i > 0 && <span className="text-white/20 flex-shrink-0">/</span>}
           <span className={`truncate ${i === segs.length - 1 ? "text-white font-medium" : "text-white/40"}`}>
-            {LABEL[seg] ?? seg}
+            {LABEL[seg] ?? branchMap[seg] ?? seg}
           </span>
         </span>
       ))}
@@ -133,6 +133,20 @@ export function AdminLayout({
 }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [branchMap, setBranchMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    fetch("/api/branches")
+      .then((res) => res.json())
+      .then((data: { branches?: Array<{ id: string; name: string }> }) => {
+        const map: Record<string, string> = {}
+        for (const b of data.branches ?? []) {
+          if (b.id && b.name) map[b.id] = b.name
+        }
+        setBranchMap(map)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="flex h-[100dvh] bg-slate-950 overflow-hidden">
@@ -171,7 +185,7 @@ export function AdminLayout({
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <Breadcrumb pathname={pathname} />
+            <Breadcrumb pathname={pathname} branchMap={branchMap} />
           </div>
           <div className="hidden sm:flex flex-col items-end text-right min-w-0 max-w-[200px]">
             <span className="text-xs font-medium text-white truncate">{adminName}</span>
