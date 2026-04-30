@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { Building2, ChevronLeft, ChevronRight, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { BuildingEditDialog } from "@/components/admin/BuildingEditDialog"
 
 const PAGE_SIZE = 100
 
@@ -23,7 +25,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced
 }
 
-export function BuildingsManagementClient() {
+export function BuildingsManagementClient({ editable = false }: { editable?: boolean }) {
   const [buildings, setBuildings] = useState<BuildingListItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -31,6 +33,7 @@ export function BuildingsManagementClient() {
   const debouncedSearch = useDebouncedValue(searchInput.trim(), 350)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [detailBuildingId, setDetailBuildingId] = useState<number | null>(null)
 
   const fetchPage = useCallback(async (p: number, search: string) => {
     setIsLoading(true)
@@ -129,7 +132,27 @@ export function BuildingsManagementClient() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {buildings.map((building) => (
-              <div key={building.id} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div
+                key={building.id}
+                role={editable ? "button" : undefined}
+                tabIndex={editable ? 0 : undefined}
+                className={cn(
+                  "bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700",
+                  editable &&
+                    "cursor-pointer transition-colors hover:border-blue-400 dark:hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                )}
+                onClick={editable ? () => setDetailBuildingId(building.id) : undefined}
+                onKeyDown={
+                  editable
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setDetailBuildingId(building.id)
+                        }
+                      }
+                    : undefined
+                }
+              >
                 <div className="flex items-start justify-between mb-3">
                   <Building2 className="h-6 w-6 text-blue-500" />
                   <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-gray-800 dark:text-gray-200">
@@ -155,6 +178,23 @@ export function BuildingsManagementClient() {
             </div>
           )}
         </>
+      )}
+
+      {editable && (
+        <BuildingEditDialog
+          buildingId={detailBuildingId}
+          open={detailBuildingId !== null}
+          onOpenChange={(o) => {
+            if (!o) setDetailBuildingId(null)
+          }}
+          onSaved={({ id, name }) => {
+            setBuildings((prev) => prev.map((b) => (b.id === id ? { ...b, name } : b)))
+          }}
+          onDeleted={(id) => {
+            setBuildings((prev) => prev.filter((b) => b.id !== id))
+            setTotal((t) => Math.max(0, t - 1))
+          }}
+        />
       )}
     </div>
   )
