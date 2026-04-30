@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, Search } from "lucide-react"
+import { Loader2, Search, AlertTriangle, CheckCircle2 } from "lucide-react"
 
 declare global {
   interface Window {
@@ -29,6 +29,18 @@ interface NewBuildingModalProps {
   userEmail: string
   onSuccess: () => void
 }
+
+interface DuplicateBuilding {
+  id: string
+  name: string
+  address: string
+  created_at: string
+}
+
+type DuplicateCheckResult =
+  | null
+  | { exists: false }
+  | { exists: true; building: DuplicateBuilding }
 
 const REGIONS = ["울산", "부산", "대구", "서울", "경기", "기타"]
 
@@ -55,8 +67,9 @@ export function NewBuildingModal({
     region: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult>(null)
+  const [isChecking, setIsChecking] = useState(false)
 
-  // 카카오 우편번호 스크립트 동적 로드 (한 번만)
   useEffect(() => {
     const SCRIPT_ID = "kakao-postcode-script"
     if (document.getElementById(SCRIPT_ID)) return
@@ -67,6 +80,23 @@ export function NewBuildingModal({
     document.head.appendChild(script)
   }, [])
 
+  const checkDuplicate = async (address: string) => {
+    setIsChecking(true)
+    setDuplicateCheck(null)
+    try {
+      const res = await fetch(
+        `/api/buildings/check-duplicate?address=${encodeURIComponent(address)}`
+      )
+      const data = (await res.json()) as DuplicateCheckResult & { error?: string }
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? "확인 실패")
+      setDuplicateCheck(data as DuplicateCheckResult)
+    } catch {
+      setDuplicateCheck(null)
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
   const openAddressSearch = () => {
     if (!window.daum?.Postcode) {
       toast.error("주소 검색을 불러오는 중입니다. 잠시 후 다시 시도해주세요.")
@@ -74,13 +104,16 @@ export function NewBuildingModal({
     }
     new window.daum.Postcode({
       oncomplete: (data) => {
-        setForm((prev) => ({ ...prev, address: data.roadAddress || data.jibunAddress }))
+        const address = data.roadAddress || data.jibunAddress
+        setForm((prev) => ({ ...prev, address }))
+        void checkDuplicate(address)
       },
     }).open()
   }
 
   const resetAndClose = () => {
     setForm({ name: "", address: "", password: "", memo: "", region: "" })
+    setDuplicateCheck(null)
     onClose()
   }
 
@@ -129,6 +162,9 @@ export function NewBuildingModal({
     }
   }
 
+  const isDuplicate = duplicateCheck?.exists === true
+  const isNew = duplicateCheck?.exists === false
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose() }}>
       <DialogContent className="max-w-md w-full">
@@ -136,101 +172,164 @@ export function NewBuildingModal({
           <DialogTitle>새 건물 비밀번호 등록</DialogTitle>
         </DialogHeader>
 
-        <p className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-lg px-3 py-2">
-          🎁 새 건물을 등록하면 포인트가 적립됩니다!
-        </p>
-
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <div>
-            <label className={LABEL_CLS}>
-              건물명 <span className="text-red-500">*</span>
-            </label>
+        {/* 주소 선택 영역 */}
+        <div>
+          <label className={LABEL_CLS}>
+            주소 <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-2">
             <input
               type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="예) 롯데캐슬 101동"
-              className={INPUT_CLS}
-              required
+              value={form.address}
+              onChange={(e) => {
+                setForm({ ...form, address: e.target.value })
+                setDuplicateCheck(null)
+              }}
+              placeholder="예) 울산시 남구 삼산로 123"
+              className={`${INPUT_CLS} flex-1`}
             />
+            <button
+              type="button"
+              onClick={openAddressSearch}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shrink-0"
+            >
+              <Search className="h-3.5 w-3.5" />
+              주소검색
+            </button>
           </div>
 
-          <div>
-            <label className={LABEL_CLS}>
-              주소 <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="예) 울산시 남구 삼산로 123"
-                className={`${INPUT_CLS} flex-1`}
-                required
-              />
-              <button
-                type="button"
-                onClick={openAddressSearch}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shrink-0"
-              >
-                <Search className="h-3.5 w-3.5" />
-                주소검색
-              </button>
+          {/* 중복 체크 결과 */}
+          {isChecking && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              중복 건물 확인 중...
             </div>
-          </div>
+          )}
 
-          <div>
-            <label className={LABEL_CLS}>
-              비밀번호 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="4자리 이상"
-              className={INPUT_CLS}
-              required
-            />
-          </div>
+          {!isChecking && isDuplicate && duplicateCheck && duplicateCheck.exists && (
+            <div className="mt-2 rounded-lg border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-600 px-4 py-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                    이미 등록된 건물입니다
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-0.5 truncate">
+                    {duplicateCheck.building.name}
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-0.5">
+                    등록일: {new Date(duplicateCheck.building.created_at).toLocaleDateString("ko-KR")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div>
-            <label className={LABEL_CLS}>지역</label>
-            <select
-              value={form.region}
-              onChange={(e) => setForm({ ...form, region: e.target.value })}
-              className={INPUT_CLS}
-            >
-              <option value="">선택 (선택사항)</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
+          {!isChecking && isNew && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-green-400 bg-green-50 dark:bg-green-900/20 dark:border-green-600 px-3 py-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+              <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                새로운 건물이에요! 등록해주세요 <span className="font-semibold">+100P</span>
+              </p>
+            </div>
+          )}
+        </div>
 
-          <div>
-            <label className={LABEL_CLS}>메모 (선택)</label>
-            <textarea
-              value={form.memo}
-              onChange={(e) => setForm({ ...form, memo: e.target.value })}
-              placeholder="추가 정보 (예: 공동현관, 2층 계단 옆)"
-              rows={2}
-              className={`${INPUT_CLS} resize-none`}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-1">
+        {/* 중복 건물인 경우 — 수정 유도 버튼 */}
+        {isDuplicate && duplicateCheck && duplicateCheck.exists && (
+          <div className="flex gap-3">
             <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              type="button"
+              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+              onClick={() => {
+                toast.info("비밀번호 수정 기능은 건물 카드에서 이용해주세요.")
+                resetAndClose()
+              }}
             >
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "등록하기"}
+              비밀번호 수정하기 +50P
             </Button>
             <Button type="button" onClick={resetAndClose} variant="outline" className="flex-1">
-              취소
+              닫기
             </Button>
           </div>
-        </form>
+        )}
+
+        {/* 중복 아닌 경우 — 등록 폼 */}
+        {!isDuplicate && (
+          <>
+            <p className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-lg px-3 py-2">
+              🎁 새 건물을 등록하면 포인트가 적립됩니다!
+            </p>
+
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+              <div>
+                <label className={LABEL_CLS}>
+                  건물명 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="예) 롯데캐슬 101동"
+                  className={INPUT_CLS}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>
+                  비밀번호 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="4자리 이상"
+                  className={INPUT_CLS}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>지역</label>
+                <select
+                  value={form.region}
+                  onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  className={INPUT_CLS}
+                >
+                  <option value="">선택 (선택사항)</option>
+                  {REGIONS.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>메모 (선택)</label>
+                <textarea
+                  value={form.memo}
+                  onChange={(e) => setForm({ ...form, memo: e.target.value })}
+                  placeholder="추가 정보 (예: 공동현관, 2층 계단 옆)"
+                  rows={2}
+                  className={`${INPUT_CLS} resize-none`}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "등록하기"}
+                </Button>
+                <Button type="button" onClick={resetAndClose} variant="outline" className="flex-1">
+                  취소
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )
