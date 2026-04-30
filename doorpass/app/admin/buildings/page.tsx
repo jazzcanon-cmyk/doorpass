@@ -1,5 +1,5 @@
 import { BuildingsManagementClient } from "@/components/admin/BuildingsManagementClient"
 
-export default function SubAdminBuildingsPage() {
+export default function AdminBuildingsListPage() {
   return <BuildingsManagementClient />
 }

@@ -17,38 +17,61 @@ export async function GET() {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 
-    const { count: userCount } = await supabaseAdmin
-      .from("approved_users")
-      .select("id", { count: "exact", head: true })
-      .eq("branch_id", userData.branch_id)
+    const isAdmin = userData.role === "admin"
+    const branchId = userData.branch_id
 
-    const { count: buildingCount } = await supabaseAdmin
-      .from("buildings")
-      .select("id", { count: "exact", head: true })
-      .eq("branch_id", userData.branch_id)
-
-    const { count: pendingApprovals } = await supabaseAdmin
-      .from("pending_approvals")
-      .select("id", { count: "exact", head: true })
-      .eq("selected_branch_id", userData.branch_id)
-      .eq("status", "pending")
+    if (userData.role === "sub_admin" && !branchId) {
+      return NextResponse.json({
+        stats: {
+          userCount: 0,
+          buildingCount: 0,
+          pendingApprovals: 0,
+          recentUploads: 0,
+        },
+      })
+    }
 
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
+    const startIso = startOfMonth.toISOString()
 
-    const { count: recentUploads } = await supabaseAdmin
+    let usersQ = supabaseAdmin.from("approved_users").select("id", { count: "exact", head: true })
+    if (!isAdmin) usersQ = usersQ.eq("branch_id", branchId as string)
+
+    let buildingsQ = supabaseAdmin.from("buildings").select("id", { count: "exact", head: true })
+    if (!isAdmin) buildingsQ = buildingsQ.eq("branch_id", branchId as string)
+
+    let pendingQ = supabaseAdmin
+      .from("pending_approvals")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+    if (!isAdmin) pendingQ = pendingQ.eq("selected_branch_id", branchId as string)
+
+    let uploadsQ = supabaseAdmin
       .from("buildings")
       .select("id", { count: "exact", head: true })
-      .eq("branch_id", userData.branch_id)
-      .gte("created_at", startOfMonth.toISOString())
+      .gte("created_at", startIso)
+    if (!isAdmin) uploadsQ = uploadsQ.eq("branch_id", branchId as string)
+
+    const [usersRes, buildingsRes, pendingRes, uploadsRes] = await Promise.all([
+      usersQ,
+      buildingsQ,
+      pendingQ,
+      uploadsQ,
+    ])
+
+    if (usersRes.error) throw usersRes.error
+    if (buildingsRes.error) throw buildingsRes.error
+    if (pendingRes.error) throw pendingRes.error
+    if (uploadsRes.error) throw uploadsRes.error
 
     return NextResponse.json({
       stats: {
-        userCount: userCount || 0,
-        buildingCount: buildingCount || 0,
-        pendingApprovals: pendingApprovals || 0,
-        recentUploads: recentUploads || 0,
+        userCount: usersRes.count ?? 0,
+        buildingCount: buildingsRes.count ?? 0,
+        pendingApprovals: pendingRes.count ?? 0,
+        recentUploads: uploadsRes.count ?? 0,
       },
     })
   } catch (error) {

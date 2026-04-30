@@ -17,6 +17,12 @@ interface BuildingRow {
 
 const supabase = supabaseAdmin
 
+const MANAGEMENT_PAGE_SIZE = 100
+
+function escapeIlikePattern(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")
+}
+
 function toBuilding(b: BuildingRow) {
   const rawPassword = b.password ?? ""
   let password = rawPassword
@@ -63,6 +69,79 @@ export async function GET(request: Request) {
       if (error) throw new Error(error.message)
       logActivity(user!.email!, "building_view", { count: data?.length ?? 0 }, getIp(request))
       return NextResponse.json({ buildings: (data ?? []).map(toBuilding) })
+    }
+
+    const hasPageParam = searchParams.has("page")
+    const hasSearchParam = searchParams.has("search")
+    const wantsManagementList = hasPageParam || hasSearchParam
+
+    if (wantsManagementList) {
+      const pageNum = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
+      const searchTerm = (searchParams.get("search") ?? "").trim().replace(/,/g, " ")
+      const from = (pageNum - 1) * MANAGEMENT_PAGE_SIZE
+      const to = from + MANAGEMENT_PAGE_SIZE - 1
+
+      const { data: me, error: meErr } = await supabaseAdmin
+        .from("approved_users")
+        .select("role, branch_id")
+        .eq("email", user!.email)
+        .maybeSingle()
+
+      if (meErr) throw new Error(meErr.message)
+      if (!me || (me.role !== "admin" && me.role !== "sub_admin")) {
+        return NextResponse.json({ error: "권한 없음" }, { status: 403 })
+      }
+
+      if (me.role === "sub_admin" && !me.branch_id) {
+        return NextResponse.json({
+          buildings: [],
+          total: 0,
+          page: pageNum,
+          pageSize: MANAGEMENT_PAGE_SIZE,
+        })
+      }
+
+      let q = supabase
+        .from("buildings")
+        .select("id, name, address, region, created_at", { count: "exact" })
+
+      if (me.role === "sub_admin") {
+        q = q.eq("branch_id", me.branch_id as string)
+      }
+
+      if (searchTerm) {
+        const esc = escapeIlikePattern(searchTerm).replace(/"/g, "")
+        const pattern = `%${esc}%`
+        const quoted = `"${pattern}"`
+        q = q.or(`name.ilike.${quoted},address.ilike.${quoted}`)
+      }
+
+      const { data, error, count } = await q
+        .order("created_at", { ascending: false })
+        .range(from, to)
+
+      if (error) throw new Error(error.message)
+
+      const rows = (data ?? []) as {
+        id: number
+        name: string | null
+        address: string | null
+        region: string | null
+        created_at: string
+      }[]
+
+      return NextResponse.json({
+        buildings: rows.map((b) => ({
+          id: b.id,
+          name: b.name || b.address || "이름 없음",
+          address: b.address || "",
+          region: b.region ?? null,
+          created_at: b.created_at,
+        })),
+        total: count ?? 0,
+        page: pageNum,
+        pageSize: MANAGEMENT_PAGE_SIZE,
+      })
     }
 
     // 전체 로드 (검색/목록용) — 페이지네이션

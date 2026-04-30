@@ -29,7 +29,9 @@ export default function SubAdminDashboardPage() {
     try {
       const res = await fetch("/api/sub-admin/stats")
       const data = await res.json().catch(() => ({}))
-      setStats(data.stats || stats)
+      if (res.ok && data.stats && typeof data.stats === "object") {
+        setStats((prev) => ({ ...prev, ...data.stats }))
+      }
     } catch (error) {
       console.error("통계 조회 실패:", error)
     } finally {

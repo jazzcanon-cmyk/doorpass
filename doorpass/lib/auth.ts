@@ -136,11 +136,19 @@ export async function requireAdminApi() {
     }
   }
 
-  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
-    supabase,
-    user as User,
-    "id, is_active, role"
-  )
+  const approved = await fetchApprovedUserForAuth<{
+    id: string
+    is_active: boolean
+    is_blocked: boolean
+    role: string
+  }>(supabase, user as User, "id, is_active, is_blocked, role")
+
+  if (approved?.is_blocked) {
+    return {
+      user: null,
+      unauthorized: NextResponse.json({ error: "차단된 계정입니다." }, { status: 403 }),
+    }
+  }
 
   if (approved && approved.is_active === false) {
     return {
@@ -167,7 +175,7 @@ export async function requireAdminApi() {
 
 /**
  * 어드민 전용 페이지에서 사용하는 헬퍼.
- * role이 'admin'이 아니면 루트('/')로 리다이렉트합니다.
+ * 부관리자는 /sub-admin 으로, 그 외 비관리자·비승인은 루트('/')로 리다이렉트합니다.
  */
 export async function requireAdmin() {
   const cookieStore = await cookies()
@@ -181,14 +189,23 @@ export async function requireAdmin() {
     redirect("/login")
   }
 
-  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
-    supabase,
-    user as User,
-    "id, is_active, role"
-  )
+  const approved = await fetchApprovedUserForAuth<{
+    id: string
+    is_active: boolean
+    is_blocked: boolean
+    role: string
+  }>(supabase, user as User, "id, is_active, is_blocked, role")
+
+  if (approved?.is_blocked) {
+    redirect("/")
+  }
 
   if (approved && approved.is_active === false) {
     redirect("/")
+  }
+
+  if (approved?.role === "sub_admin") {
+    redirect("/sub-admin")
   }
 
   if (!approved || approved.role !== "admin") {
@@ -211,11 +228,16 @@ export async function requireManager() {
     redirect("/login")
   }
 
-  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
-    supabase,
-    user as User,
-    "id, is_active, role"
-  )
+  const approved = await fetchApprovedUserForAuth<{
+    id: string
+    is_active: boolean
+    is_blocked: boolean
+    role: string
+  }>(supabase, user as User, "id, is_active, is_blocked, role")
+
+  if (approved?.is_blocked) {
+    redirect("/")
+  }
 
   if (approved && approved.is_active === false) {
     redirect("/")
@@ -245,11 +267,20 @@ export async function requireManagerApi() {
     }
   }
 
-  const approved = await fetchApprovedUserForAuth<{ id: string; is_active: boolean; role: string }>(
-    supabase,
-    user as User,
-    "id, is_active, role"
-  )
+  const approved = await fetchApprovedUserForAuth<{
+    id: string
+    is_active: boolean
+    is_blocked: boolean
+    role: string
+  }>(supabase, user as User, "id, is_active, is_blocked, role")
+
+  if (approved?.is_blocked) {
+    return {
+      user: null,
+      role: null as UserRole | null,
+      unauthorized: NextResponse.json({ error: "차단된 계정입니다." }, { status: 403 }),
+    }
+  }
 
   if (approved && approved.is_active === false) {
     return {
