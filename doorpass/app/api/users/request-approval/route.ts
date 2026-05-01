@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resendClient = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   const { unauthorized, user } = await requireAuth()
@@ -34,16 +34,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "이미 승인된 사용자입니다.", status: "approved" })
     }
 
-    const { data: existing } = await supabaseAdmin
-      .from("pending_approvals")
-      .select("id")
-      .eq("user_email", userEmail)
-      .eq("status", "pending")
-      .maybeSingle()
-
-    if (existing) {
-      return NextResponse.json({ success: true })
-    }
+    // 중복 승인 요청 허용: 매번 새 행을 insert
+    // (기존 pending 체크 제거됨)
 
     // 약관 동의 기록 저장 (이미 존재해도 무시)
     await supabaseAdmin.from("terms_agreements").upsert(
@@ -100,30 +92,32 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("이메일 수신자:", recipientEmail)
+    console.log("=== 이메일 발송 시작 ===")
+    console.log("RESEND_API_KEY 존재:", !!process.env.RESEND_API_KEY)
+    console.log("RESEND_API_KEY 앞 10자:", process.env.RESEND_API_KEY?.substring(0, 10))
+    console.log("수신자:", recipientEmail)
 
     // 4. 이메일 발송 (try-catch로 감싸기)
     try {
-      const { data: emailResult, error: emailError } = await resend.emails.send({
+      const result = await resendClient.emails.send({
         from: "onboarding@resend.dev",
-        to: recipientEmail,
+        to: [recipientEmail],
         subject: "[DoorPass] 새 회원 승인 요청",
         html: `
-          <h2>새 회원 승인 요청</h2>
+          <h2>새 회원 승인 요청이 있습니다</h2>
           <p>이메일: ${userEmail}</p>
-          <p>대리점: ${branchName} (${selectedBranchId})</p>
-          <p>요청 시각: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</p>
-          <p><a href="https://doorpass.kr/admin/pending-approvals">
+          <p>대리점: ${selectedBranchId}</p>
+          <p>요청 시각: ${new Date().toLocaleString("ko-KR")}</p>
+          <br>
+          <a href="https://doorpass.kr/admin/pending-approvals"
+             style="background:#4CAF50;color:white;padding:10px 20px;
+                    text-decoration:none;border-radius:5px;">
             승인하러 가기
-          </a></p>
+          </a>
         `,
       })
 
-      if (emailError) {
-        console.error("Resend 에러:", emailError)
-      } else {
-        console.log("이메일 발송 성공:", emailResult)
-      }
+      console.log("Resend 결과:", JSON.stringify(result))
     } catch (emailErr) {
       console.error("이메일 발송 예외:", emailErr)
     }
