@@ -90,3 +90,44 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 모든 입력 요소 전역 스타일 — 다크 테마 강제 */
+input,
+textarea,
+select {
+  color: white !important;
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgb(148 163 184) !important;
+}
+
+select option {
+  color: white !important;
+  background-color: rgb(30 41 59) !important;
+}
+
+/* 자동완성 배경색 수정 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgb(30 41 59) inset !important;
+}
+
+/* date/time picker 아이콘을 흰색으로 */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* 체크박스/라디오는 위 규칙에서 제외 */
+input[type="checkbox"],
+input[type="radio"] {
+  background-color: initial !important;
+  border-color: initial !important;
+}

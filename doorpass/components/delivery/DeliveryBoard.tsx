@@ -125,7 +125,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as "" | DeliveryStatus)}
-          className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white"
+          className="text-xs rounded-lg px-2 py-1.5 text-white bg-slate-800 border border-slate-600 [&>option]:text-white [&>option]:bg-slate-800"
         >
           <option value="">전체 상태</option>
           <option value="open">모집중</option>
@@ -136,7 +136,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
           type="date"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white"
+          className="text-xs rounded-lg px-2 py-1.5 text-white bg-slate-800 border border-slate-600 [&::-webkit-calendar-picker-indicator]:invert"
         />
         {(statusFilter || dateFilter) && (
           <button
