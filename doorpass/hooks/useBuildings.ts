@@ -1,5 +1,5 @@
 "use client"
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { calculateDistance } from "@/lib/geo-utils"
 import { trackSearch } from "@/lib/analytics"
 import type { Building, CurrentUser } from "@/types/building"
@@ -25,8 +25,11 @@ export function useBuildings(currentUser: CurrentUser | null) {
   const [searchQuery, setSearchQuery] = useState("")
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const searchTrackRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const viewportFetchingRef = useRef(false)
+  const currentUserRef = useRef(currentUser)
+  useEffect(() => {
+    currentUserRef.current = currentUser
+  }, [currentUser])
 
   const fetchBuildings = useCallback(async (lat?: number, lng?: number) => {
     try {
@@ -75,34 +78,46 @@ export function useBuildings(currentUser: CurrentUser | null) {
     []
   )
 
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query)
-      if (query.trim() === "") { setSearchResults([]); return }
-      const q = query.toLowerCase().trim()
-      const filtered = allBuildings.filter(
-        (b) =>
-          (b.name ?? "").toLowerCase().includes(q) ||
-          (b.address ?? "").toLowerCase().includes(q)
-      )
-      setSearchResults(filtered)
-      if (q.length >= 2) {
-        if (searchTrackRef.current) clearTimeout(searchTrackRef.current)
-        searchTrackRef.current = setTimeout(
-          () => {
-            trackSearch(query.trim(), filtered.length, currentUser?.email)
-            trackUserActivity(
-              "search",
-              { keyword: query.trim(), results_count: filtered.length },
-              window.location.pathname
-            )
-          },
-          1500
-        )
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
+  }, [])
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim()
+    if (trimmed === "") {
+      setSearchResults([])
+      return
+    }
+    const ctrl = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ search: trimmed })
+        const response = await fetch(`/api/buildings?${params}`, { signal: ctrl.signal })
+        if (!response.ok) {
+          setSearchResults([])
+          return
+        }
+        const data = await response.json()
+        const buildings: Building[] = data.buildings ?? []
+        setSearchResults(buildings)
+        if (trimmed.length >= 2) {
+          trackSearch(trimmed, buildings.length, currentUserRef.current?.email)
+          trackUserActivity(
+            "search",
+            { keyword: trimmed, results_count: buildings.length },
+            window.location.pathname
+          )
+        }
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return
+        setSearchResults([])
       }
-    },
-    [allBuildings, currentUser]
-  )
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
+  }, [searchQuery])
 
   const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
     const upd = (list: Building[]) =>

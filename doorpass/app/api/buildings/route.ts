@@ -125,7 +125,35 @@ export async function GET(request: Request) {
 
     const hasPageParam = searchParams.has("page")
     const hasSearchParam = searchParams.has("search")
-    const wantsManagementList = hasPageParam || hasSearchParam
+    const wantsManagementList = hasPageParam
+
+    if (hasSearchParam && !hasPageParam) {
+      const searchTerm = (searchParams.get("search") ?? "").trim()
+      if (!searchTerm) {
+        return NextResponse.json({ buildings: [], total: 0 })
+      }
+      const esc = escapeIlikePattern(searchTerm).replace(/"/g, "")
+      const quoted = `"%${esc}%"`
+      const { data, error } = await supabase
+        .from("buildings")
+        .select("id, name, address, password, lat, lng, memo, access_type")
+        .or(`name.ilike.${quoted},address.ilike.${quoted}`)
+        .order("address", { ascending: true })
+        .limit(100)
+
+      if (error) throw new Error(error.message)
+      const rows = (data ?? []) as BuildingRow[]
+      logActivity(
+        user!.email!,
+        "search",
+        { keyword: searchTerm, count: rows.length },
+        getIp(request)
+      )
+      return NextResponse.json({
+        buildings: rows.map((row) => toBuilding(row, revealPassword)),
+        total: rows.length,
+      })
+    }
 
     if (wantsManagementList) {
       const pageNum = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
