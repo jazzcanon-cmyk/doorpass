@@ -71,15 +71,16 @@ export async function POST(request: Request) {
 
     const branchName = branch?.name ?? branchId
 
+    // 1) 해당 지점의 부관리자 조회
     const { data: subAdmins } = await supabaseAdmin
       .from("approved_users")
-      .select("email, is_active, is_blocked")
+      .select("email, name, is_active, is_blocked")
       .eq("branch_id", branchId)
       .eq("role", "sub_admin")
 
-    const toEmails = (subAdmins ?? [])
+    const subAdminEmails = (subAdmins ?? [])
       .filter((r) => {
-        const row = r as { email?: string; is_active?: boolean | null; is_blocked?: boolean | null }
+        const row = r as { is_active?: boolean | null; is_blocked?: boolean | null }
         if (row.is_blocked === true) return false
         if (row.is_active === false) return false
         return true
@@ -87,12 +88,41 @@ export async function POST(request: Request) {
       .map((r) => (r as { email?: string }).email)
       .filter((e): e is string => typeof e === "string" && e.includes("@"))
 
+    // 2) 부관리자 없으면 관리자(admin)에게 폴백
+    let toEmails: string[] = subAdminEmails
+    if (toEmails.length === 0) {
+      const { data: admins } = await supabaseAdmin
+        .from("approved_users")
+        .select("email, is_active, is_blocked")
+        .eq("role", "admin")
+
+      const adminEmails = (admins ?? [])
+        .filter((r) => {
+          const row = r as { is_active?: boolean | null; is_blocked?: boolean | null }
+          if (row.is_blocked === true) return false
+          if (row.is_active === false) return false
+          return true
+        })
+        .map((r) => (r as { email?: string }).email)
+        .filter((e): e is string => typeof e === "string" && e.includes("@"))
+
+      toEmails = adminEmails
+    }
+
+    // 3) 그래도 없으면 최후 폴백
+    if (toEmails.length === 0) {
+      toEmails = ["jazzcanon@gmail.com"]
+    }
+
+    console.log("이메일 발송 대상:", toEmails)
+
     const requestedAtLabel = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
     const requesterName = String(user!.user_metadata?.name || user!.email || "미등록")
 
+    // 5) Telegram 알림 (이메일 실패 대비 이중 알림)
     try {
       await sendTelegramMessage(
-        `🔔 신규 회원 승인 요청\n\n📍 대리점: ${branchName}\n👤 이름: ${requesterName}\n📧 이메일: ${user!.email}\n📅 요청일시: ${requestedAtLabel}\n\n/admin/pending-approvals 에서 승인 처리하세요.`
+        `🔔 신규 회원 승인 요청\n\n📍 대리점: ${branchName}\n👤 이름: ${requesterName}\n📧 이메일: ${user!.email}\n📅 요청일시: ${requestedAtLabel}\n📨 수신자: ${toEmails.join(", ")}\n\n/admin/pending-approvals 에서 승인 처리하세요.`
       )
     } catch (telegramError) {
       console.error("텔레그램 실패(무시):", telegramError)
