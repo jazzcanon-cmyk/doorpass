@@ -14,6 +14,7 @@ interface BuildingRow {
   lat: number
   lng: number
   memo: string | null
+  access_type?: "free" | "password" | "etc" | null
 }
 
 const supabase = supabaseAdmin
@@ -26,6 +27,37 @@ function escapeIlikePattern(s: string): string {
 }
 
 function toBuilding(b: BuildingRow, revealPassword: boolean) {
+  const accessType = b.access_type ?? "password"
+
+  // 자유출입은 항상 공개 (미승인자도 표시)
+  if (accessType === "free") {
+    return {
+      id: String(b.id),
+      name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
+      address: b.address ?? "",
+      password: "자유출입",
+      latitude: b.lat,
+      longitude: b.lng,
+      memo: revealPassword ? b.memo ?? "" : "",
+      access_type: accessType,
+    }
+  }
+
+  // 기타: 라벨은 항상 공개, 메모는 승인자만
+  if (accessType === "etc") {
+    return {
+      id: String(b.id),
+      name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
+      address: b.address ?? "",
+      password: "메모 참조",
+      latitude: b.lat,
+      longitude: b.lng,
+      memo: revealPassword ? b.memo ?? "" : "",
+      access_type: accessType,
+    }
+  }
+
+  // password: 미승인자는 마스킹
   if (!revealPassword) {
     return {
       id: String(b.id),
@@ -34,7 +66,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       password: MASKED_BUILDING_PASSWORD,
       latitude: b.lat,
       longitude: b.lng,
-      memo: b.memo ?? "",
+      memo: "",
+      access_type: accessType,
     }
   }
 
@@ -55,6 +88,7 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
     latitude: b.lat,
     longitude: b.lng,
     memo: b.memo ?? "",
+    access_type: accessType,
   }
 }
 
@@ -75,7 +109,7 @@ export async function GET(request: Request) {
     if (minLat && maxLat && minLng && maxLng) {
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo")
+        .select("id, name, address, password, lat, lng, memo, access_type")
         .gte("lat", parseFloat(minLat))
         .lte("lat", parseFloat(maxLat))
         .gte("lng", parseFloat(minLng))
@@ -170,7 +204,7 @@ export async function GET(request: Request) {
     while (true) {
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo")
+        .select("id, name, address, password, lat, lng, memo, access_type")
         .order("address", { ascending: true })
         .range(from, from + pageSize - 1)
 
@@ -220,17 +254,19 @@ export async function POST(request: Request) {
       region?: string
       branch_id?: string | null
       uploaded_by?: string
+      access_type?: "free" | "password" | "etc"
     }
     const { name, address, password, memo, region } = body
     const lat = body.lat
     const lng = body.lng
     const branch_id = body.branch_id ?? approvedUser.branch_id ?? null
     const uploaded_by = body.uploaded_by ?? user!.email
+    const access_type = body.access_type ?? "password"
 
     if (!address?.trim()) {
       return NextResponse.json({ error: "주소는 필수입니다." }, { status: 400 })
     }
-    if (!password || password.length < 4) {
+    if (access_type === "password" && (!password || password.length < 4)) {
       return NextResponse.json({ error: "비밀번호는 4자리 이상이어야 합니다." }, { status: 400 })
     }
 
@@ -251,17 +287,26 @@ export async function POST(request: Request) {
 
     const normalizedAddress = normalizeAddress(address.trim())
 
+    // 자유출입/기타는 비밀번호 없음 — 라벨 평문 저장
+    const storedPassword =
+      access_type === "free"
+        ? "자유출입"
+        : access_type === "etc"
+        ? "기타(메모참조)"
+        : encryptPassword(password!)
+
     const { data, error } = await supabase
       .from("buildings")
       .insert({
         name: name?.trim() || null,
         address: normalizedAddress,
-        password: encryptPassword(password),
+        password: storedPassword,
         lat: lat ?? 0,
         lng: lng ?? 0,
         memo: memo?.trim() || null,
         region: region || null,
         branch_id,
+        access_type,
       })
       .select()
       .single()

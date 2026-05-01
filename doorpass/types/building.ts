@@ -1,3 +1,5 @@
+export type AccessType = "free" | "password" | "etc"
+
 export interface Building {
   id: string
   name: string
@@ -7,6 +9,7 @@ export interface Building {
   latitude: number
   longitude: number
   distance?: number
+  access_type?: AccessType
 }
 
 export interface CurrentUser {

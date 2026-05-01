@@ -19,6 +19,7 @@ interface Building {
   distance?: number
   latitude: number
   longitude: number
+  access_type?: "free" | "password" | "etc"
 }
 
 interface BuildingCardProps {
@@ -176,12 +177,22 @@ export function BuildingCard({
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-base font-bold text-yellow-400 whitespace-nowrap">
-                    {currentBuilding.password}
-                  </span>
+                  {currentBuilding.access_type === "free" ? (
+                    <span className="text-sm font-semibold text-emerald-400 whitespace-nowrap">
+                      🚪 자유출입
+                    </span>
+                  ) : currentBuilding.access_type === "etc" ? (
+                    <span className="text-sm font-semibold text-sky-400 whitespace-nowrap">
+                      📋 메모 참조
+                    </span>
+                  ) : (
+                    <span className="font-mono text-base font-bold text-yellow-400 whitespace-nowrap">
+                      {currentBuilding.password}
+                    </span>
+                  )}
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                 </div>
-                {!canRevealBuildingPassword && (
+                {!canRevealBuildingPassword && currentBuilding.access_type !== "free" && (
                   <p className="text-[10px] text-muted-foreground text-right max-w-[200px] leading-snug">
                     승인 후 열람 가능 —{" "}
                     <button
@@ -237,24 +248,42 @@ export function BuildingCard({
                 saving={saving}
                 canEdit={canEdit}
               />
-              <EditableRow
-                label="비밀번호"
-                value={currentBuilding.password || ""}
-                onSave={(v) => saveField("password", v)}
-                saving={saving}
-                canEdit={canEdit && canRevealBuildingPassword}
-              />
-              {!canRevealBuildingPassword && (
-                <p className="text-[11px] text-muted-foreground mt-1 pl-[4.5rem]">
-                  승인 후 열람 가능 —{" "}
-                  <button
-                    type="button"
-                    className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
-                    onClick={() => setShowApprovalModal(true)}
-                  >
-                    승인 요청하기
-                  </button>
-                </p>
+              {currentBuilding.access_type === "free" ? (
+                <div className="flex items-center gap-2 py-2 border-b border-border/40">
+                  <span className="text-xs text-muted-foreground w-16 flex-shrink-0">출입</span>
+                  <span className="text-sm font-semibold text-emerald-400 flex-1">
+                    🚪 자유출입 (비밀번호 없음)
+                  </span>
+                </div>
+              ) : currentBuilding.access_type === "etc" ? (
+                <div className="flex items-center gap-2 py-2 border-b border-border/40">
+                  <span className="text-xs text-muted-foreground w-16 flex-shrink-0">출입</span>
+                  <span className="text-sm font-semibold text-sky-400 flex-1">
+                    📋 메모 참조
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <EditableRow
+                    label="비밀번호"
+                    value={currentBuilding.password || ""}
+                    onSave={(v) => saveField("password", v)}
+                    saving={saving}
+                    canEdit={canEdit && canRevealBuildingPassword}
+                  />
+                  {!canRevealBuildingPassword && (
+                    <p className="text-[11px] text-muted-foreground mt-1 pl-[4.5rem]">
+                      승인 후 열람 가능 —{" "}
+                      <button
+                        type="button"
+                        className="text-blue-400 underline underline-offset-2 hover:text-blue-300"
+                        onClick={() => setShowApprovalModal(true)}
+                      >
+                        승인 요청하기
+                      </button>
+                    </p>
+                  )}
+                </>
               )}
               <EditableRow
                 label="메모"

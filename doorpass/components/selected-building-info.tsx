@@ -19,6 +19,7 @@ interface Building {
   longitude: number
   distance?: number
   memo?: string
+  access_type?: "free" | "password" | "etc"
 }
 
 interface SelectedBuildingInfoProps {
@@ -148,7 +149,13 @@ export function SelectedBuildingInfo({
                   </>
                 ) : (
                   <>
-                    <span className="font-mono text-lg font-bold text-yellow-400">{building.password}</span>
+                    {building.access_type === "free" ? (
+                      <span className="text-base font-semibold text-emerald-400">🚪 자유출입</span>
+                    ) : building.access_type === "etc" ? (
+                      <span className="text-base font-semibold text-sky-400">📋 메모 참조</span>
+                    ) : (
+                      <span className="font-mono text-lg font-bold text-yellow-400">{building.password}</span>
+                    )}
                     <div className="flex-1" />
                     {canEdit && canRevealBuildingPassword && (
                       <Button

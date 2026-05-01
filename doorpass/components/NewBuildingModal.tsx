@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Loader2, Search, AlertTriangle, CheckCircle2 } from "lucide-react"
+import type { AccessType } from "@/types/building"
 
 declare global {
   interface Window {
@@ -44,6 +45,14 @@ type DuplicateCheckResult =
 
 const REGIONS = ["울산", "부산", "대구", "서울", "경기", "기타"]
 
+const ACCESS_OPTIONS: { value: AccessType; label: string; reward: string }[] = [
+  { value: "free", label: "🚪 자유출입 (비밀번호 없음)", reward: "+50P" },
+  { value: "password", label: "🔐 비밀번호 입력", reward: "+100P" },
+  { value: "etc", label: "📋 기타 (경비실 문의 등)", reward: "+30P" },
+]
+
+const ETC_DEFAULT_MEMO = "경비실 문의 또는 관리자 호출"
+
 const INPUT_CLS =
   "w-full px-3 py-2 border border-gray-600 rounded-lg text-sm " +
   "bg-gray-800 text-white " +
@@ -65,6 +74,7 @@ export function NewBuildingModal({
     password: "",
     memo: "",
     region: "",
+    accessType: "password" as AccessType,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult>(null)
@@ -112,9 +122,25 @@ export function NewBuildingModal({
   }
 
   const resetAndClose = () => {
-    setForm({ name: "", address: "", password: "", memo: "", region: "" })
+    setForm({ name: "", address: "", password: "", memo: "", region: "", accessType: "password" })
     setDuplicateCheck(null)
     onClose()
+  }
+
+  const handleAccessTypeChange = (value: AccessType) => {
+    setForm((prev) => {
+      const next = { ...prev, accessType: value }
+      if (value === "free" || value === "etc") {
+        next.password = ""
+      }
+      if (value === "etc" && !prev.memo.trim()) {
+        next.memo = ETC_DEFAULT_MEMO
+      }
+      if (prev.accessType === "etc" && value !== "etc" && prev.memo === ETC_DEFAULT_MEMO) {
+        next.memo = ""
+      }
+      return next
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,10 +154,17 @@ export function NewBuildingModal({
       toast.error("주소를 입력해주세요.")
       return
     }
-    if (form.password.length < 4) {
+    if (form.accessType === "password" && form.password.length < 4) {
       toast.error("비밀번호는 4자리 이상 입력해주세요.")
       return
     }
+
+    const payloadPassword =
+      form.accessType === "free"
+        ? "자유출입"
+        : form.accessType === "etc"
+        ? "기타(메모참조)"
+        : form.password
 
     setIsSubmitting(true)
     try {
@@ -141,11 +174,12 @@ export function NewBuildingModal({
         body: JSON.stringify({
           name: form.name.trim(),
           address: form.address.trim(),
-          password: form.password,
+          password: payloadPassword,
           memo: form.memo.trim() || null,
           region: form.region || null,
           branch_id: branchId ?? null,
           uploaded_by: userEmail,
+          access_type: form.accessType,
         }),
       })
 
@@ -164,6 +198,8 @@ export function NewBuildingModal({
 
   const isDuplicate = duplicateCheck?.exists === true
   const isNew = duplicateCheck?.exists === false
+  const reward =
+    form.accessType === "free" ? "+50P" : form.accessType === "etc" ? "+30P" : "+100P"
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose() }}>
@@ -198,7 +234,6 @@ export function NewBuildingModal({
             </button>
           </div>
 
-          {/* 중복 체크 결과 */}
           {isChecking && (
             <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -229,13 +264,12 @@ export function NewBuildingModal({
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-green-600 bg-green-900/30 px-3 py-2">
               <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
               <p className="text-sm text-green-300 font-medium">
-                새로운 건물이에요! 등록해주세요 <span className="font-semibold">+100P</span>
+                새로운 건물이에요! 등록해주세요 <span className="font-semibold">{reward}</span>
               </p>
             </div>
           )}
         </div>
 
-        {/* 중복 건물인 경우 — 수정 유도 버튼 */}
         {isDuplicate && duplicateCheck && duplicateCheck.exists && (
           <div className="flex gap-3">
             <Button
@@ -254,7 +288,6 @@ export function NewBuildingModal({
           </div>
         )}
 
-        {/* 중복 아닌 경우 — 등록 폼 */}
         {!isDuplicate && (
           <>
             <p className="text-sm text-green-300 bg-green-900/30 border border-green-700 rounded-lg px-3 py-2">
@@ -278,17 +311,42 @@ export function NewBuildingModal({
 
               <div>
                 <label className={LABEL_CLS}>
-                  비밀번호 <span className="text-red-400">*</span>
+                  출입 방식 <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="4자리 이상"
-                  className={INPUT_CLS}
-                  required
-                />
+                <div className="grid grid-cols-1 gap-1.5">
+                  {ACCESS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleAccessTypeChange(opt.value)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm text-left transition ${
+                        form.accessType === opt.value
+                          ? "bg-blue-500/20 border-blue-400 text-white"
+                          : "bg-gray-800 border-gray-600 text-gray-200"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="text-xs text-green-400 font-semibold">{opt.reward}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {form.accessType === "password" && (
+                <div>
+                  <label className={LABEL_CLS}>
+                    비밀번호 <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    placeholder="4자리 이상"
+                    className={INPUT_CLS}
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className={LABEL_CLS}>지역</label>
@@ -305,11 +363,17 @@ export function NewBuildingModal({
               </div>
 
               <div>
-                <label className={LABEL_CLS}>메모 (선택)</label>
+                <label className={LABEL_CLS}>
+                  메모 {form.accessType === "etc" && <span className="text-red-400">*</span>}
+                </label>
                 <textarea
                   value={form.memo}
                   onChange={(e) => setForm({ ...form, memo: e.target.value })}
-                  placeholder="추가 정보 (예: 공동현관, 2층 계단 옆)"
+                  placeholder={
+                    form.accessType === "etc"
+                      ? "출입 방법 설명 (예: 경비실에 0000-0000 호출)"
+                      : "추가 정보 (예: 공동현관, 2층 계단 옆)"
+                  }
                   rows={2}
                   className={`${INPUT_CLS} resize-none`}
                 />
@@ -321,7 +385,7 @@ export function NewBuildingModal({
                   disabled={isSubmitting}
                   className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                 >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "등록하기"}
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : `등록하기 ${reward}`}
                 </Button>
                 <Button type="button" onClick={resetAndClose} variant="outline" className="flex-1 border-gray-600 text-gray-200 hover:bg-gray-700">
                   취소
