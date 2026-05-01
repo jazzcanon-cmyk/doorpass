@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, canRevealBuildingPassword } from "@/lib/auth"
+import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
@@ -93,14 +93,58 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
 }
 
 export async function GET(request: Request) {
-  const { user, unauthorized } = await requireAuth()
-  if (unauthorized) return unauthorized
-
   const { searchParams } = new URL(request.url)
   const minLat = searchParams.get("minLat")
   const maxLat = searchParams.get("maxLat")
   const minLng = searchParams.get("minLng")
   const maxLng = searchParams.get("maxLng")
+  const hasPageParam = searchParams.has("page")
+  const hasSearchParam = searchParams.has("search")
+
+  // 검색 단독 호출은 비로그인도 허용 (비밀번호는 마스킹)
+  if (hasSearchParam && !hasPageParam) {
+    try {
+      const { user, revealPasswords } = await getBuildingsListAuth()
+      const searchTerm = (searchParams.get("search") ?? "").trim()
+      console.log('search 파라미터:', searchTerm)
+      if (!searchTerm) {
+        return NextResponse.json({ buildings: [], total: 0 })
+      }
+      const esc = escapeIlikePattern(searchTerm).replace(/"/g, "")
+      const quoted = `"%${esc}%"`
+      const { data, error } = await supabase
+        .from("buildings")
+        .select("id, name, address, password, lat, lng, memo, access_type")
+        .or(`name.ilike.${quoted},address.ilike.${quoted}`)
+        .order("address", { ascending: true })
+        .limit(100)
+
+      if (error) throw new Error(error.message)
+      console.log('조회 결과 수:', data?.length)
+      const rows = (data ?? []) as BuildingRow[]
+      if (user?.email) {
+        logActivity(
+          user.email,
+          "search",
+          { keyword: searchTerm, count: rows.length },
+          getIp(request)
+        )
+      }
+      return NextResponse.json({
+        buildings: rows.map((row) => toBuilding(row, revealPasswords)),
+        total: rows.length,
+      })
+    } catch (error) {
+      console.error("Error searching buildings:", error)
+      return NextResponse.json(
+        { error: "Failed to fetch building data" },
+        { status: 500 }
+      )
+    }
+  }
+
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
 
   try {
     const revealPassword = await canRevealBuildingPassword(user?.email)
@@ -123,39 +167,7 @@ export async function GET(request: Request) {
       })
     }
 
-    const hasPageParam = searchParams.has("page")
-    const hasSearchParam = searchParams.has("search")
     const wantsManagementList = hasPageParam
-
-    if (hasSearchParam && !hasPageParam) {
-      const searchTerm = (searchParams.get("search") ?? "").trim()
-      console.log('search 파라미터:', searchTerm)
-      if (!searchTerm) {
-        return NextResponse.json({ buildings: [], total: 0 })
-      }
-      const esc = escapeIlikePattern(searchTerm).replace(/"/g, "")
-      const quoted = `"%${esc}%"`
-      const { data, error } = await supabase
-        .from("buildings")
-        .select("id, name, address, password, lat, lng, memo, access_type")
-        .or(`name.ilike.${quoted},address.ilike.${quoted}`)
-        .order("address", { ascending: true })
-        .limit(100)
-
-      if (error) throw new Error(error.message)
-      console.log('조회 결과 수:', data?.length)
-      const rows = (data ?? []) as BuildingRow[]
-      logActivity(
-        user!.email!,
-        "search",
-        { keyword: searchTerm, count: rows.length },
-        getIp(request)
-      )
-      return NextResponse.json({
-        buildings: rows.map((row) => toBuilding(row, revealPassword)),
-        total: rows.length,
-      })
-    }
 
     if (wantsManagementList) {
       const pageNum = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)

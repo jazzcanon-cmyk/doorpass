@@ -91,6 +91,23 @@ export async function requireAuth() {
 }
 
 /**
+ * 건물 목록/검색 전용 인증 헬퍼.
+ * 비로그인 사용자도 호출 가능 — 비밀번호 노출 여부만 결정한다.
+ */
+export async function getBuildingsListAuth(): Promise<{
+  user: User | null
+  revealPasswords: boolean
+}> {
+  const cookieStore = await cookies()
+  const supabase = makeSupabaseServer(cookieStore)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const revealPasswords = await canRevealBuildingPassword(user?.email)
+  return { user, revealPasswords }
+}
+
+/**
  * 사용자 식별자(provider_id 또는 sub 또는 id)를 일관되게 추출.
  * 캘린더 메모의 kakao_id 등 사용자 소유 row 비교에 사용.
  */
