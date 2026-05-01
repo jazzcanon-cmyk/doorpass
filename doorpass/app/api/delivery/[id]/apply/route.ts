@@ -1,0 +1,95 @@
+import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { sendTelegramMessage } from "@/lib/telegram"
+
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
+  try {
+    const { id } = await ctx.params
+    const body = await request.json().catch(() => ({}))
+    const message = (body?.message ?? "").toString().trim() || null
+
+    const { data: req } = await supabaseAdmin
+      .from("delivery_requests")
+      .select("id, user_email, status, delivery_date, area_description")
+      .eq("id", id)
+      .maybeSingle()
+
+    if (!req) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
+    const reqRow = req as {
+      user_email: string
+      status: string
+      delivery_date: string
+      area_description: string | null
+    }
+
+    if (reqRow.user_email === user!.email!) {
+      return NextResponse.json({ error: "본인 요청에는 신청할 수 없습니다." }, { status: 400 })
+    }
+    if (reqRow.status !== "open") {
+      return NextResponse.json({ error: "이미 마감되었습니다." }, { status: 400 })
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from("delivery_applications")
+      .select("id")
+      .eq("request_id", id)
+      .eq("applicant_email", user!.email!)
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ error: "이미 신청했습니다.", alreadyApplied: true }, { status: 400 })
+    }
+
+    const applicantName =
+      (user!.user_metadata?.name as string | undefined) ||
+      (user!.user_metadata?.full_name as string | undefined) ||
+      user!.email!
+
+    const { data, error } = await supabaseAdmin
+      .from("delivery_applications")
+      .insert({
+        request_id: id,
+        applicant_email: user!.email!,
+        applicant_name: applicantName,
+        message,
+        status: "pending",
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    sendTelegramMessage(
+      `[대리배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.delivery_date}\n확인하러가기: https://doorpass.kr/delivery`
+    ).catch(console.error)
+
+    return NextResponse.json({ application: data })
+  } catch (error) {
+    console.error("[Delivery apply] 오류:", error)
+    return NextResponse.json({ error: "신청 실패" }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
+  try {
+    const { id } = await ctx.params
+    const { error } = await supabaseAdmin
+      .from("delivery_applications")
+      .delete()
+      .eq("request_id", id)
+      .eq("applicant_email", user!.email!)
+      .eq("status", "pending")
+
+    if (error) throw error
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[Delivery apply DELETE] 오류:", error)
+    return NextResponse.json({ error: "취소 실패" }, { status: 500 })
+  }
+}

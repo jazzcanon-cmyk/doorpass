@@ -18,4 +18,4 @@ export interface CurrentUser {
   canRevealBuildingPassword?: boolean
 }
 
-export type TabType = "nearby" | "search" | "board"
+export type TabType = "nearby" | "search" | "board" | "delivery"

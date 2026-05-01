@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings } from "lucide-react"
+import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppLogo } from "@/components/AppLogo"
 import type { CurrentUser, TabType } from "@/types/building"
@@ -17,6 +17,7 @@ interface AppHeaderProps {
 const TABS: { key: TabType; label: string; icon: React.ReactNode }[] = [
   { key: "nearby", label: "내 주변", icon: <Navigation className="h-4 w-4" /> },
   { key: "search", label: "검색", icon: <Search className="h-4 w-4" /> },
+  { key: "delivery", label: "대리배송", icon: <Truck className="h-4 w-4" /> },
   { key: "board", label: "게시판", icon: <MessageSquare className="h-4 w-4" /> },
 ]
 
@@ -35,7 +36,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             </div>
           </div>
           <div className="flex items-center gap-0.5">
-            {activeTab !== "board" && (
+            {activeTab !== "board" && activeTab !== "delivery" && (
               <Button
                 variant="ghost"
                 size="icon"

@@ -2,6 +2,7 @@
 import { CalendarModal } from "@/components/calendar"
 import { useState, useEffect, useCallback } from "react"
 import { Board } from "@/components/board"
+import { DeliveryBoard } from "@/components/delivery/DeliveryBoard"
 import { WelcomeDialog } from "@/components/WelcomeDialog"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
@@ -180,6 +181,15 @@ export default function Home() {
       {activeTab === "board" && (
         <section className="container mx-auto px-4 py-4">
           <Board currentUser={currentUser ?? undefined} />
+        </section>
+      )}
+
+      {activeTab === "delivery" && (
+        <section className="container mx-auto px-4 py-4">
+          <DeliveryBoard
+            currentEmail={currentUser?.email}
+            branchId={currentUser?.branchId ?? null}
+          />
         </section>
       )}
 
