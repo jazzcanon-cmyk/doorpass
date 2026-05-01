@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ message: "이미 승인 요청이 진행 중입니다." })
+      return NextResponse.json({ success: true })
     }
 
     // 약관 동의 기록 저장 (이미 존재해도 무시)
@@ -48,15 +48,13 @@ export async function POST(request: Request) {
       { onConflict: "user_email", ignoreDuplicates: true }
     )
 
-    const linkToken = randomUUID()
-
     const { data: inserted, error } = await supabaseAdmin
       .from("pending_approvals")
       .insert({
         user_email: user!.email,
         user_name: user!.user_metadata?.name || user!.email,
         selected_branch_id: branchId,
-        token: linkToken,
+        status: "pending",
       })
       .select("id")
       .single()
@@ -92,18 +90,27 @@ export async function POST(request: Request) {
     const requestedAtLabel = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
     const requesterName = String(user!.user_metadata?.name || user!.email || "미등록")
 
-    await sendTelegramMessage(
-      `🔔 신규 회원 승인 요청\n\n📍 대리점: ${branchName}\n👤 이름: ${requesterName}\n📧 이메일: ${user!.email}\n📅 요청일시: ${requestedAtLabel}\n\n/admin/pending-approvals 에서 승인 처리하세요.`
-    )
+    try {
+      await sendTelegramMessage(
+        `🔔 신규 회원 승인 요청\n\n📍 대리점: ${branchName}\n👤 이름: ${requesterName}\n📧 이메일: ${user!.email}\n📅 요청일시: ${requestedAtLabel}\n\n/admin/pending-approvals 에서 승인 처리하세요.`
+      )
+    } catch (telegramError) {
+      console.error("텔레그램 실패(무시):", telegramError)
+    }
 
-    await sendApprovalRequestEmail({
-      toEmails,
-      branchName,
-      requesterName,
-      requesterEmail: user!.email ?? "",
-      requestedAtLabel,
-      token: linkToken,
-    })
+    try {
+      await sendApprovalRequestEmail({
+        toEmails,
+        branchName,
+        requesterName,
+        requesterEmail: user!.email ?? "",
+        requestedAtLabel,
+        token: randomUUID(),
+      })
+    } catch (emailError) {
+      console.error("이메일 실패(무시):", emailError)
+      // 이메일 실패해도 계속 진행!
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

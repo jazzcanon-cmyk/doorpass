@@ -23,20 +23,20 @@ export async function POST(request: Request) {
   }
 
   if (!body.actionType || !ALLOWED.includes(body.actionType as ActivityType)) {
-    return NextResponse.json({ error: "Invalid actionType" }, { status: 400 })
+    return NextResponse.json({ success: true, ignored: true })
   }
 
-  const result = await trackActivity({
-    userEmail: user!.email ?? "",
-    actionType: body.actionType as ActivityType,
-    targetInfo: body.targetInfo ?? {},
-    pageUrl: body.pageUrl,
-    ipAddress: getIp(request),
-    userAgent: request.headers.get("user-agent") ?? undefined,
-  })
-
-  if (!result.success) {
-    return NextResponse.json({ error: "활동 기록 저장 실패" }, { status: 500 })
+  try {
+    await trackActivity({
+      userEmail: user!.email ?? "",
+      actionType: body.actionType as ActivityType,
+      targetInfo: body.targetInfo ?? {},
+      pageUrl: body.pageUrl,
+      ipAddress: getIp(request),
+      userAgent: request.headers.get("user-agent") ?? undefined,
+    })
+  } catch (err) {
+    console.error("[Activity Track] 실패(무시):", err)
   }
   return NextResponse.json({ success: true })
 }

@@ -29,10 +29,8 @@ export async function trackActivity({
     const { error } = await supabaseAdmin.from("user_activity_logs").insert({
       user_email: userEmail,
       activity_type: actionType,
-      activity_data: targetInfo,
-      page_url: pageUrl ?? null,
+      activity_data: { ...targetInfo, page_url: pageUrl ?? null, user_agent: userAgent ?? null },
       ip_address: ipAddress ?? null,
-      user_agent: userAgent ?? null,
     })
 
     if (error) {
