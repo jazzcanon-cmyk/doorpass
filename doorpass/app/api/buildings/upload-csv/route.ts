@@ -12,8 +12,8 @@ interface IncomingBuilding {
   address?: string
   password?: string
   memo?: string
-  latitude?: number | string
-  longitude?: number | string
+  lat?: number | string
+  lng?: number | string
   region?: string
   branch_id?: string
   access_type?: string
@@ -82,8 +82,8 @@ export async function POST(request: Request) {
   for (let i = 0; i < buildings.length; i++) {
     const b = buildings[i]
     const address = String(b.address ?? "").trim()
-    const latRaw = typeof b.latitude === "string" ? parseFloat(b.latitude) : b.latitude
-    const lngRaw = typeof b.longitude === "string" ? parseFloat(b.longitude) : b.longitude
+    const latRaw = typeof b.lat === "string" ? parseFloat(b.lat) : b.lat
+    const lngRaw = typeof b.lng === "string" ? parseFloat(b.lng) : b.lng
     const lat = Number(latRaw)
     const lng = Number(lngRaw)
 

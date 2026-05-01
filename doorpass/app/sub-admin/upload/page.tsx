@@ -18,8 +18,8 @@ interface BuildingRow {
   address: string
   password: string
   memo: string
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   region: string
 }
 
@@ -59,8 +59,8 @@ async function parseExcel(file: File, defaultRegion: string): Promise<BuildingRo
       address,
       password: text(3),
       memo: text(4),
-      latitude: num(5),
-      longitude: num(6),
+      lat: num(5),
+      lng: num(6),
       region: text(7) || defaultRegion,
     })
   })
