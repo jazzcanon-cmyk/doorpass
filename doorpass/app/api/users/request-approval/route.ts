@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
-import { randomUUID } from "crypto"
+import { Resend } from "resend"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { sendApprovalRequestEmail } from "@/lib/email"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   const { unauthorized, user } = await requireAuth()
@@ -17,15 +18,17 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json().catch(() => ({}))) as { branchId?: string }
-    const branchId = String(body.branchId ?? "").trim()
-    if (!branchId) {
+    const selectedBranchId = String(body.branchId ?? "").trim()
+    if (!selectedBranchId) {
       return NextResponse.json({ error: "branchId가 필요합니다." }, { status: 400 })
     }
+
+    const userEmail = user!.email ?? ""
 
     const { data: approved } = await supabaseAdmin
       .from("approved_users")
       .select("email")
-      .eq("email", user!.email)
+      .eq("email", userEmail)
       .maybeSingle()
     if (approved) {
       return NextResponse.json({ message: "이미 승인된 사용자입니다.", status: "approved" })
@@ -34,7 +37,7 @@ export async function POST(request: Request) {
     const { data: existing } = await supabaseAdmin
       .from("pending_approvals")
       .select("id")
-      .eq("user_email", user!.email)
+      .eq("user_email", userEmail)
       .eq("status", "pending")
       .maybeSingle()
 
@@ -44,16 +47,16 @@ export async function POST(request: Request) {
 
     // 약관 동의 기록 저장 (이미 존재해도 무시)
     await supabaseAdmin.from("terms_agreements").upsert(
-      { user_email: user!.email, ip_address: ip, user_agent: userAgent, version: "v1.0" },
+      { user_email: userEmail, ip_address: ip, user_agent: userAgent, version: "v1.0" },
       { onConflict: "user_email", ignoreDuplicates: true }
     )
 
     const { data: inserted, error } = await supabaseAdmin
       .from("pending_approvals")
       .insert({
-        user_email: user!.email,
-        user_name: user!.user_metadata?.name || user!.email,
-        selected_branch_id: branchId,
+        user_email: userEmail,
+        user_name: user!.user_metadata?.name || userEmail,
+        selected_branch_id: selectedBranchId,
         status: "pending",
       })
       .select("id")
@@ -66,80 +69,67 @@ export async function POST(request: Request) {
     const { data: branch } = await supabaseAdmin
       .from("branches")
       .select("name")
-      .eq("id", branchId)
+      .eq("id", selectedBranchId)
       .maybeSingle()
 
-    const branchName = branch?.name ?? branchId
+    const branchName = branch?.name ?? selectedBranchId
 
-    // 1) 해당 지점의 부관리자 조회
-    const { data: subAdmins } = await supabaseAdmin
+    // 1. 부관리자 먼저 찾기
+    const { data: subAdmin } = await supabaseAdmin
       .from("approved_users")
-      .select("email, name, is_active, is_blocked")
-      .eq("branch_id", branchId)
+      .select("email, name")
+      .eq("branch_id", selectedBranchId)
       .eq("role", "sub_admin")
+      .maybeSingle()
 
-    const subAdminEmails = (subAdmins ?? [])
-      .filter((r) => {
-        const row = r as { is_active?: boolean | null; is_blocked?: boolean | null }
-        if (row.is_blocked === true) return false
-        if (row.is_active === false) return false
-        return true
+    // 2. 관리자 찾기
+    const { data: adminUser } = await supabaseAdmin
+      .from("approved_users")
+      .select("email, name")
+      .eq("role", "admin")
+      .maybeSingle()
+
+    // 3. 수신자 결정 (무조건 누군가에게는 보냄)
+    const recipientEmail =
+      (subAdmin as { email?: string } | null)?.email ||
+      (adminUser as { email?: string } | null)?.email ||
+      "jazzcanon@gmail.com"
+
+    console.log("이메일 수신자:", recipientEmail)
+
+    // 4. 이메일 발송 (try-catch로 감싸기)
+    try {
+      const { data: emailResult, error: emailError } = await resend.emails.send({
+        from: "onboarding@resend.dev",
+        to: recipientEmail,
+        subject: "[DoorPass] 새 회원 승인 요청",
+        html: `
+          <h2>새 회원 승인 요청</h2>
+          <p>이메일: ${userEmail}</p>
+          <p>대리점: ${branchName} (${selectedBranchId})</p>
+          <p>요청 시각: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</p>
+          <p><a href="https://doorpass.kr/admin/pending-approvals">
+            승인하러 가기
+          </a></p>
+        `,
       })
-      .map((r) => (r as { email?: string }).email)
-      .filter((e): e is string => typeof e === "string" && e.includes("@"))
 
-    // 2) 부관리자 없으면 관리자(admin)에게 폴백
-    let toEmails: string[] = subAdminEmails
-    if (toEmails.length === 0) {
-      const { data: admins } = await supabaseAdmin
-        .from("approved_users")
-        .select("email, is_active, is_blocked")
-        .eq("role", "admin")
-
-      const adminEmails = (admins ?? [])
-        .filter((r) => {
-          const row = r as { is_active?: boolean | null; is_blocked?: boolean | null }
-          if (row.is_blocked === true) return false
-          if (row.is_active === false) return false
-          return true
-        })
-        .map((r) => (r as { email?: string }).email)
-        .filter((e): e is string => typeof e === "string" && e.includes("@"))
-
-      toEmails = adminEmails
+      if (emailError) {
+        console.error("Resend 에러:", emailError)
+      } else {
+        console.log("이메일 발송 성공:", emailResult)
+      }
+    } catch (emailErr) {
+      console.error("이메일 발송 예외:", emailErr)
     }
 
-    // 3) 그래도 없으면 최후 폴백
-    if (toEmails.length === 0) {
-      toEmails = ["jazzcanon@gmail.com"]
-    }
-
-    console.log("이메일 발송 대상:", toEmails)
-
-    const requestedAtLabel = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
-    const requesterName = String(user!.user_metadata?.name || user!.email || "미등록")
-
-    // 5) Telegram 알림 (이메일 실패 대비 이중 알림)
+    // 5. Telegram 알림도 함께
     try {
       await sendTelegramMessage(
-        `🔔 신규 회원 승인 요청\n\n📍 대리점: ${branchName}\n👤 이름: ${requesterName}\n📧 이메일: ${user!.email}\n📅 요청일시: ${requestedAtLabel}\n📨 수신자: ${toEmails.join(", ")}\n\n/admin/pending-approvals 에서 승인 처리하세요.`
+        `[DoorPass] 새 승인 요청\n이메일: ${userEmail}\n대리점: ${branchName} (${selectedBranchId})`
       )
     } catch (telegramError) {
       console.error("텔레그램 실패(무시):", telegramError)
-    }
-
-    try {
-      await sendApprovalRequestEmail({
-        toEmails,
-        branchName,
-        requesterName,
-        requesterEmail: user!.email ?? "",
-        requestedAtLabel,
-        token: randomUUID(),
-      })
-    } catch (emailError) {
-      console.error("이메일 실패(무시):", emailError)
-      // 이메일 실패해도 계속 진행!
     }
 
     return NextResponse.json({ success: true })
