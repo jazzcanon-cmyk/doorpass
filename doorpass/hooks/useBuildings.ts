@@ -92,12 +92,16 @@ export function useBuildings(currentUser: CurrentUser | null) {
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ search: trimmed })
+        console.log('검색어:', searchQuery)
+        console.log('API 호출:', `/api/buildings?search=${searchQuery}`)
         const response = await fetch(`/api/buildings?${params}`, { signal: ctrl.signal })
         if (!response.ok) {
           setSearchResults([])
           return
         }
         const data = await response.json()
+        console.log('API 응답:', data)
+        console.log('buildings:', data.buildings?.length)
         const buildings: Building[] = data.buildings ?? []
         setSearchResults(buildings)
         if (trimmed.length >= 2) {

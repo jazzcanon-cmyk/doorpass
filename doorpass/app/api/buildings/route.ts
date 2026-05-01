@@ -129,6 +129,7 @@ export async function GET(request: Request) {
 
     if (hasSearchParam && !hasPageParam) {
       const searchTerm = (searchParams.get("search") ?? "").trim()
+      console.log('search 파라미터:', searchTerm)
       if (!searchTerm) {
         return NextResponse.json({ buildings: [], total: 0 })
       }
@@ -142,6 +143,7 @@ export async function GET(request: Request) {
         .limit(100)
 
       if (error) throw new Error(error.message)
+      console.log('조회 결과 수:', data?.length)
       const rows = (data ?? []) as BuildingRow[]
       logActivity(
         user!.email!,
