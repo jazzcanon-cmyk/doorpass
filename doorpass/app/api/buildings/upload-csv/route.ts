@@ -16,6 +16,15 @@ interface IncomingBuilding {
   longitude?: number | string
   region?: string
   branch_id?: string
+  access_type?: string
+}
+
+const VALID_ACCESS_TYPES = new Set(["free", "password", "etc"])
+
+function normalizeAccessType(raw: unknown): "free" | "password" | "etc" {
+  if (typeof raw !== "string") return "password"
+  const v = raw.trim().toLowerCase()
+  return VALID_ACCESS_TYPES.has(v) ? (v as "free" | "password" | "etc") : "password"
 }
 
 interface BatchInfo {
@@ -102,16 +111,29 @@ export async function POST(request: Request) {
     const name = rawName || displayNameFromAddress(address) || address
 
     const pwd = b.password != null ? String(b.password).trim() : ""
+    const accessType = normalizeAccessType(b.access_type)
+
+    // free/etc는 비밀번호 자리에 라벨 평문, password는 입력값 암호화
+    const storedPassword =
+      accessType === "free"
+        ? "자유출입"
+        : accessType === "etc"
+        ? "기타(메모참조)"
+        : pwd
+        ? encryptPassword(pwd)
+        : null
+
     rows.push({
       name,
       address,
-      password: pwd ? encryptPassword(pwd) : null,
+      password: storedPassword,
       memo: b.memo != null && String(b.memo).trim() ? String(b.memo).trim() : null,
       lat,
       lng,
       region: b.region ? String(b.region).trim() : null,
       branch_id: approver?.branch_id ?? null,
       uploaded_by: user!.email,
+      access_type: accessType,
     })
   }
 
