@@ -21,10 +21,12 @@ interface BuildingRow {
   lat: number
   lng: number
   region: string
+  access_type: "free" | "password" | "etc"
 }
 
 const BATCH_SIZE = 200
-const HEADERS = ["건물명", "주소", "비밀번호", "메모", "위도", "경도", "지역"] as const
+const HEADERS = ["건물명", "주소", "비밀번호", "위도", "경도", "지역", "메모", "출입방식"] as const
+const VALID_ACCESS_TYPES = new Set(["free", "password", "etc"])
 
 function displayNameFromAddress(address: string): string {
   const t = address.trim()
@@ -54,14 +56,20 @@ async function parseExcel(file: File, defaultRegion: string): Promise<BuildingRo
     }
     const address = text(2)
     const rawName = text(1)
+    const accessRaw = text(8).toLowerCase()
+    const access_type = (VALID_ACCESS_TYPES.has(accessRaw) ? accessRaw : "password") as
+      | "free"
+      | "password"
+      | "etc"
     rows.push({
       name: rawName || displayNameFromAddress(address),
       address,
       password: text(3),
-      memo: text(4),
-      lat: num(5),
-      lng: num(6),
-      region: text(7) || defaultRegion,
+      lat: num(4),
+      lng: num(5),
+      region: text(6) || defaultRegion,
+      memo: text(7),
+      access_type,
     })
   })
   return rows
@@ -72,7 +80,7 @@ async function downloadTemplate() {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet("Buildings")
   ws.addRow(HEADERS as unknown as string[])
-  ws.addRow(["신정마을아파트", "울산 남구 신정동 123", "1234", "1동 출입구", 35.5384, 129.3114, "울산"])
+  ws.addRow(["신정마을아파트", "울산 남구 신정동 123", "1234", 35.5384, 129.3114, "울산", "1동 출입구", "password"])
   ws.columns = HEADERS.map(() => ({ width: 20 }))
   const buf = await wb.xlsx.writeBuffer()
   const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
