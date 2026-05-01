@@ -68,11 +68,11 @@ export async function POST(request: Request) {
 
     const { data: branch } = await supabaseAdmin
       .from("branches")
-      .select("name")
+      .select("name, manager_email")
       .eq("id", selectedBranchId)
       .maybeSingle()
 
-    const branchName = branch?.name ?? selectedBranchId
+    const branchName = (branch as { name?: string } | null)?.name ?? selectedBranchId
 
     // 1. 부관리자 먼저 찾기
     const { data: subAdmin } = await supabaseAdmin
@@ -82,18 +82,23 @@ export async function POST(request: Request) {
       .eq("role", "sub_admin")
       .maybeSingle()
 
-    // 2. 관리자 찾기
-    const { data: adminUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("email, name")
-      .eq("role", "admin")
-      .maybeSingle()
+    // 2. 수신자 결정: 부관리자 → branches.manager_email → 관리자 → 최후 폴백
+    let recipientEmail = (subAdmin as { email?: string } | null)?.email || ""
 
-    // 3. 수신자 결정 (무조건 누군가에게는 보냄)
-    const recipientEmail =
-      (subAdmin as { email?: string } | null)?.email ||
-      (adminUser as { email?: string } | null)?.email ||
-      "jazzcanon@gmail.com"
+    if (!recipientEmail) {
+      const managerEmail = (branch as { manager_email?: string } | null)?.manager_email
+      if (managerEmail) {
+        recipientEmail = managerEmail
+      } else {
+        const { data: adminUser } = await supabaseAdmin
+          .from("approved_users")
+          .select("email, name")
+          .eq("role", "admin")
+          .maybeSingle()
+        recipientEmail =
+          (adminUser as { email?: string } | null)?.email || "jazzcanon@gmail.com"
+      }
+    }
 
     console.log("이메일 수신자:", recipientEmail)
 
