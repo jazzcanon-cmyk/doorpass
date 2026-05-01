@@ -61,7 +61,7 @@ export function SearchTab({
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
           <Input
             type="text"
-            placeholder="건물명 or 주소 넣어보세요"
+            placeholder="건물명 또는 주소 검색..."
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
             className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-blue-500/50 transition-all duration-200"

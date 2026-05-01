@@ -33,7 +33,7 @@ export default function Home() {
     handleUpdate,
   } = useBuildings(currentUser)
 
-  const [activeTab, setActiveTab] = useState<TabType>("nearby")
+  const [activeTab, setActiveTab] = useState<TabType>("search")
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -49,9 +49,18 @@ export default function Home() {
     )
   }, [getLocation, fetchBuildings])
 
+  // 초기 마운트 시 GPS 없이 건물 목록만 로드 (검색 탭에서 바로 사용)
   useEffect(() => {
-    if (authStatus === "ok") refreshLocation()
-  }, [authStatus, refreshLocation])
+    if (authStatus !== "ok") return
+    void fetchBuildings()
+  }, [authStatus, fetchBuildings])
+
+  // 내주변 탭 진입 시에만 GPS 로딩 + 거리 재계산
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    if (activeTab !== "nearby") return
+    refreshLocation()
+  }, [authStatus, activeTab, refreshLocation])
 
   const handleBuildingSelect = useCallback((b: Building | null) => {
     setSelectedBuilding(b)
