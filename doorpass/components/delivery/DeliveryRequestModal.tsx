@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import type { DeliveryVolume, DeliveryPayType } from "@/types/delivery"
+import { type DeliveryVolume, type DeliveryPayType, VOLUME_OPTIONS } from "@/types/delivery"
 
 interface Props {
   open: boolean
@@ -16,7 +16,7 @@ interface Props {
 
 export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Props) {
   const [requestDate, setRequestDate] = useState("")
-  const [volume, setVolume] = useState<DeliveryVolume>("small")
+  const [volume, setVolume] = useState<DeliveryVolume>("v50")
   const [payType, setPayType] = useState<DeliveryPayType>("per_item")
   const [payAmount, setPayAmount] = useState("")
   const [area, setArea] = useState("")
@@ -28,7 +28,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
 
   const reset = () => {
     setRequestDate("")
-    setVolume("small")
+    setVolume("v50")
     setPayType("per_item")
     setPayAmount("")
     setArea("")
@@ -93,20 +93,14 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
 
           <div>
             <label className="block text-xs font-medium text-white/70 mb-1.5">물량 *</label>
-            <div className="grid grid-cols-1 gap-1.5">
-              {(
-                [
-                  { v: "small" as const, label: "소량 (50개 이하)" },
-                  { v: "medium" as const, label: "중량 (50~100개)" },
-                  { v: "large" as const, label: "대량 (100개 이상)" },
-                ] satisfies { v: DeliveryVolume; label: string }[]
-              ).map((opt) => (
+            <div className="grid grid-cols-2 gap-1.5">
+              {VOLUME_OPTIONS.map((opt) => (
                 <button
-                  key={opt.v}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setVolume(opt.v)}
+                  onClick={() => setVolume(opt.value)}
                   className={`px-3 py-2.5 text-sm rounded-lg border text-left transition ${
-                    volume === opt.v
+                    volume === opt.value
                       ? "bg-blue-500/20 border-blue-400 text-white"
                       : "bg-white/5 border-white/10 text-white/70"
                   }`}

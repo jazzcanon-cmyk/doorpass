@@ -1,4 +1,4 @@
-export type DeliveryVolume = "small" | "medium" | "large"
+export type DeliveryVolume = "v50" | "v100" | "v200" | "v300" | "v400" | "v500"
 export type DeliveryPayType = "per_item" | "per_day" | "negotiable"
 export type DeliveryStatus = "open" | "matched" | "closed"
 export type ApplicationStatus = "pending" | "accepted" | "rejected"
@@ -36,10 +36,22 @@ export interface DeliveryApplication {
 }
 
 export const VOLUME_LABEL: Record<DeliveryVolume, string> = {
-  small: "소량 (50개 이하)",
-  medium: "중량 (50~100개)",
-  large: "대량 (100개 이상)",
+  v50: "50개 이하",
+  v100: "50 ~ 100개",
+  v200: "100 ~ 200개",
+  v300: "200 ~ 300개",
+  v400: "300 ~ 400개",
+  v500: "400 ~ 500개 이상",
 }
+
+export const VOLUME_OPTIONS: { value: DeliveryVolume; label: string }[] = [
+  { value: "v50", label: "50개 이하" },
+  { value: "v100", label: "50 ~ 100개" },
+  { value: "v200", label: "100 ~ 200개" },
+  { value: "v300", label: "200 ~ 300개" },
+  { value: "v400", label: "300 ~ 400개" },
+  { value: "v500", label: "400 ~ 500개 이상" },
+]
 
 export const PAY_TYPE_LABEL: Record<DeliveryPayType, string> = {
   per_item: "건당",

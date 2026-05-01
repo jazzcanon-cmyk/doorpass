@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
-const VOLUMES = ["small", "medium", "large"] as const
+const VOLUMES = ["v50", "v100", "v200", "v300", "v400", "v500"] as const
 const PAY_TYPES = ["per_item", "per_day", "negotiable"] as const
 
 export async function GET(request: Request) {
