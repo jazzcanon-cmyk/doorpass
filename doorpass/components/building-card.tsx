@@ -17,8 +17,8 @@ interface Building {
   password: string
   memo?: string
   distance?: number
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   access_type?: "free" | "password" | "etc"
 }
 
@@ -135,8 +135,8 @@ export function BuildingCard({
     e.stopPropagation()
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     const name = encodeURIComponent(currentBuilding.name)
-    const lat = currentBuilding.latitude
-    const lng = currentBuilding.longitude
+    const lat = currentBuilding.lat
+    const lng = currentBuilding.lng
 
     if (isMobile) {
       // 모바일: 카카오맵 앱 딥링크 시도 → 1.5초 후 앱 없으면 웹으로 폴백
@@ -150,7 +150,7 @@ export function BuildingCard({
     }
   }
 
-  const mapUrl = `https://maps.google.com/maps?q=${currentBuilding.latitude},${currentBuilding.longitude}&z=17&output=embed`
+  const mapUrl = `https://maps.google.com/maps?q=${currentBuilding.lat},${currentBuilding.lng}&z=17&output=embed`
 
   return (
     <>

@@ -6,8 +6,8 @@ export interface Building {
   address: string
   password: string
   memo?: string
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   distance?: number
   access_type?: AccessType
 }

@@ -7,8 +7,8 @@ interface Building {
   name: string
   address: string
   password: string
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   distance?: number
   memo?: string
 }
@@ -208,7 +208,7 @@ export function BuildingMap({
 
     buildings.forEach((building) => {
       const isSelected = selectedBuildingRef.current?.id === building.id
-      const marker = L.marker([building.latitude, building.longitude], {
+      const marker = L.marker([building.lat, building.lng], {
         icon: makeIcon(L, isSelected),
       })
       marker.on("click", () => onBuildingSelectRef.current(building))

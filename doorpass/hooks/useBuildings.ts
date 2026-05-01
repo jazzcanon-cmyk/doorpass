@@ -38,7 +38,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
         const withDist = data.buildings
           .map((b: Building) => ({
             ...b,
-            distance: Math.round(calculateDistance(lat, lng, b.latitude, b.longitude)),
+            distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
           }))
           .filter((b: Building) => (b.distance ?? 0) <= 50)
           .sort((a: Building, b: Building) => (a.distance ?? 0) - (b.distance ?? 0))

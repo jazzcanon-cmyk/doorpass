@@ -15,8 +15,8 @@ interface Building {
   name: string
   address: string
   password: string
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   distance?: number
   memo?: string
   access_type?: "free" | "password" | "etc"
@@ -90,7 +90,7 @@ export function SelectedBuildingInfo({
   }
 
   const openNavigation = () => {
-    const url = `https://maps.google.com/maps?daddr=${building.latitude},${building.longitude}`
+    const url = `https://maps.google.com/maps?daddr=${building.lat},${building.lng}`
     window.open(url, "_blank")
   }
 

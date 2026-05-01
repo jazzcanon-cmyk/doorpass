@@ -36,8 +36,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: "자유출입",
-      latitude: b.lat,
-      longitude: b.lng,
+      lat: b.lat,
+      lng: b.lng,
       memo: revealPassword ? b.memo ?? "" : "",
       access_type: accessType,
     }
@@ -50,8 +50,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: "메모 참조",
-      latitude: b.lat,
-      longitude: b.lng,
+      lat: b.lat,
+      lng: b.lng,
       memo: revealPassword ? b.memo ?? "" : "",
       access_type: accessType,
     }
@@ -64,8 +64,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: MASKED_BUILDING_PASSWORD,
-      latitude: b.lat,
-      longitude: b.lng,
+      lat: b.lat,
+      lng: b.lng,
       memo: "",
       access_type: accessType,
     }
@@ -85,8 +85,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
     name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
     address: b.address ?? "",
     password,
-    latitude: b.lat,
-    longitude: b.lng,
+    lat: b.lat,
+    lng: b.lng,
     memo: b.memo ?? "",
     access_type: accessType,
   }
