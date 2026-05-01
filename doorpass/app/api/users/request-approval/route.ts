@@ -75,16 +75,18 @@ export async function POST(request: NextRequest) {
     // 3. Resend로 이메일 발송
     const resend = new Resend(process.env.RESEND_API_KEY)
 
+    const branchDisplayName = branch?.name || '미지정'
+
     const { data: emailData, error: emailError } =
       await resend.emails.send({
         from: 'onboarding@resend.dev',
         to: [recipientEmail],
-        subject: `[DoorPass] 새 회원 승인 요청 - ${branch?.name || branchId}`,
+        subject: `[DoorPass] 새 회원 승인 요청 - ${branchDisplayName}`,
         html: `
           <h2>새 회원 승인 요청</h2>
-          <p><b>이메일:</b> ${userEmail}</p>
-          <p><b>이름:</b> ${userName || '미입력'}</p>
-          <p><b>대리점:</b> ${branch?.name || branchId}</p>
+          <p><b>신청자 이메일:</b> ${userEmail}</p>
+          <p><b>신청자 이름:</b> ${userName || '미입력'}</p>
+          <p><b>대리점:</b> ${branchDisplayName}</p>
           <p><b>요청 시각:</b> ${new Date().toLocaleString('ko-KR')}</p>
           <br>
           <a href="https://doorpass.kr/admin/pending-approvals"
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: telegramChatId,
-              text: `[DoorPass] 새 승인 요청\n이메일: ${userEmail}\n대리점: ${branch?.name || branchId}`
+              text: `[DoorPass] 새 승인 요청\n신청자 이메일: ${userEmail}\n신청자 이름: ${userName || '미입력'}\n대리점: ${branchDisplayName}`
             })
           }
         )
