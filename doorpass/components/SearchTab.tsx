@@ -1,5 +1,4 @@
 "use client"
-import { useMemo, useState } from "react"
 import { Search, AlertCircle, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { BuildingCard } from "@/components/building-card"
@@ -15,33 +14,14 @@ interface SearchTabProps {
   onAddBuilding?: () => void
 }
 
-type AccessFilter = "all" | "free" | "password"
-
 export function SearchTab({
   searchQuery,
   searchResults,
-  allBuildings,
   canRevealBuildingPassword,
   onSearch,
   onBuildingUpdate,
   onAddBuilding,
 }: SearchTabProps) {
-  const [accessFilter, setAccessFilter] = useState<AccessFilter>("all")
-
-  const filteredResults = useMemo(() => {
-    if (accessFilter === "all") return searchResults
-    return searchResults.filter((b) => {
-      const t = b.access_type ?? "password"
-      return t === accessFilter
-    })
-  }, [searchResults, accessFilter])
-
-  const FILTERS: { value: AccessFilter; label: string }[] = [
-    { value: "all", label: "전체" },
-    { value: "free", label: "🚪 자유출입" },
-    { value: "password", label: "🔐 비밀번호" },
-  ]
-
   return (
     <>
       <section className="container mx-auto px-4 py-4">
@@ -68,47 +48,25 @@ export function SearchTab({
             autoFocus
           />
         </div>
-
-        <div className="flex gap-1 mt-3 rounded-xl bg-white/5 border border-white/10 p-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setAccessFilter(f.value)}
-              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                accessFilter === f.value
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                  : "text-white/50 hover:text-white/80"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
       </section>
       <section className="container mx-auto px-4 pb-6">
         {searchQuery.trim() === "" ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center backdrop-blur-sm">
             <Search className="h-10 w-10 text-white/20 mx-auto mb-3" />
             <p className="text-white/40 text-sm mb-1">건물명 또는 주소를 검색해주세요</p>
-            <p className="text-white/20 text-xs">등록된 건물 {allBuildings.length.toLocaleString()}개</p>
+            <p className="text-white/20 text-xs">울산 전체 112,836개 건물 검색 가능</p>
           </div>
-        ) : filteredResults.length === 0 ? (
+        ) : searchResults.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center backdrop-blur-sm">
             <AlertCircle className="h-10 w-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/40 text-sm">
-              {accessFilter === "all"
-                ? `'${searchQuery}'에 대한 검색 결과가 없습니다.`
-                : `해당 출입방식의 검색 결과가 없습니다.`}
-            </p>
+            <p className="text-white/40 text-sm">{`'${searchQuery}'에 대한 검색 결과가 없습니다.`}</p>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
-              검색 결과 {filteredResults.length}건
-              {accessFilter !== "all" && ` · ${FILTERS.find((f) => f.value === accessFilter)?.label}`}
+              검색 결과 {searchResults.length}건
             </p>
-            {filteredResults.map((b) => (
+            {searchResults.map((b) => (
               <BuildingCard
                 key={b.id}
                 building={b}
