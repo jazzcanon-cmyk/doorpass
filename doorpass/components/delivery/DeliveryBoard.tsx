@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState, useCallback } from "react"
-import { Plus, Loader2, Truck, Eye, Calendar, MapPin } from "lucide-react"
+import { Plus, Loader2, Truck, Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -10,7 +10,7 @@ import { DeliveryDetailModal } from "./DeliveryDetailModal"
 import {
   type DeliveryRequest,
   VOLUME_LABEL,
-  PRICE_TYPE_LABEL,
+  PAY_TYPE_LABEL,
   STATUS_LABEL,
   STATUS_COLOR,
   type DeliveryStatus,
@@ -74,7 +74,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
   ]
 
   const handleApply = (r: DeliveryRequest) => {
-    if (r.user_email === currentEmail) {
+    if (r.requester_email === currentEmail) {
       toast.error("본인 요청에는 신청할 수 없습니다")
       return
     }
@@ -218,13 +218,13 @@ function DeliveryCard({
   onApply: () => void
   onOpen: () => void
 }) {
-  const isMine = request.user_email === currentEmail
+  const isMine = request.requester_email === currentEmail
   const applied = !!request.my_application_status
   const priceLabel = useMemo(() => {
-    const t = PRICE_TYPE_LABEL[request.price_type]
-    if (request.price_type === "negotiable") return t
-    return request.price_amount ? `${t} ${request.price_amount.toLocaleString()}원` : t
-  }, [request.price_type, request.price_amount])
+    const t = PAY_TYPE_LABEL[request.pay_type]
+    if (request.pay_type === "negotiable") return t
+    return request.pay_amount ? `${t} ${request.pay_amount.toLocaleString()}원` : t
+  }, [request.pay_type, request.pay_amount])
 
   return (
     <Card className="bg-white/5 border-white/10 hover:border-blue-500/40 transition-all">
@@ -250,19 +250,14 @@ function DeliveryCard({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-white/40">
-              <span className="flex items-center gap-0.5">
-                <Eye className="h-3 w-3" /> {request.view_count ?? 0}
-              </span>
-              <span>{ago(request.created_at)}</span>
-            </div>
+            <div className="text-[10px] text-white/40">{ago(request.created_at)}</div>
           </div>
 
           <div className="flex items-center gap-1.5 text-sm font-semibold text-white mb-1">
             <MapPin className="h-3.5 w-3.5 text-blue-400" />
             {request.branch_name ?? "지점 미지정"}
             <span className="text-white/40 text-xs font-normal flex items-center gap-1 ml-auto">
-              <Calendar className="h-3 w-3" /> {request.delivery_date}
+              <Calendar className="h-3 w-3" /> {request.request_date}
             </span>
           </div>
 
@@ -271,8 +266,8 @@ function DeliveryCard({
             <div>💰 {priceLabel}</div>
           </div>
 
-          {request.area_description && (
-            <div className="text-xs text-white/60 line-clamp-1 mb-1">{request.area_description}</div>
+          {request.area && (
+            <div className="text-xs text-white/60 line-clamp-1 mb-1">{request.area}</div>
           )}
           {typeof request.application_count === "number" && (
             <div className="text-[11px] text-white/40">신청자 {request.application_count}명</div>

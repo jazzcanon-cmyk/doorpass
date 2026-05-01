@@ -1,25 +1,26 @@
 export type DeliveryVolume = "small" | "medium" | "large"
-export type DeliveryPriceType = "per_item" | "per_day" | "negotiable"
+export type DeliveryPayType = "per_item" | "per_day" | "negotiable"
 export type DeliveryStatus = "open" | "matched" | "closed"
 export type ApplicationStatus = "pending" | "accepted" | "rejected"
 
 export interface DeliveryRequest {
   id: number | string
-  user_email: string
-  user_name: string | null
+  requester_email: string
+  requester_name: string | null
   branch_id: string | null
   branch_name?: string | null
-  delivery_date: string
+  request_date: string
   volume: DeliveryVolume
-  price_type: DeliveryPriceType
-  price_amount: number | null
-  area_description: string | null
+  pay_type: DeliveryPayType
+  pay_amount: number | null
+  area: string | null
   memo: string | null
   contact: string | null
   status: DeliveryStatus
   matched_email: string | null
-  view_count: number | null
+  matched_name: string | null
   created_at: string
+  updated_at?: string
   application_count?: number
   my_application_status?: ApplicationStatus | null
 }
@@ -40,7 +41,7 @@ export const VOLUME_LABEL: Record<DeliveryVolume, string> = {
   large: "대량 (100개 이상)",
 }
 
-export const PRICE_TYPE_LABEL: Record<DeliveryPriceType, string> = {
+export const PAY_TYPE_LABEL: Record<DeliveryPayType, string> = {
   per_item: "건당",
   per_day: "일당",
   negotiable: "협의",

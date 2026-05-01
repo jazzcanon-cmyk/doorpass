@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import type { DeliveryVolume, DeliveryPriceType } from "@/types/delivery"
+import type { DeliveryVolume, DeliveryPayType } from "@/types/delivery"
 
 interface Props {
   open: boolean
@@ -15,11 +15,11 @@ interface Props {
 }
 
 export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Props) {
-  const [deliveryDate, setDeliveryDate] = useState("")
+  const [requestDate, setRequestDate] = useState("")
   const [volume, setVolume] = useState<DeliveryVolume>("small")
-  const [priceType, setPriceType] = useState<DeliveryPriceType>("per_item")
-  const [priceAmount, setPriceAmount] = useState("")
-  const [areaDescription, setAreaDescription] = useState("")
+  const [payType, setPayType] = useState<DeliveryPayType>("per_item")
+  const [payAmount, setPayAmount] = useState("")
+  const [area, setArea] = useState("")
   const [memo, setMemo] = useState("")
   const [contact, setContact] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -27,19 +27,19 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
   if (!open) return null
 
   const reset = () => {
-    setDeliveryDate("")
+    setRequestDate("")
     setVolume("small")
-    setPriceType("per_item")
-    setPriceAmount("")
-    setAreaDescription("")
+    setPayType("per_item")
+    setPayAmount("")
+    setArea("")
     setMemo("")
     setContact("")
   }
 
   const submit = async () => {
-    if (!deliveryDate) return toast.error("날짜를 선택해주세요")
+    if (!requestDate) return toast.error("날짜를 선택해주세요")
     if (!contact.trim()) return toast.error("연락처를 입력해주세요")
-    if (priceType !== "negotiable" && !priceAmount) return toast.error("금액을 입력해주세요")
+    if (payType !== "negotiable" && !payAmount) return toast.error("금액을 입력해주세요")
 
     setSubmitting(true)
     try {
@@ -48,11 +48,11 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           branchId,
-          deliveryDate,
+          requestDate,
           volume,
-          priceType,
-          priceAmount: priceType === "negotiable" ? null : Number(priceAmount),
-          areaDescription,
+          payType,
+          payAmount: payType === "negotiable" ? null : Number(payAmount),
+          area,
           memo,
           contact,
         }),
@@ -85,8 +85,8 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
             <label className="block text-xs font-medium text-white/70 mb-1.5">날짜 *</label>
             <Input
               type="date"
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
+              value={requestDate}
+              onChange={(e) => setRequestDate(e.target.value)}
               className="bg-white/5 border-white/10 text-white"
             />
           </div>
@@ -125,14 +125,14 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
                   { v: "per_item" as const, label: "건당" },
                   { v: "per_day" as const, label: "일당" },
                   { v: "negotiable" as const, label: "협의" },
-                ] satisfies { v: DeliveryPriceType; label: string }[]
+                ] satisfies { v: DeliveryPayType; label: string }[]
               ).map((opt) => (
                 <button
                   key={opt.v}
                   type="button"
-                  onClick={() => setPriceType(opt.v)}
+                  onClick={() => setPayType(opt.v)}
                   className={`px-3 py-2 text-sm rounded-lg border transition ${
-                    priceType === opt.v
+                    payType === opt.v
                       ? "bg-blue-500/20 border-blue-400 text-white"
                       : "bg-white/5 border-white/10 text-white/70"
                   }`}
@@ -141,13 +141,13 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
                 </button>
               ))}
             </div>
-            {priceType !== "negotiable" && (
+            {payType !== "negotiable" && (
               <Input
                 type="number"
                 inputMode="numeric"
                 placeholder="금액 (원)"
-                value={priceAmount}
-                onChange={(e) => setPriceAmount(e.target.value)}
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
                 className="bg-white/5 border-white/10 text-white mt-2"
               />
             )}
@@ -158,8 +158,8 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
             <Input
               type="text"
               placeholder="예: 남구 신정동 일대"
-              value={areaDescription}
-              onChange={(e) => setAreaDescription(e.target.value)}
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
               className="bg-white/5 border-white/10 text-white"
             />
           </div>

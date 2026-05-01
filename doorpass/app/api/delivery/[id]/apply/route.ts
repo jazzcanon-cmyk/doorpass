@@ -14,19 +14,19 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     const { data: req } = await supabaseAdmin
       .from("delivery_requests")
-      .select("id, user_email, status, delivery_date, area_description")
+      .select("id, requester_email, status, request_date, area")
       .eq("id", id)
       .maybeSingle()
 
     if (!req) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
     const reqRow = req as {
-      user_email: string
+      requester_email: string
       status: string
-      delivery_date: string
-      area_description: string | null
+      request_date: string
+      area: string | null
     }
 
-    if (reqRow.user_email === user!.email!) {
+    if (reqRow.requester_email === user!.email!) {
       return NextResponse.json({ error: "본인 요청에는 신청할 수 없습니다." }, { status: 400 })
     }
     if (reqRow.status !== "open") {
@@ -63,7 +63,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     if (error) throw error
 
     sendTelegramMessage(
-      `[대리배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.delivery_date}\n확인하러가기: https://doorpass.kr/delivery`
+      `[대리배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
     ).catch(console.error)
 
     return NextResponse.json({ application: data })

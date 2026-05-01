@@ -7,7 +7,7 @@ import {
   type DeliveryRequest,
   type DeliveryApplication,
   VOLUME_LABEL,
-  PRICE_TYPE_LABEL,
+  PAY_TYPE_LABEL,
   STATUS_LABEL,
   STATUS_COLOR,
 } from "@/types/delivery"
@@ -60,7 +60,6 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       if (!res.ok) throw new Error(data?.error || "처리 실패")
       toast.success(action === "accept" ? "수락 완료 — 매칭되었습니다" : "거부 처리됨")
       onChanged()
-      // refetch
       const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
       setRequest(r2.request)
       setApplications(r2.applications ?? [])
@@ -115,25 +114,24 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
               <span className={`px-2 py-1 text-[11px] rounded-md border ${STATUS_COLOR[request.status]}`}>
                 {STATUS_LABEL[request.status]}
               </span>
-              <span className="text-white/50 text-xs">조회 {request.view_count ?? 0}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-white/50">대리점</div>
               <div className="text-white">{request.branch_name ?? "-"}</div>
               <div className="text-white/50">날짜</div>
-              <div className="text-white">{request.delivery_date}</div>
+              <div className="text-white">{request.request_date}</div>
               <div className="text-white/50">물량</div>
               <div className="text-white">{VOLUME_LABEL[request.volume]}</div>
               <div className="text-white/50">단가</div>
               <div className="text-white">
-                {PRICE_TYPE_LABEL[request.price_type]}
-                {request.price_amount ? ` ${request.price_amount.toLocaleString()}원` : ""}
+                {PAY_TYPE_LABEL[request.pay_type]}
+                {request.pay_amount ? ` ${request.pay_amount.toLocaleString()}원` : ""}
               </div>
               <div className="text-white/50">구역</div>
-              <div className="text-white">{request.area_description || "-"}</div>
+              <div className="text-white">{request.area || "-"}</div>
               <div className="text-white/50">요청자</div>
-              <div className="text-white">{request.user_name || request.user_email}</div>
+              <div className="text-white">{request.requester_name || request.requester_email}</div>
             </div>
 
             {request.memo && (

@@ -18,15 +18,6 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
     if (error) throw error
     if (!req) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
 
-    // 조회수 증가 (요청자 본인 제외)
-    if ((req as { user_email: string }).user_email !== user!.email!) {
-      await supabaseAdmin
-        .from("delivery_requests")
-        .update({ view_count: ((req as { view_count: number | null }).view_count ?? 0) + 1 })
-        .eq("id", id)
-    }
-
-    // branch name
     const branchId = (req as { branch_id: string | null }).branch_id
     let branch_name: string | null = null
     if (branchId) {
@@ -38,8 +29,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       branch_name = (b as { name?: string } | null)?.name ?? null
     }
 
-    // 신청자 목록 (요청자만 모두 볼 수 있음)
-    const isOwner = (req as { user_email: string }).user_email === user!.email!
+    const isOwner = (req as { requester_email: string }).requester_email === user!.email!
     let applications: Array<Record<string, unknown>> = []
 
     if (isOwner) {
@@ -59,7 +49,6 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       if (data) applications = [data as Record<string, unknown>]
     }
 
-    // 본인이 매칭된 경우에만 연락처 공개, 그 외 비공개
     const matchedEmail = (req as { matched_email: string | null }).matched_email
     const canSeeContact = isOwner || (matchedEmail && matchedEmail === user!.email!)
 
@@ -90,18 +79,18 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
 
     const { data: existing } = await supabaseAdmin
       .from("delivery_requests")
-      .select("user_email, status")
+      .select("requester_email, status")
       .eq("id", id)
       .maybeSingle()
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
-    if ((existing as { user_email: string }).user_email !== user!.email!) {
+    if ((existing as { requester_email: string }).requester_email !== user!.email!) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 
     const update: Record<string, unknown> = {}
     if (typeof body.status === "string") update.status = body.status
     if (typeof body.memo === "string") update.memo = body.memo
-    if (typeof body.areaDescription === "string") update.area_description = body.areaDescription
+    if (typeof body.area === "string") update.area = body.area
     if (typeof body.contact === "string") update.contact = body.contact
 
     const { data, error } = await supabaseAdmin
@@ -128,11 +117,11 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
 
     const { data: existing } = await supabaseAdmin
       .from("delivery_requests")
-      .select("user_email")
+      .select("requester_email")
       .eq("id", id)
       .maybeSingle()
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
-    if ((existing as { user_email: string }).user_email !== user!.email!) {
+    if ((existing as { requester_email: string }).requester_email !== user!.email!) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 

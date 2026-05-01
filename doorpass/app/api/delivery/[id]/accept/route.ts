@@ -18,20 +18,20 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     const { data: req } = await supabaseAdmin
       .from("delivery_requests")
-      .select("id, user_email, status, delivery_date, area_description")
+      .select("id, requester_email, status, request_date, area")
       .eq("id", id)
       .maybeSingle()
     if (!req) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
 
     const reqRow = req as {
       id: number | string
-      user_email: string
+      requester_email: string
       status: string
-      delivery_date: string
-      area_description: string | null
+      request_date: string
+      area: string | null
     }
 
-    if (reqRow.user_email !== user!.email!) {
+    if (reqRow.requester_email !== user!.email!) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 
@@ -62,12 +62,12 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: "이미 매칭되었습니다." }, { status: 400 })
     }
 
-    // 수락: 요청 상태 변경 + 다른 신청자 거부 처리
     const { error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .update({
         status: "matched",
         matched_email: appRow.applicant_email,
+        matched_name: appRow.applicant_name,
       })
       .eq("id", id)
     if (reqErr) throw reqErr
@@ -85,7 +85,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       .eq("status", "pending")
 
     sendTelegramMessage(
-      `[대리배송] 매칭 완료!\n${reqRow.delivery_date} ${reqRow.area_description ?? ""} 대리배송`
+      `[대리배송] 매칭 완료!\n${reqRow.request_date} ${reqRow.area ?? ""} 대리배송`
     ).catch(console.error)
 
     return NextResponse.json({ success: true })
