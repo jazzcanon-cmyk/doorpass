@@ -71,7 +71,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
   }
 
   const handleDelete = async () => {
-    if (!confirm("이 대리배송 요청을 삭제하시겠습니까?")) return
+    if (!confirm("이 대체배송 요청을 삭제하시겠습니까?")) return
     const res = await fetch(`/api/delivery/${requestId}`, { method: "DELETE" })
     const data = await res.json()
     if (!res.ok) {
@@ -87,7 +87,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="w-full sm:max-w-md bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">대리배송 상세</h2>
+          <h2 className="text-base font-bold text-white">대체배송 상세</h2>
           <div className="flex items-center gap-1">
             {isOwner && (
               <button

@@ -63,7 +63,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     if (error) throw error
 
     sendTelegramMessage(
-      `[대리배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
+      `[대체배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
     ).catch(console.error)
 
     return NextResponse.json({ application: data })

@@ -43,7 +43,7 @@ export function DeliveryApplyModal({ open, requestId, onClose, onApplied }: Prop
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="w-full sm:max-w-sm bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl">
         <div className="border-b border-white/10 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">대리배송 신청</h2>
+          <h2 className="text-base font-bold text-white">대체배송 신청</h2>
           <button onClick={onClose} className="text-white/60 hover:text-white p-1">
             <X className="h-5 w-5" />
           </button>

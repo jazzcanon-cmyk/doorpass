@@ -93,7 +93,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Truck className="h-4 w-4 text-blue-400" /> 대리배송
+          <Truck className="h-4 w-4 text-blue-400" /> 대체배송
         </h2>
         <Button
           size="sm"
@@ -161,10 +161,10 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
             <Truck className="h-12 w-12 text-white/20" />
             <p className="mt-4 text-white/50 text-sm text-center">
               {tab === "mine"
-                ? "내가 요청한 대리배송이 없습니다"
+                ? "내가 요청한 대체배송이 없습니다"
                 : tab === "applied"
-                ? "내가 신청한 대리배송이 없습니다"
-                : "대리배송 요청이 없습니다"}
+                ? "내가 신청한 대체배송이 없습니다"
+                : "대체배송 요청이 없습니다"}
             </p>
           </CardContent>
         </Card>

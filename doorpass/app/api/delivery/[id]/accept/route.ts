@@ -85,7 +85,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       .eq("status", "pending")
 
     sendTelegramMessage(
-      `[대리배송] 매칭 완료!\n${reqRow.request_date} ${reqRow.area ?? ""} 대리배송`
+      `[대체배송] 매칭 완료!\n${reqRow.request_date} ${reqRow.area ?? ""} 대체배송`
     ).catch(console.error)
 
     return NextResponse.json({ success: true })

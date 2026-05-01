@@ -181,7 +181,7 @@ export async function POST(request: Request) {
     if (error) throw error
 
     sendTelegramMessage(
-      `🚚 [대리배송 등록]\n날짜: ${requestDate}\n물량: ${volume}\n단가: ${payType}${amount ? ` ${amount}원` : ""}\n등록자: ${requesterName}`
+      `🚚 [대체배송 등록]\n날짜: ${requestDate}\n물량: ${volume}\n단가: ${payType}${amount ? ` ${amount}원` : ""}\n등록자: ${requesterName}`
     ).catch(console.error)
 
     return NextResponse.json({ request: data })

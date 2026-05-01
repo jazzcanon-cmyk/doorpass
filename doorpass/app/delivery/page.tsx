@@ -26,7 +26,7 @@ export default function DeliveryPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-sm font-bold text-white">🚚 대리배송</h1>
+          <h1 className="text-sm font-bold text-white">🚚 대체배송</h1>
         </div>
       </header>
 

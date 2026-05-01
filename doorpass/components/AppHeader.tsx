@@ -17,7 +17,7 @@ interface AppHeaderProps {
 const TABS: { key: TabType; label: string; icon: React.ReactNode }[] = [
   { key: "nearby", label: "내 주변", icon: <Navigation className="h-4 w-4" /> },
   { key: "search", label: "검색", icon: <Search className="h-4 w-4" /> },
-  { key: "delivery", label: "대리배송", icon: <Truck className="h-4 w-4" /> },
+  { key: "delivery", label: "대체배송", icon: <Truck className="h-4 w-4" /> },
   { key: "board", label: "게시판", icon: <MessageSquare className="h-4 w-4" /> },
 ]
 
