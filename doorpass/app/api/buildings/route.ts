@@ -4,6 +4,7 @@ import { sendTelegramMessage } from "@/lib/telegram"
 import { requireAuth, canRevealBuildingPassword } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
+import { normalizeAddress } from "@/lib/geo-utils"
 
 interface BuildingRow {
   id: number
@@ -248,11 +249,13 @@ export async function POST(request: Request) {
       }
     }
 
+    const normalizedAddress = normalizeAddress(address.trim())
+
     const { data, error } = await supabase
       .from("buildings")
       .insert({
         name: name?.trim() || null,
-        address: address.trim(),
+        address: normalizedAddress,
         password: encryptPassword(password),
         lat: lat ?? 0,
         lng: lng ?? 0,
@@ -265,9 +268,9 @@ export async function POST(request: Request) {
 
     if (error) throw new Error(error.message)
 
-    const displayName = name?.trim() || address.split(" ").slice(-1)[0] || "-"
+    const displayName = name?.trim() || normalizedAddress.split(" ").slice(-1)[0] || "-"
     sendTelegramMessage(
-      `🏠 [새 건물 등록]\n건물명: ${displayName}\n주소: ${address.trim()}\n등록자: ${uploaded_by ?? "-"}${memo ? `\n메모: ${memo}` : ""}${region ? `\n지역: ${region}` : ""}`,
+      `🏠 [새 건물 등록]\n건물명: ${displayName}\n주소: ${normalizedAddress}\n등록자: ${uploaded_by ?? "-"}${memo ? `\n메모: ${memo}` : ""}${region ? `\n지역: ${region}` : ""}`,
       "comment_notification"
     ).catch(console.error)
 
