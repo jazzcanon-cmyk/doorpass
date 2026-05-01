@@ -109,19 +109,26 @@ export async function GET(request: Request) {
       const lat = parseFloat(latParam)
       const lng = parseFloat(lngParam)
       if (!isFinite(lat) || !isFinite(lng)) {
+        console.log('[nearby] invalid lat/lng:', latParam, lngParam)
         return NextResponse.json({ buildings: [] })
       }
       const { revealPasswords } = await getBuildingsListAuth()
+      // 약 ±0.005도(≈555m) bbox — 50m 클라이언트 필터를 넉넉히 커버
+      const latDelta = 0.005
+      const lngDelta = 0.006
+      console.log('[nearby] lat/lng:', lat, lng, '범위:', lat - latDelta, lat + latDelta, lng - lngDelta, lng + lngDelta)
       const { data, error } = await supabase
         .from("buildings")
         .select("id, name, address, password, lat, lng, memo, access_type")
-        .gte("lat", lat - 0.005)
-        .lte("lat", lat + 0.005)
-        .gte("lng", lng - 0.006)
-        .lte("lng", lng + 0.006)
-        .limit(500)
+        .gte("lat", lat - latDelta)
+        .lte("lat", lat + latDelta)
+        .gte("lng", lng - lngDelta)
+        .lte("lng", lng + lngDelta)
+        .order("lat", { ascending: true })
+        .limit(2000)
 
       if (error) throw new Error(error.message)
+      console.log('[nearby] bbox 결과 수:', data?.length ?? 0)
       return NextResponse.json({
         buildings: (data ?? []).map((row) => toBuilding(row as BuildingRow, revealPasswords)),
       })

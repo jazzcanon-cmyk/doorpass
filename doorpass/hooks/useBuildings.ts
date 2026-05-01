@@ -41,19 +41,26 @@ export function useBuildings(currentUser: CurrentUser | null) {
         lat !== undefined && lng !== undefined
           ? `/api/buildings?lat=${lat}&lng=${lng}`
           : "/api/buildings"
+      console.log('[fetchBuildings] API 호출:', url, 'lat:', lat, 'lng:', lng)
       const response = await fetch(url, { signal: ctrl.signal })
       if (!response.ok) throw new Error("Failed to fetch")
       const data = await response.json()
       const buildings: Building[] = data.buildings ?? []
+      console.log('[fetchBuildings] bbox 응답 건물 수:', buildings.length)
       if (lat !== undefined && lng !== undefined) {
         const withDist = buildings
           .map((b) => ({
             ...b,
             distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
           }))
-          .filter((b) => (b.distance ?? 0) <= 50)
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
-        setNearbyBuildings(withDist)
+        const within50 = withDist.filter((b) => (b.distance ?? 0) <= 50)
+        console.log(
+          '[fetchBuildings] 50m 필터 결과:', within50.length,
+          '/ 가장 가까운 건물:', withDist[0]?.distance, 'm',
+          '/ 상위 5개 거리:', withDist.slice(0, 5).map((b) => b.distance)
+        )
+        setNearbyBuildings(within50)
         setAllBuildings(buildings)
       } else {
         setAllBuildings(buildings)
