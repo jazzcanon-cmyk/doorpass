@@ -32,25 +32,42 @@ export function useBuildings(currentUser: CurrentUser | null) {
   }, [currentUser])
 
   const fetchBuildings = useCallback(async (lat?: number, lng?: number) => {
+    setError(null)
+    const ctrl = new AbortController()
+    const timeoutId = setTimeout(() => ctrl.abort(), 10000)
     try {
-      const response = await fetch("/api/buildings")
+      // lat/lng가 있으면 서버 측에서 반경 필터링 (가벼움, 비로그인 허용)
+      const url =
+        lat !== undefined && lng !== undefined
+          ? `/api/buildings?lat=${lat}&lng=${lng}`
+          : "/api/buildings"
+      const response = await fetch(url, { signal: ctrl.signal })
       if (!response.ok) throw new Error("Failed to fetch")
       const data = await response.json()
-      setAllBuildings(data.buildings)
+      const buildings: Building[] = data.buildings ?? []
       if (lat !== undefined && lng !== undefined) {
-        const withDist = data.buildings
-          .map((b: Building) => ({
+        const withDist = buildings
+          .map((b) => ({
             ...b,
             distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
           }))
-          .filter((b: Building) => (b.distance ?? 0) <= 50)
-          .sort((a: Building, b: Building) => (a.distance ?? 0) - (b.distance ?? 0))
+          .filter((b) => (b.distance ?? 0) <= 50)
+          .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
         setNearbyBuildings(withDist)
+        setAllBuildings(buildings)
+      } else {
+        setAllBuildings(buildings)
       }
       setLastUpdated(new Date())
     } catch (err) {
       console.error("Error:", err)
-      setError("건물 데이터를 가져오는데 실패했습니다.")
+      if ((err as Error).name === "AbortError") {
+        setError("주변 건물을 불러오지 못했습니다. 검색 탭에서 주소로 찾아보세요.")
+      } else {
+        setError("건물 데이터를 가져오는데 실패했습니다.")
+      }
+    } finally {
+      clearTimeout(timeoutId)
     }
   }, [])
 

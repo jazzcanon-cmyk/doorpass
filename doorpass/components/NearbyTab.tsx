@@ -32,6 +32,7 @@ interface NearbyTabProps {
   onBuildingSelect: (b: Building | null) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
   onBoundsChange: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void
+  onGoToSearch?: () => void
 }
 
 export function NearbyTab({
@@ -48,6 +49,7 @@ export function NearbyTab({
   onBuildingSelect,
   onBuildingUpdate,
   onBoundsChange,
+  onGoToSearch,
 }: NearbyTabProps) {
   return (
     <>
@@ -94,17 +96,36 @@ export function NearbyTab({
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center backdrop-blur-sm">
             <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
             <p className="text-red-300 text-sm mb-4">{error}</p>
-            <button
-              onClick={onRetry}
-              className="bg-red-500 hover:bg-red-600 active:scale-95 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all duration-200"
-            >
-              다시 시도
-            </button>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={onRetry}
+                className="bg-red-500 hover:bg-red-600 active:scale-95 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all duration-200"
+              >
+                다시 시도
+              </button>
+              {onGoToSearch && (
+                <button
+                  onClick={onGoToSearch}
+                  className="bg-white/10 hover:bg-white/20 active:scale-95 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all duration-200"
+                >
+                  검색 탭으로 이동
+                </button>
+              )}
+            </div>
           </div>
         ) : nearbyBuildings.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center backdrop-blur-sm">
             <MapPin className="h-10 w-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/40 text-sm">반경 50m 내에 등록된 건물이 없습니다.</p>
+            <p className="text-white/40 text-sm mb-1">반경 50m 내 등록된 건물이 없습니다</p>
+            <p className="text-white/30 text-xs mb-4">검색 탭에서 주소로 찾아보세요</p>
+            {onGoToSearch && (
+              <button
+                onClick={onGoToSearch}
+                className="bg-blue-500 hover:bg-blue-600 active:scale-95 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all duration-200"
+              >
+                검색 탭으로 이동
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

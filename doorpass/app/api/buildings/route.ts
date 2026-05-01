@@ -98,8 +98,41 @@ export async function GET(request: Request) {
   const maxLat = searchParams.get("maxLat")
   const minLng = searchParams.get("minLng")
   const maxLng = searchParams.get("maxLng")
+  const latParam = searchParams.get("lat")
+  const lngParam = searchParams.get("lng")
   const hasPageParam = searchParams.has("page")
   const hasSearchParam = searchParams.has("search")
+
+  // 내주변 탭: lat/lng 반경 조회는 비로그인도 허용 (비밀번호는 마스킹)
+  if (latParam && lngParam && !minLat) {
+    try {
+      const lat = parseFloat(latParam)
+      const lng = parseFloat(lngParam)
+      if (!isFinite(lat) || !isFinite(lng)) {
+        return NextResponse.json({ buildings: [] })
+      }
+      const { revealPasswords } = await getBuildingsListAuth()
+      const { data, error } = await supabase
+        .from("buildings")
+        .select("id, name, address, password, lat, lng, memo, access_type")
+        .gte("lat", lat - 0.005)
+        .lte("lat", lat + 0.005)
+        .gte("lng", lng - 0.006)
+        .lte("lng", lng + 0.006)
+        .limit(500)
+
+      if (error) throw new Error(error.message)
+      return NextResponse.json({
+        buildings: (data ?? []).map((row) => toBuilding(row as BuildingRow, revealPasswords)),
+      })
+    } catch (error) {
+      console.error("Error fetching nearby buildings:", error)
+      return NextResponse.json(
+        { error: "Failed to fetch nearby buildings" },
+        { status: 500 }
+      )
+    }
+  }
 
   // 검색 단독 호출은 비로그인도 허용 (비밀번호는 마스킹)
   if (hasSearchParam && !hasPageParam) {

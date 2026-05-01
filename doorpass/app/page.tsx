@@ -158,6 +158,7 @@ export default function Home() {
           onBuildingSelect={handleBuildingSelect}
           onBuildingUpdate={handleBuildingUpdate}
           onBoundsChange={fetchBuildingsByViewport}
+          onGoToSearch={() => handleTabChange("search")}
         />
       )}
 
