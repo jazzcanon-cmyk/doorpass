@@ -49,6 +49,23 @@ export default function Home() {
     )
   }, [getLocation, fetchBuildings])
 
+  const handleLocateMe = useCallback(
+    () =>
+      new Promise<boolean>((resolve) => {
+        getLocation(
+          async (lat, lng) => {
+            await fetchBuildings(lat, lng)
+            resolve(true)
+          },
+          async () => {
+            await fetchBuildings()
+            resolve(false)
+          }
+        )
+      }),
+    [getLocation, fetchBuildings]
+  )
+
   // 초기 마운트 시 GPS 없이 건물 목록만 로드 (검색 탭에서 바로 사용)
   useEffect(() => {
     if (authStatus !== "ok") return
@@ -159,6 +176,7 @@ export default function Home() {
           onBuildingUpdate={handleBuildingUpdate}
           onBoundsChange={fetchBuildingsByViewport}
           onGoToSearch={() => handleTabChange("search")}
+          onLocateMe={handleLocateMe}
         />
       )}
 

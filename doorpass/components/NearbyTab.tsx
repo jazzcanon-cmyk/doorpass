@@ -33,6 +33,7 @@ interface NearbyTabProps {
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
   onBoundsChange: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void
   onGoToSearch?: () => void
+  onLocateMe?: () => Promise<boolean>
 }
 
 export function NearbyTab({
@@ -50,6 +51,7 @@ export function NearbyTab({
   onBuildingUpdate,
   onBoundsChange,
   onGoToSearch,
+  onLocateMe,
 }: NearbyTabProps) {
   return (
     <>
@@ -69,6 +71,7 @@ export function NearbyTab({
             onBuildingSelect={onBuildingSelect}
             selectedBuilding={selectedBuilding}
             onBoundsChange={onBoundsChange}
+            onLocateMe={onLocateMe}
           />
           {selectedBuilding && (
             <SelectedBuildingInfo
