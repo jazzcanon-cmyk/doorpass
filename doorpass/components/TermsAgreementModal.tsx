@@ -48,13 +48,15 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
         </div>
 
         <div className="space-y-3">
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={termsChecked}
-              onChange={(e) => setTermsChecked(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
-            />
+          <label className="flex items-start gap-3 cursor-pointer group select-none py-2 px-1 rounded-lg active:bg-white/5">
+            <div className="flex-shrink-0 mt-0.5">
+              <input
+                type="checkbox"
+                checked={termsChecked}
+                onChange={(e) => setTermsChecked(e.target.checked)}
+                className="h-5 w-5 accent-blue-500 cursor-pointer"
+              />
+            </div>
             <span className="text-sm text-white/80 leading-relaxed">
               <a
                 href="/terms"
@@ -70,14 +72,16 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
             </span>
           </label>
 
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={purposeChecked}
-              onChange={(e) => setPurposeChecked(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
-            />
-            <span className="text-sm text-white/80 leading-relaxed">
+          <label className="flex items-start gap-3 cursor-pointer group select-none py-2 px-1 rounded-lg active:bg-white/5">
+            <div className="flex-shrink-0 mt-0.5">
+              <input
+                type="checkbox"
+                checked={purposeChecked}
+                onChange={(e) => setPurposeChecked(e.target.checked)}
+                className="h-5 w-5 accent-blue-500 cursor-pointer"
+              />
+            </div>
+            <span className="text-sm text-white/80 leading-relaxed group-active:text-white">
               비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
               <span className="text-red-400 font-medium">(필수)</span>
             </span>
