@@ -66,6 +66,18 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       `[대체배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
     ).catch(console.error)
 
+    // 요청자에게 푸시 알림
+    fetch(new URL("/api/push/send", request.url).toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userEmail: reqRow.requester_email,
+        title: "대체배송 신청이 들어왔어요!",
+        body: applicantName + "님이 신청했습니다. 앱에서 확인하세요.",
+        url: "/delivery",
+      }),
+    }).catch(console.error)
+
     return NextResponse.json({ application: data })
   } catch (error) {
     console.error("[Delivery apply] 오류:", error)

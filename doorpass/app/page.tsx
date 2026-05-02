@@ -10,6 +10,7 @@ import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
 import { TermsAgreementModal } from "@/components/TermsAgreementModal"
+import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
@@ -134,6 +135,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+      {authStatus === "ok" && <PushNotificationBanner />}
+
       {showTermsModal && (
         <TermsAgreementModal onAgreed={() => setShowTermsModal(false)} />
       )}

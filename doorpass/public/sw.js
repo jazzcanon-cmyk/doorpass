@@ -40,3 +40,31 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request))
   )
 })
+
+// 푸시 수신
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  const data = event.data.json()
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? 'DoorPass', {
+      body: data.body ?? '',
+      icon: '/icon-192x192.png',
+      badge: '/icon-dark-32x32.png',
+      data: { url: data.url ?? '/' },
+      vibrate: [200, 100, 200],
+    })
+  )
+})
+
+// 알림 클릭
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url ?? '/'
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const existing = list.find((c) => c.url.includes(self.location.origin))
+      if (existing) { existing.focus(); return existing.navigate(url) }
+      return clients.openWindow(url)
+    })
+  )
+})

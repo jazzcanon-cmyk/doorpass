@@ -40,6 +40,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
   const [requestModalOpen, setRequestModalOpen] = useState(false)
   const [applyTarget, setApplyTarget] = useState<DeliveryRequest | null>(null)
   const [detailId, setDetailId] = useState<string | number | null>(null)
+  const [pendingCount, setPendingCount] = useState(0)
 
   const fetchList = useCallback(async () => {
     setLoading(true)
@@ -55,13 +56,22 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
         toast.error(data.error)
         return
       }
-      setRequests(data.requests ?? [])
+      const list: DeliveryRequest[] = data.requests ?? []
+      setRequests(list)
+      const total = list.reduce((sum, r) => {
+        const isMine = r.requester_email === currentEmail
+        if (!isMine) return sum
+        if (r.status !== "open") return sum
+        const count = typeof r.application_count === "number" ? r.application_count : 0
+        return sum + count
+      }, 0)
+      setPendingCount(total)
     } catch {
       toast.error("불러오기 실패")
     } finally {
       setLoading(false)
     }
-  }, [tab, statusFilter, dateFilter])
+  }, [tab, statusFilter, dateFilter, currentEmail])
 
   useEffect(() => {
     void fetchList()
@@ -116,7 +126,14 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
                 : "text-white/50 hover:text-white/80"
             }`}
           >
-            {t.label}
+            <span className="relative">
+              {t.label}
+              {t.key === "mine" && pendingCount > 0 && (
+                <span className="absolute -top-2 -right-4 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              )}
+            </span>
           </button>
         ))}
       </div>
