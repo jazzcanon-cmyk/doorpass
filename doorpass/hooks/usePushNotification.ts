@@ -15,23 +15,36 @@ export function usePushNotification() {
     }
   }, [])
 
-  const subscribe = async () => {
+  const subscribe = async (): Promise<boolean> => {
     try {
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidKey) {
+        console.error('[Push] VAPID 공개키가 없습니다.')
+        return false
+      }
+
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-        ),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       })
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: sub }),
       })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        console.error('[Push] 구독 저장 실패:', res.status, data)
+        return false
+      }
+
       setSubscribed(true)
       return true
-    } catch {
+    } catch (e) {
+      console.error('[Push] 구독 오류:', e)
       return false
     }
   }
