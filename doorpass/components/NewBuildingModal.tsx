@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -82,6 +82,7 @@ export function NewBuildingModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult>(null)
   const [isChecking, setIsChecking] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const SCRIPT_ID = "kakao-postcode-script"
@@ -93,13 +94,13 @@ export function NewBuildingModal({
     document.head.appendChild(script)
   }, [])
 
-  const checkDuplicate = async (address: string) => {
+  const checkDuplicate = async (address: string, name?: string) => {
     setIsChecking(true)
     setDuplicateCheck(null)
     try {
-      const res = await fetch(
-        `/api/buildings/check-duplicate?address=${encodeURIComponent(address)}`
-      )
+      const params = new URLSearchParams({ address })
+      if (name && name.trim()) params.set("name", name.trim())
+      const res = await fetch(`/api/buildings/check-duplicate?${params.toString()}`)
       const data = (await res.json()) as DuplicateCheckResult & { error?: string }
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "확인 실패")
       setDuplicateCheck(data as DuplicateCheckResult)
@@ -246,7 +247,7 @@ export function NewBuildingModal({
                 <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-yellow-300">
-                    이미 등록된 건물입니다
+                    같은 주소+건물명이 이미 등록되어 있어요
                   </p>
                   <p className="text-sm text-yellow-400 mt-0.5 font-medium">
                     {duplicateCheck.building.name}
@@ -283,10 +284,18 @@ export function NewBuildingModal({
                 onGoToBuilding?.(id, address)
               }}
             >
-              🔑 이 건물 비밀번호 수정하기
+              🔑 비밀번호 수정하기
             </Button>
-            <Button type="button" onClick={resetAndClose} variant="outline" className="flex-1 border-gray-600 text-gray-200 hover:bg-gray-700">
-              닫기
+            <Button
+              type="button"
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold"
+              onClick={() => {
+                setForm((prev) => ({ ...prev, name: "" }))
+                setDuplicateCheck(null)
+                setTimeout(() => nameInputRef.current?.focus(), 50)
+              }}
+            >
+              🏢 다른 동 추가하기
             </Button>
           </div>
         )}
@@ -303,9 +312,15 @@ export function NewBuildingModal({
                   건물명 <span className="text-red-400">*</span>
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, name: e.target.value })
+                    if (form.address && e.target.value.length >= 2) {
+                      void checkDuplicate(form.address, e.target.value)
+                    }
+                  }}
                   placeholder="예) 롯데캐슬 101동"
                   className={INPUT_CLS}
                   required

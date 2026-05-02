@@ -13,6 +13,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const address = searchParams.get("address")?.trim()
+  const name = searchParams.get("name")?.trim() ?? ""
 
   if (!address) {
     return NextResponse.json({ error: "address 파라미터가 필요합니다." }, { status: 400 })
@@ -35,7 +36,8 @@ export async function GET(request: Request) {
   }
 
   // 정규화된 형태로 한 번 더 비교 (광역시/특별시 표기 차이 흡수)
-  const match = (data ?? []).find((row) => {
+  // name이 있으면 주소+이름 조합으로 중복 판단
+  const candidates = (data ?? []).filter((row) => {
     const dbAddr = (row as { address: string | null }).address ?? ""
     const dbNorm = normalizeAddress(dbAddr)
     const dbRoad = extractRoadAddress(dbAddr)
@@ -45,7 +47,17 @@ export async function GET(request: Request) {
       dbNorm.includes(searchKey) ||
       normalizedInput.includes(dbRoad)
     )
-  }) ?? data?.[0]
+  })
+
+  let match: typeof candidates[number] | undefined
+  if (name) {
+    match = candidates.find((row) => {
+      const dbName = (row as { name: string | null }).name ?? ""
+      return dbName.trim() === name
+    })
+  } else {
+    match = candidates[0] ?? data?.[0]
+  }
 
   if (match) {
     const b = match as { id: number; name: string | null; address: string | null; created_at: string }
