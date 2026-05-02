@@ -51,7 +51,10 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192x192.png',
       badge: '/icon-dark-32x32.png',
       data: { url: data.url ?? '/' },
-      vibrate: [200, 100, 200],
+      silent: false,
+      vibrate: [300, 100, 300, 100, 300],
+      requireInteraction: true,
+      tag: 'doorpass-notification',
     })
   )
 })
