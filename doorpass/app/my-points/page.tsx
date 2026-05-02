@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Gift, Trophy, Calendar, Link2 } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PointLog {
@@ -36,7 +36,11 @@ export default function MyPointsPage() {
   const [tab, setTab] = useState<'all' | 'earn' | 'exchange'>('all')
   const [exchanging, setExchanging] = useState(false)
   const [inviting, setInviting] = useState(false)
-  const [todayInviteCount, setTodayInviteCount] = useState<number | null>(null)
+  const [remainingInvites, setRemainingInvites] = useState(3)
+
+  useEffect(() => {
+    document.title = '🏆 내 포인트 | DoorPass'
+  }, [])
 
   useEffect(() => {
     fetch('/api/users/points')
@@ -47,33 +51,38 @@ export default function MyPointsPage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/users/referral/count')
+    fetch('/api/users/referral/remaining')
       .then((r) => r.json())
-      .then((d: { count: number }) => setTodayInviteCount(d.count ?? 0))
+      .then((d: { remaining: number }) => setRemainingInvites(d.remaining ?? 3))
       .catch(() => {})
   }, [])
 
   const handleInvite = async () => {
+    if (inviting) return
     setInviting(true)
     try {
       const res = await fetch('/api/users/referral/generate', { method: 'POST' })
       const d = await res.json() as { url?: string; error?: string }
-      if (!res.ok) throw new Error(d.error || '링크 생성 실패')
-      const referralUrl = d.url!
-      setTodayInviteCount((c) => (c ?? 0) + 1)
+      if (!res.ok) {
+        toast.error(d.error ?? '링크 생성 실패')
+        return
+      }
+      const url = d.url!
+      setRemainingInvites((prev) => Math.max(0, prev - 1))
+
       if (navigator.share) {
         await navigator.share({
-          title: 'DoorPass 초대장',
-          text: '공동현관 비밀번호 앱 DoorPass에 초대합니다! 가입하면 300P를 드려요 🎁',
-          url: referralUrl,
+          title: 'DoorPass 초대장 🎁',
+          text: '공동현관 비밀번호 앱 DoorPass! 가입하면 300P를 드려요.',
+          url,
         })
       } else {
-        await navigator.clipboard.writeText(referralUrl)
-        toast.success('링크가 복사됐어요! 카카오톡에 붙여넣기 해주세요 📋')
+        await navigator.clipboard.writeText(url)
+        toast.success('링크가 복사됐어요! 카카오톡에 붙여넣기 하세요 📋')
       }
     } catch (e) {
       if (e instanceof Error && e.name !== 'AbortError') {
-        toast.error(e.message)
+        toast.error('링크 생성에 실패했습니다.')
       }
     } finally {
       setInviting(false)
@@ -87,7 +96,7 @@ export default function MyPointsPage() {
       const res = await fetch('/api/users/points/exchange', { method: 'POST' })
       const d = await res.json() as { error?: string }
       if (!res.ok) throw new Error(d.error || '교환 실패')
-      toast.success('🎁 GS상품권 교환 신청 완료! 소장님이 곧 전달해드릴게요.')
+      toast.success('🎁 교환 신청 완료! 소장님이 확인 후 상품권을 전달해드려요.')
       const res2 = await fetch('/api/users/points')
       setData(await res2.json() as PointData)
     } catch (e) {
@@ -130,7 +139,9 @@ export default function MyPointsPage() {
         <button onClick={() => router.back()} className='p-1 text-white/60 hover:text-white'>
           <ArrowLeft className='h-5 w-5' />
         </button>
-        <h1 className='text-base font-bold'>내 포인트</h1>
+        <h1 className='text-base font-bold flex items-center gap-2'>
+          🏆 내 포인트
+        </h1>
       </div>
 
       {/* 포인트 요약 카드 */}
@@ -145,46 +156,63 @@ export default function MyPointsPage() {
         <div className='bg-white/20 rounded-full h-2 mb-1 overflow-hidden'>
           <div className='bg-white rounded-full h-2 transition-all duration-500' style={{ width: progress + '%' }} />
         </div>
-        <div className='flex justify-between text-xs text-white/70 mb-3'>
-          <span>0P</span>
-          <span>{total.toLocaleString()} / 10,000P</span>
+
+        {/* 마일스톤 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', marginBottom: '12px' }}>
+          {[2500, 5000, 7500, 10000].map((milestone) => (
+            <div key={milestone} style={{ textAlign: 'center', fontSize: '9px', color: total >= milestone ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)' }}>
+              <div style={{ marginBottom: '2px' }}>{total >= milestone ? '★' : '☆'}</div>
+              <div>{(milestone / 1000).toFixed(0)}천P</div>
+            </div>
+          ))}
         </div>
 
         {/* 교환 버튼 */}
         <button
-          onClick={() => void handleExchange()}
-          disabled={!canExchange || exchanging}
+          onClick={() => { if (canExchange) void handleExchange() }}
+          disabled={exchanging}
           className={'w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ' +
             (canExchange ? 'bg-white text-amber-500 active:bg-white/90' : 'bg-white/20 text-white/40 cursor-not-allowed')}
         >
-          <Gift className='h-4 w-4' />
-          {exchanging ? '처리 중...' : canExchange ? 'GS상품권 교환하기 (10,000P)' : `${(10000 - total).toLocaleString()}P 더 모으면 교환 가능`}
+          {exchanging ? '처리 중...' : canExchange
+            ? '🎁 GS상품권 1만원 교환하기'
+            : `🎁 ${(10000 - total).toLocaleString()}P 더 모으면 GS상품권 교환!`}
         </button>
       </div>
 
       {/* 친구 초대 */}
       <div className='mx-4 mt-3 bg-white/5 border border-white/10 rounded-2xl p-4'>
-        <div className='flex items-center justify-between mb-2'>
+        <div className='flex items-center justify-between mb-3'>
           <div>
             <div className='text-sm font-bold text-white'>친구 초대하기 🔗</div>
             <div className='text-xs text-white/50 mt-0.5'>
               초대받은 친구 승인 시 나 +500P, 친구 +300P
             </div>
           </div>
-          {todayInviteCount !== null && (
-            <div className='text-xs text-white/40 shrink-0 ml-3'>
-              오늘 {todayInviteCount}/3회
-            </div>
-          )}
+          <div className='text-xs text-white/40 shrink-0 ml-3'>
+            오늘 {3 - remainingInvites}/3회
+          </div>
         </div>
         <button
           onClick={() => void handleInvite()}
-          disabled={inviting || (todayInviteCount ?? 0) >= 3}
-          className={'w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ' +
-            ((todayInviteCount ?? 0) < 3 ? 'bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed')}
+          disabled={inviting || remainingInvites === 0}
+          style={{
+            width: '100%',
+            padding: '14px',
+            borderRadius: '12px',
+            background: remainingInvites === 0 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #10b981, #059669)',
+            color: remainingInvites === 0 ? 'rgba(255,255,255,0.3)' : 'white',
+            border: 'none',
+            fontSize: '15px',
+            fontWeight: 700,
+            cursor: remainingInvites === 0 ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+          }}
         >
-          <Link2 className='h-4 w-4' />
-          {inviting ? '생성 중...' : (todayInviteCount ?? 0) >= 3 ? '오늘 초대 한도 초과' : '카카오톡으로 초대 링크 보내기'}
+          {inviting ? '⏳ 링크 생성 중...' : remainingInvites === 0 ? '오늘 초대 한도 완료 (3/3)' : '🔗 카카오톡으로 초대 링크 보내기'}
         </button>
       </div>
 
