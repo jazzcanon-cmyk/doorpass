@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabaseAdmin
       .from('buildings')
-      .select('name, password, memo')
+      .select('name, password, memo, has_elevator')
       .eq('id', buildingId)
       .maybeSingle()
 
@@ -61,18 +61,25 @@ export async function POST(request: Request) {
 
     let action: PointAction | null = null
 
-    if (field === 'name' && value && value !== existing.name) {
-      action = 'building_name'
+    if (field === 'name') {
+      const wasEmpty = !existing.name || existing.name.trim() === ''
+      const isNew = value && value.trim() !== ''
+      if (wasEmpty && isNew) action = 'building_name'
     } else if (field === 'password') {
-      if (value === '자유출입' && existing.password !== '자유출입') {
-        action = 'building_free_access'
-      } else if (value && value !== '자유출입' && value !== existing.password) {
-        action = 'building_password'
+      const wasEmpty = !existing.password || existing.password.trim() === '' || existing.password === '미입력'
+      const isNew = value && value.trim() !== ''
+      if (wasEmpty && isNew) {
+        action = value === '자유출입' ? 'building_free_access' : 'building_password'
       }
-    } else if (field === 'memo' && value && value !== existing.memo) {
-      action = value.includes('엘리베이터') ? 'building_elevator' : 'building_memo'
+    } else if (field === 'memo') {
+      const wasEmpty = !existing.memo || existing.memo.trim() === ''
+      const isNew = value && value.trim() !== ''
+      if (wasEmpty && isNew) {
+        action = value.includes('엘리베이터') ? 'building_elevator' : 'building_memo'
+      }
     } else if (field === 'has_elevator') {
-      action = 'building_elevator'
+      const wasEmpty = existing.has_elevator === null || existing.has_elevator === undefined
+      if (wasEmpty) action = 'building_elevator'
     }
 
     let pointResult: { success: boolean; points?: number; newTotal?: number } = { success: false }
