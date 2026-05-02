@@ -73,14 +73,14 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             <button
               key={tab.key}
               onClick={() => onTabChange(tab.key)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200 ${
+              className={`flex flex-col flex-1 items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all duration-200 ${
                 activeTab === tab.key
                   ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
                   : "text-white/40 hover:text-white/70 hover:bg-white/5"
               }`}
             >
               {tab.icon}
-              {tab.label}
+              <span className="whitespace-nowrap">{tab.label}</span>
             </button>
           ))}
         </div>

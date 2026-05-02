@@ -103,9 +103,49 @@ export function BuildingCard({
   const [saving, setSaving] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
 
+  const [accessType, setAccessType] = useState<"free" | "password">(
+    currentBuilding.access_type === "free" ? "free" : "password"
+  )
+  const [passwordDraft, setPasswordDraft] = useState(currentBuilding.password || "")
+  const [isEditingPassword, setIsEditingPassword] = useState(false)
+  const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no">("")
+  const [memoText, setMemoText] = useState("")
+  const [memoDraft, setMemoDraft] = useState("")
+  const [isEditingMemo, setIsEditingMemo] = useState(false)
+
   useEffect(() => {
     setCurrentBuilding(building)
   }, [building])
+
+  useEffect(() => {
+    setAccessType(currentBuilding.access_type === "free" ? "free" : "password")
+  }, [currentBuilding])
+
+  useEffect(() => {
+    setPasswordDraft(currentBuilding.password || "")
+  }, [currentBuilding.password])
+
+  useEffect(() => {
+    const raw = currentBuilding.memo || ""
+    let elev: "" | "yes" | "no" = ""
+    let remaining = raw
+    if (raw.includes("엘리베이터 있음")) {
+      elev = "yes"
+      remaining = raw.replace(/엘리베이터 있음\.?\s*/g, "")
+    } else if (raw.includes("엘리베이터 없음")) {
+      elev = "no"
+      remaining = raw.replace(/엘리베이터 없음\.?\s*/g, "")
+    }
+    setElevatorStatus(elev)
+    setMemoText(remaining.trim())
+    setMemoDraft(remaining.trim())
+  }, [currentBuilding.memo])
+
+  const composeMemo = (status: "" | "yes" | "no", text: string) => {
+    const prefix =
+      status === "yes" ? "엘리베이터 있음. " : status === "no" ? "엘리베이터 없음. " : ""
+    return (prefix + text).trim()
+  }
 
   const saveField = async (field: "name" | "password" | "memo", value: string) => {
     if (field === "password" && !canRevealBuildingPassword) return
@@ -264,13 +304,111 @@ export function BuildingCard({
                 </div>
               ) : (
                 <>
-                  <EditableRow
-                    label="비밀번호"
-                    value={currentBuilding.password || ""}
-                    onSave={(v) => saveField("password", v)}
-                    saving={saving}
-                    canEdit={canEdit && canRevealBuildingPassword}
-                  />
+                  <div className="flex items-start gap-2 py-2 border-b border-border/40">
+                    <span className="text-xs text-muted-foreground w-16 flex-shrink-0 pt-1">비밀번호</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={!canEdit || !canRevealBuildingPassword || saving}
+                          onClick={() => {
+                            setAccessType("free")
+                            setIsEditingPassword(false)
+                            void saveField("password", "자유출입")
+                          }}
+                          className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
+                            accessType === "free"
+                              ? "bg-blue-500/20 border-blue-400 text-blue-300"
+                              : "bg-secondary border-border text-muted-foreground"
+                          } ${!canEdit || !canRevealBuildingPassword ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                        >
+                          자유출입
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canEdit || !canRevealBuildingPassword || saving}
+                          onClick={() => {
+                            setAccessType("password")
+                            setIsEditingPassword(true)
+                          }}
+                          className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
+                            accessType === "password"
+                              ? "bg-blue-500/20 border-blue-400 text-blue-300"
+                              : "bg-secondary border-border text-muted-foreground"
+                          } ${!canEdit || !canRevealBuildingPassword ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                        >
+                          직접입력
+                        </button>
+                      </div>
+
+                      {accessType === "password" && (
+                        <div className="mt-2">
+                          {isEditingPassword ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                value={passwordDraft}
+                                onChange={(e) => setPasswordDraft(e.target.value)}
+                                className="h-9 text-sm bg-secondary border-primary/50 flex-1"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    void saveField("password", passwordDraft).then(() =>
+                                      setIsEditingPassword(false)
+                                    )
+                                  }
+                                  if (e.key === "Escape") {
+                                    setPasswordDraft(currentBuilding.password || "")
+                                    setIsEditingPassword(false)
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="default"
+                                size="icon"
+                                disabled={saving}
+                                onClick={async () => {
+                                  await saveField("password", passwordDraft)
+                                  setIsEditingPassword(false)
+                                }}
+                                className="h-9 w-9 flex-shrink-0 bg-primary text-primary-foreground"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                onClick={() => {
+                                  setPasswordDraft(currentBuilding.password || "")
+                                  setIsEditingPassword(false)
+                                }}
+                                className="h-9 w-9 flex-shrink-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-mono font-bold text-yellow-400">
+                                {currentBuilding.password || (
+                                  <span className="text-muted-foreground italic font-sans font-normal">미입력</span>
+                                )}
+                              </span>
+                              {canEdit && canRevealBuildingPassword && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setIsEditingPassword(true)}
+                                  className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   {!canRevealBuildingPassword && (
                     <p className="text-[11px] text-muted-foreground mt-1 pl-[4.5rem]">
                       승인 후 열람 가능 —{" "}
@@ -285,13 +423,116 @@ export function BuildingCard({
                   )}
                 </>
               )}
-              <EditableRow
-                label="메모"
-                value={currentBuilding.memo || ""}
-                onSave={(v) => saveField("memo", v)}
-                saving={saving}
-                canEdit={canEdit}
-              />
+              <div className="flex items-start gap-2 py-2 border-b border-border/40 last:border-0">
+                <span className="text-xs text-muted-foreground w-16 flex-shrink-0 pt-2">메모</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap">
+                    <button
+                      type="button"
+                      disabled={!canEdit || saving}
+                      onClick={() => {
+                        const next = elevatorStatus === "yes" ? "" : "yes"
+                        setElevatorStatus(next)
+                        void saveField("memo", composeMemo(next, memoText))
+                      }}
+                      className={`px-3 py-1 rounded-lg border text-xs font-medium mr-2 transition-all ${
+                        elevatorStatus === "yes"
+                          ? "bg-green-500/20 border-green-400 text-green-300"
+                          : "bg-secondary border-border text-muted-foreground"
+                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                    >
+                      엘리베이터 있음
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canEdit || saving}
+                      onClick={() => {
+                        const next = elevatorStatus === "no" ? "" : "no"
+                        setElevatorStatus(next)
+                        void saveField("memo", composeMemo(next, memoText))
+                      }}
+                      className={`px-3 py-1 rounded-lg border text-xs font-medium mr-2 transition-all ${
+                        elevatorStatus === "no"
+                          ? "bg-green-500/20 border-green-400 text-green-300"
+                          : "bg-secondary border-border text-muted-foreground"
+                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                    >
+                      엘리베이터 없음
+                    </button>
+                  </div>
+
+                  <div className="mt-2">
+                    {isEditingMemo ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={memoDraft}
+                          onChange={(e) => setMemoDraft(e.target.value)}
+                          placeholder="추가 메모 (예: 공동현관, 2층 계단 옆)"
+                          className="h-9 text-sm bg-secondary border-primary/50 flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              void saveField("memo", composeMemo(elevatorStatus, memoDraft)).then(() => {
+                                setMemoText(memoDraft)
+                                setIsEditingMemo(false)
+                              })
+                            }
+                            if (e.key === "Escape") {
+                              setMemoDraft(memoText)
+                              setIsEditingMemo(false)
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="default"
+                          size="icon"
+                          disabled={saving}
+                          onClick={async () => {
+                            await saveField("memo", composeMemo(elevatorStatus, memoDraft))
+                            setMemoText(memoDraft)
+                            setIsEditingMemo(false)
+                          }}
+                          className="h-9 w-9 flex-shrink-0 bg-primary text-primary-foreground"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          onClick={() => {
+                            setMemoDraft(memoText)
+                            setIsEditingMemo(false)
+                          }}
+                          className="h-9 w-9 flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-foreground flex-1">
+                          {memoText || (
+                            <span className="text-muted-foreground italic">미입력</span>
+                          )}
+                        </span>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setMemoDraft(memoText)
+                              setIsEditingMemo(true)
+                            }}
+                            className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
               {!canEdit && (
                 <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 flex items-center gap-2 text-xs text-white/50">
                   <Lock className="h-3.5 w-3.5 flex-shrink-0" />
