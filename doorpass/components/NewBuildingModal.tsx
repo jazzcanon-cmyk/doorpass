@@ -12,6 +12,14 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Search, AlertTriangle, CheckCircle2 } from "lucide-react"
 import type { AccessType } from "@/types/building"
 
+type AccessChoice = Exclude<AccessType, "etc">
+type ElevatorStatus = "" | "yes" | "no"
+
+const ELEVATOR_LABEL: Record<Exclude<ElevatorStatus, "">, string> = {
+  yes: "엘리베이터 있음",
+  no: "엘리베이터 없음",
+}
+
 declare global {
   interface Window {
     daum?: {
@@ -45,14 +53,6 @@ type DuplicateCheckResult =
 
 const REGIONS = ["울산", "부산", "대구", "서울", "경기", "기타"]
 
-const ACCESS_OPTIONS: { value: AccessType; label: string; reward: string }[] = [
-  { value: "free", label: "🚪 자유출입 (비밀번호 없음)", reward: "+50P" },
-  { value: "password", label: "🔐 비밀번호 입력", reward: "+100P" },
-  { value: "etc", label: "📋 기타 (경비실 문의 등)", reward: "+30P" },
-]
-
-const ETC_DEFAULT_MEMO = "경비실 문의 또는 관리자 호출"
-
 const INPUT_CLS =
   "w-full px-3 py-2 border border-gray-600 rounded-lg text-sm " +
   "bg-gray-800 text-white " +
@@ -74,8 +74,9 @@ export function NewBuildingModal({
     password: "",
     memo: "",
     region: "",
-    accessType: "password" as AccessType,
+    accessType: "password" as AccessChoice,
   })
+  const [elevatorStatus, setElevatorStatus] = useState<ElevatorStatus>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult>(null)
   const [isChecking, setIsChecking] = useState(false)
@@ -123,24 +124,21 @@ export function NewBuildingModal({
 
   const resetAndClose = () => {
     setForm({ name: "", address: "", password: "", memo: "", region: "", accessType: "password" })
+    setElevatorStatus("")
     setDuplicateCheck(null)
     onClose()
   }
 
-  const handleAccessTypeChange = (value: AccessType) => {
+  const handleAccessTypeChange = (value: AccessChoice) => {
     setForm((prev) => {
       const next = { ...prev, accessType: value }
-      if (value === "free" || value === "etc") {
-        next.password = ""
-      }
-      if (value === "etc" && !prev.memo.trim()) {
-        next.memo = ETC_DEFAULT_MEMO
-      }
-      if (prev.accessType === "etc" && value !== "etc" && prev.memo === ETC_DEFAULT_MEMO) {
-        next.memo = ""
-      }
+      if (value === "free") next.password = ""
       return next
     })
+  }
+
+  const toggleElevator = (value: Exclude<ElevatorStatus, "">) => {
+    setElevatorStatus((prev) => (prev === value ? "" : value))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,11 +158,11 @@ export function NewBuildingModal({
     }
 
     const payloadPassword =
-      form.accessType === "free"
-        ? "자유출입"
-        : form.accessType === "etc"
-        ? "기타(메모참조)"
-        : form.password
+      form.accessType === "free" ? "자유출입" : form.password
+
+    const elevatorPrefix =
+      elevatorStatus === "" ? "" : `${ELEVATOR_LABEL[elevatorStatus]}. `
+    const combinedMemo = (elevatorPrefix + form.memo).trim()
 
     setIsSubmitting(true)
     try {
@@ -175,7 +173,7 @@ export function NewBuildingModal({
           name: form.name.trim(),
           address: form.address.trim(),
           password: payloadPassword,
-          memo: form.memo.trim() || null,
+          memo: combinedMemo || null,
           region: form.region || null,
           branch_id: branchId ?? null,
           uploaded_by: userEmail,
@@ -198,8 +196,7 @@ export function NewBuildingModal({
 
   const isDuplicate = duplicateCheck?.exists === true
   const isNew = duplicateCheck?.exists === false
-  const reward =
-    form.accessType === "free" ? "+50P" : form.accessType === "etc" ? "+30P" : "+100P"
+  const reward = form.accessType === "free" ? "+50P" : "+100P"
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose() }}>
@@ -311,42 +308,43 @@ export function NewBuildingModal({
 
               <div>
                 <label className={LABEL_CLS}>
-                  출입 방식 <span className="text-red-400">*</span>
+                  비밀번호 <span className="text-red-400">*</span>
                 </label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {ACCESS_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleAccessTypeChange(opt.value)}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm text-left transition ${
-                        form.accessType === opt.value
-                          ? "bg-blue-500/20 border-blue-400 text-white"
-                          : "bg-gray-800 border-gray-600 text-gray-200"
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      <span className="text-xs text-green-400 font-semibold">{opt.reward}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAccessTypeChange("free")}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                      form.accessType === "free"
+                        ? "bg-blue-500/20 border-blue-400 text-white"
+                        : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    자유출입
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAccessTypeChange("password")}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                      form.accessType === "password"
+                        ? "bg-blue-500/20 border-blue-400 text-white"
+                        : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    직접입력
+                  </button>
                 </div>
-              </div>
-
-              {form.accessType === "password" && (
-                <div>
-                  <label className={LABEL_CLS}>
-                    비밀번호 <span className="text-red-400">*</span>
-                  </label>
+                {form.accessType === "password" && (
                   <input
                     type="text"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     placeholder="4자리 이상"
-                    className={INPUT_CLS}
+                    className={`${INPUT_CLS} mt-2`}
                     required
                   />
-                </div>
-              )}
+                )}
+              </div>
 
               <div>
                 <label className={LABEL_CLS}>지역</label>
@@ -363,19 +361,37 @@ export function NewBuildingModal({
               </div>
 
               <div>
-                <label className={LABEL_CLS}>
-                  메모 {form.accessType === "etc" && <span className="text-red-400">*</span>}
-                </label>
+                <label className={LABEL_CLS}>메모</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleElevator("yes")}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                      elevatorStatus === "yes"
+                        ? "bg-green-500/20 border-green-400 text-green-300"
+                        : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    엘리베이터 있음
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleElevator("no")}
+                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                      elevatorStatus === "no"
+                        ? "bg-green-500/20 border-green-400 text-green-300"
+                        : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    엘리베이터 없음
+                  </button>
+                </div>
                 <textarea
                   value={form.memo}
                   onChange={(e) => setForm({ ...form, memo: e.target.value })}
-                  placeholder={
-                    form.accessType === "etc"
-                      ? "출입 방법 설명 (예: 경비실에 0000-0000 호출)"
-                      : "추가 정보 (예: 공동현관, 2층 계단 옆)"
-                  }
+                  placeholder="추가 메모 (예: 공동현관, 2층 계단 옆)"
                   rows={2}
-                  className={`${INPUT_CLS} resize-none`}
+                  className={`${INPUT_CLS} resize-none mt-2`}
                 />
               </div>
 

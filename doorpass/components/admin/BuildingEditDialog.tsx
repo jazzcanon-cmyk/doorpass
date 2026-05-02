@@ -41,6 +41,9 @@ export function BuildingEditDialog({
   const [password, setPassword] = useState("")
   const [memo, setMemo] = useState("")
   const [createdAt, setCreatedAt] = useState("")
+  const [accessType, setAccessType] = useState<"free" | "password">("password")
+  const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no">("")
+  const [memoText, setMemoText] = useState("")
 
   const reset = useCallback(() => {
     setName("")
@@ -48,6 +51,9 @@ export function BuildingEditDialog({
     setPassword("")
     setMemo("")
     setCreatedAt("")
+    setAccessType("password")
+    setElevatorStatus("")
+    setMemoText("")
     setLoadingDetail(false)
     setSaving(false)
     setDeleting(false)
@@ -58,11 +64,27 @@ export function BuildingEditDialog({
       const res = await fetch(`/api/buildings/${id}`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "불러오기 실패")
+      const pw = String(data.password ?? "")
+      const rawMemo = String(data.memo ?? "")
       setName(String(data.name ?? ""))
       setAddress(String(data.address ?? ""))
-      setPassword(String(data.password ?? ""))
-      setMemo(String(data.memo ?? ""))
+      setPassword(pw)
+      setMemo(rawMemo)
       setCreatedAt(String(data.created_at ?? ""))
+
+      setAccessType(pw === "자유출입" || pw === "" ? "free" : "password")
+
+      let elev: "" | "yes" | "no" = ""
+      let remaining = rawMemo
+      if (rawMemo.includes("엘리베이터 있음")) {
+        elev = "yes"
+        remaining = rawMemo.replace(/엘리베이터 있음\.?\s*/g, "")
+      } else if (rawMemo.includes("엘리베이터 없음")) {
+        elev = "no"
+        remaining = rawMemo.replace(/엘리베이터 없음\.?\s*/g, "")
+      }
+      setElevatorStatus(elev)
+      setMemoText(remaining.trim())
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "건물 정보를 불러오지 못했습니다")
       onOpenChange(false)
@@ -85,12 +107,20 @@ export function BuildingEditDialog({
 
   const handleSave = async () => {
     if (buildingId == null) return
+    const finalPassword = accessType === "free" ? "자유출입" : password
+    const elevatorPrefix =
+      elevatorStatus === "yes"
+        ? "엘리베이터 있음. "
+        : elevatorStatus === "no"
+          ? "엘리베이터 없음. "
+          : ""
+    const finalMemo = (elevatorPrefix + memoText).trim()
     setSaving(true)
     try {
       const res = await fetch(`/api/buildings/${buildingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, password, memo }),
+        body: JSON.stringify({ name, password: finalPassword, memo: finalMemo }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "저장 실패")
@@ -164,30 +194,88 @@ export function BuildingEditDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="b-pw" className="text-gray-900 dark:text-gray-100">
-                비밀번호
-              </Label>
-              <Input
-                id="b-pw"
-                type="text"
-                autoComplete="off"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={busy}
-                className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-              />
+              <Label className="text-gray-900 dark:text-gray-100">비밀번호</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccessType("free")
+                    setPassword("")
+                  }}
+                  disabled={busy}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    accessType === "free"
+                      ? "bg-blue-500/20 border-blue-400 text-blue-700 dark:text-white"
+                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  자유출입
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccessType("password")}
+                  disabled={busy}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    accessType === "password"
+                      ? "bg-blue-500/20 border-blue-400 text-blue-700 dark:text-white"
+                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  직접입력
+                </button>
+              </div>
+              {accessType === "password" && (
+                <Input
+                  id="b-pw"
+                  type="text"
+                  autoComplete="off"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={busy}
+                  className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                />
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="b-memo" className="text-gray-900 dark:text-gray-100">
-                메모
-              </Label>
+              <Label className="text-gray-900 dark:text-gray-100">메모</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setElevatorStatus((prev) => (prev === "yes" ? "" : "yes"))
+                  }
+                  disabled={busy}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    elevatorStatus === "yes"
+                      ? "bg-green-500/20 border-green-400 text-green-700 dark:text-green-300"
+                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  엘리베이터 있음
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setElevatorStatus((prev) => (prev === "no" ? "" : "no"))
+                  }
+                  disabled={busy}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    elevatorStatus === "no"
+                      ? "bg-green-500/20 border-green-400 text-green-700 dark:text-green-300"
+                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  엘리베이터 없음
+                </button>
+              </div>
               <Textarea
                 id="b-memo"
                 rows={4}
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
+                value={memoText}
+                onChange={(e) => setMemoText(e.target.value)}
                 disabled={busy}
+                placeholder="추가 메모 (예: 공동현관, 2층 계단 옆)"
                 className="resize-y bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </div>
