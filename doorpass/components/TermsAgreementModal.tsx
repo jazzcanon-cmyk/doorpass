@@ -20,6 +20,15 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
     try {
       const res = await fetch('/api/users/terms-check', { method: 'POST' })
       if (!res.ok) throw new Error('저장 실패')
+
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          () => {},
+          () => {},
+          { timeout: 5000, maximumAge: 0 }
+        )
+      }
+
       onAgreed()
     } catch {
       toast.error('다시 시도해주세요.')
@@ -178,7 +187,7 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
             WebkitUserSelect: 'none',
           }}
         >
-          {loading ? '처리 중...' : '동의하고 시작하기'}
+          {loading ? '✅ 동의 완료! 잠시 후 시작...' : '동의하고 시작하기'}
         </div>
 
         <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', marginTop: '12px', marginBottom: 0 }}>

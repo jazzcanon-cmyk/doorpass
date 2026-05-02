@@ -13,6 +13,16 @@ export function PWAInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [pushDismissed, setPushDismissed] = useState(false)
+
+  useEffect(() => {
+    const check = () => {
+      setPushDismissed(!!localStorage.getItem('push-banner-dismissed'))
+    }
+    check()
+    const interval = setInterval(check, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     // 이미 설치된 경우 (standalone 모드)
@@ -36,7 +46,7 @@ export function PWAInstallPrompt() {
 
     if (ios) {
       // iOS는 beforeinstallprompt 없음 → 직접 배너 표시
-      bannerTimer = setTimeout(() => setShowBanner(true), 2000)
+      bannerTimer = setTimeout(() => setShowBanner(true), 5000)
       return () => {
         if (bannerTimer) clearTimeout(bannerTimer)
       }
@@ -46,7 +56,7 @@ export function PWAInstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      bannerTimer = setTimeout(() => setShowBanner(true), 2000)
+      bannerTimer = setTimeout(() => setShowBanner(true), 5000)
     }
     window.addEventListener('beforeinstallprompt', handler)
     return () => {
@@ -75,7 +85,7 @@ export function PWAInstallPrompt() {
   if (!showBanner || isInstalled) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] p-3 animate-in slide-in-from-bottom-4 duration-300">
+    <div className={`fixed left-0 right-0 z-[100] p-3 transition-all duration-300 ${pushDismissed ? 'bottom-4' : 'bottom-28'}`}>
       <div className="max-w-lg mx-auto bg-card border border-primary/50 rounded-2xl shadow-2xl shadow-primary/20 overflow-hidden">
         <div className="flex items-start gap-3 p-4">
           {/* 아이콘 */}

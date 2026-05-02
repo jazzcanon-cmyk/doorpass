@@ -11,18 +11,23 @@ function PushNotificationBanner() {
   if (dismissed) return null
   if (!supported || subscribed) return null
 
+  const dismiss = () => {
+    setDismissed(true)
+    localStorage.setItem('push-banner-dismissed', '1')
+  }
+
   const handleAllow = async () => {
     const ok = await subscribe()
     if (ok) {
       toast.success("알림이 설정되었습니다")
-      setDismissed(true)
     } else {
       toast.error("알림 설정에 실패했습니다")
     }
+    dismiss()
   }
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 bg-blue-600 text-white rounded-2xl p-4 shadow-2xl flex items-start gap-3">
+    <div className="fixed bottom-4 left-4 right-4 z-50 bg-blue-600 text-white rounded-2xl p-4 shadow-2xl flex items-start gap-3">
       <Bell className="h-5 w-5 flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold">대체배송 알림 받기</p>
@@ -40,7 +45,7 @@ function PushNotificationBanner() {
         </button>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
           className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
           aria-label="닫기"
         >
