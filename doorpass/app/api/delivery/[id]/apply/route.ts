@@ -10,7 +10,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params
     const body = await request.json().catch(() => ({}))
-    const message = (body?.message ?? "").toString().trim() || null
+    const { message, name, phone } = body
+    const applicantRealName = name?.toString().trim() || null
+    const applicantPhone = phone?.toString().trim() || null
 
     const { data: req } = await supabaseAdmin
       .from("delivery_requests")
@@ -54,7 +56,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         request_id: id,
         applicant_email: user!.email!,
         applicant_name: applicantName,
-        message,
+        message: (message ?? "").toString().trim() || null,
+        applicant_real_name: applicantRealName,
+        applicant_phone: applicantPhone,
         status: "pending",
       })
       .select()
@@ -63,7 +67,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     if (error) throw error
 
     sendTelegramMessage(
-      `[대체배송] 신청자가 있어요!\n신청자: ${applicantName}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
+      `[대체배송] 신청자가 있어요!\n신청자: ${applicantName}${applicantPhone ? ' (' + applicantPhone + ')' : ''}\n날짜: ${reqRow.request_date}\n확인하러가기: https://doorpass.kr/delivery`
     ).catch(console.error)
 
     // 요청자에게 푸시 알림
