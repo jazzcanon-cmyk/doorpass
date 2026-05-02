@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { Resend } from 'resend'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,10 +37,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. 수신자 이메일 찾기
-    console.log('=== 이메일 발송 시작 ===')
-
-    // 부관리자 찾기
+    // 2. 수신자 찾기
     const { data: subAdmin } = await supabaseAdmin
       .from('approved_users')
       .select('email')
@@ -49,58 +45,46 @@ export async function POST(request: NextRequest) {
       .eq('role', 'sub_admin')
       .maybeSingle()
 
-    // 대리점 manager_email 찾기
     const { data: branch } = await supabaseAdmin
       .from('branches')
       .select('manager_email, name')
       .eq('id', branchId)
       .single()
 
-    // 관리자 찾기
     const { data: admin } = await supabaseAdmin
       .from('approved_users')
       .select('email')
       .eq('role', 'admin')
       .maybeSingle()
 
-    const recipientEmail =
-      subAdmin?.email ||
-      branch?.manager_email ||
-      admin?.email ||
-      'jazzcanon@gmail.com'
-
-    console.log('수신자:', recipientEmail)
-    console.log('RESEND_API_KEY 존재:', !!process.env.RESEND_API_KEY)
-
-    // 3. Resend로 이메일 발송
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
     const branchDisplayName = branch?.name || '미지정'
 
-    const { data: emailData, error: emailError } =
-      await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: [recipientEmail],
-        subject: `[DoorPass] 새 회원 승인 요청 - ${branchDisplayName}`,
-        html: `
-          <h2>새 회원 승인 요청</h2>
-          <p><b>신청자 이메일:</b> ${userEmail}</p>
-          <p><b>신청자 이름:</b> ${userName || '미입력'}</p>
-          <p><b>대리점:</b> ${branchDisplayName}</p>
-          <p><b>요청 시각:</b> ${new Date().toLocaleString('ko-KR')}</p>
-          <br>
-          <a href="https://doorpass.kr/admin/pending-approvals"
-             style="background:#4CAF50;color:white;padding:12px 24px;
-                    text-decoration:none;border-radius:6px;font-size:16px;">
-            승인하러 가기
-          </a>
-        `
-      })
+    // 3. 부관리자에게 PWA 푸시 알림 발송
+    if (subAdmin?.email) {
+      fetch(new URL('/api/push/send', request.url).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: subAdmin.email,
+          title: '새 회원 승인 요청이 있어요!',
+          body: (userName || userEmail) + '님이 ' + branchDisplayName + ' 가입을 요청했습니다.',
+          url: '/sub-admin/pending-approvals',
+        }),
+      }).catch(console.error)
+    }
 
-    if (emailError) {
-      console.error('Resend 에러:', JSON.stringify(emailError))
-    } else {
-      console.log('이메일 발송 성공:', JSON.stringify(emailData))
+    // 관리자에게도 푸시 알림
+    if (admin?.email) {
+      fetch(new URL('/api/push/send', request.url).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: admin.email,
+          title: '새 회원 승인 요청',
+          body: (userName || userEmail) + '님 (' + branchDisplayName + ')',
+          url: '/admin/pending-approvals',
+        }),
+      }).catch(console.error)
     }
 
     // 4. Telegram 알림
@@ -126,10 +110,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('request-approval 전체 에러:', error)
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : '오류 발생' },
       { status: 500 }
     )
   }
