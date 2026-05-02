@@ -2,7 +2,12 @@ import { NextResponse } from "next/server"
 import { requireAuth, getUserRole, canRevealBuildingPassword } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
-const NO_STORE = { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+const NO_STORE = {
+  headers: {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    "Pragma": "no-cache",
+  },
+}
 
 // /api/me 와 동일 정보를 제공하는 alias (사용자 설정 페이지 호환용)
 export async function GET() {

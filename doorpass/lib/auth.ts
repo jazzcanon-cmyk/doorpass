@@ -342,16 +342,19 @@ export async function getUserRole(userEmail: string | null | undefined): Promise
  */
 export async function canRevealBuildingPassword(email: string | null | undefined): Promise<boolean> {
   if (!email?.trim()) return false
-  const { data } = await supabaseAdmin
-    .from('approved_users')
-    .select('role')
-    .eq('email', email.trim())
-    .maybeSingle()
-
-  if (!data) return false
-  const role = data.role as string | null | undefined
-  if (role == null || String(role).trim() === '') return false
-  return true
+  try {
+    const { data } = await supabaseAdmin
+      .from('approved_users')
+      .select('id, role')
+      .eq('email', email.trim())
+      .maybeSingle()
+    // approved_users에 행이 있고 role이 설정돼 있으면 무조건 true
+    // is_active, is_blocked 등 없을 수 있는 컬럼은 체크하지 않음
+    if (data?.id && data?.role) return true
+    return false
+  } catch {
+    return false
+  }
 }
 
 /**
