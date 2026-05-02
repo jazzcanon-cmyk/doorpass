@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, AlertTriangle, ExternalLink, Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface TermsAgreementModalProps {
@@ -9,106 +8,182 @@ interface TermsAgreementModalProps {
 }
 
 export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
-  const [termsChecked, setTermsChecked] = useState(false)
-  const [purposeChecked, setPurposeChecked] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [check1, setCheck1] = useState(false)
+  const [check2, setCheck2] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const canSubmit = termsChecked && purposeChecked
+  const bothChecked = check1 && check2
 
   const handleSubmit = async () => {
-    if (!canSubmit || isSubmitting) return
-    setIsSubmitting(true)
+    if (!bothChecked || loading) return
+    setLoading(true)
     try {
       const res = await fetch('/api/users/terms-check', { method: 'POST' })
-      if (!res.ok) throw new Error('동의 저장 실패')
+      if (!res.ok) throw new Error('저장 실패')
       onAgreed()
     } catch {
-      toast.error('약관 동의 저장에 실패했습니다. 다시 시도해주세요.')
-    } finally {
-      setIsSubmitting(false)
+      toast.error('다시 시도해주세요.')
+      setLoading(false)
     }
   }
 
   return (
-    <div className='fixed inset-0 z-[200] flex items-center justify-center bg-black/80 px-4'>
-      <div className='w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl'>
-
-        <div className='flex items-center gap-2 mb-4'>
-          <Shield className='h-5 w-5 text-blue-400 shrink-0' />
-          <h2 className='text-base font-bold text-white'>이용약관 동의</h2>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '400px',
+          backgroundColor: '#1e293b',
+          borderRadius: '16px',
+          padding: '24px',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        {/* 제목 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '20px' }}>🛡️</span>
+          <span style={{ color: 'white', fontSize: '16px', fontWeight: 700 }}>이용약관 동의</span>
         </div>
 
-        <div className='rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2 mb-5'>
-          <AlertTriangle className='h-4 w-4 text-red-400 shrink-0 mt-0.5' />
-          <p className='text-xs text-red-300 leading-relaxed'>
-            서비스 이용 전 이용약관에 동의하셔야 합니다.
-            비밀번호 정보는 <strong>배송 업무 목적으로만</strong> 사용해야 하며,
-            위반 시 모든 법적 책임은 사용자 본인에게 있습니다.
+        {/* 경고 박스 */}
+        <div
+          style={{
+            backgroundColor: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: '10px',
+            padding: '12px',
+            marginBottom: '20px',
+          }}
+        >
+          <p style={{ color: '#fca5a5', fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
+            ⚠️ 서비스 이용 전 약관에 동의하셔야 합니다. 비밀번호 정보는 <strong>배송 업무 목적으로만</strong> 사용해야 하며, 위반 시 법적 책임은 사용자 본인에게 있습니다.
           </p>
         </div>
 
-        <div className='space-y-3 mb-5'>
-
+        {/* 체크박스 1 */}
+        <div
+          onClick={() => setCheck1(!check1)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            padding: '14px',
+            marginBottom: '10px',
+            backgroundColor: check1 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+            border: check1 ? '1.5px solid #3b82f6' : '1.5px solid rgba(255,255,255,0.1)',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        >
           <div
-            onClick={() => setTermsChecked((v) => !v)}
-            className='flex items-center gap-3 p-3 rounded-xl cursor-pointer active:bg-white/10'
-            style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
+            style={{
+              width: '22px',
+              height: '22px',
+              minWidth: '22px',
+              borderRadius: '6px',
+              backgroundColor: check1 ? '#3b82f6' : 'transparent',
+              border: check1 ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: '1px',
+            }}
           >
-            <div className={'h-6 w-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ' +
-              (termsChecked ? 'bg-blue-500 border-blue-500' : 'border-white/30 bg-white/5')}>
-              {termsChecked && <Check className='h-4 w-4 text-white' strokeWidth={3} />}
-            </div>
-            <span className='text-sm text-white/80 leading-relaxed flex-1'>
-              <a
-                href='/terms'
-                target='_blank'
-                rel='noopener noreferrer'
-                className='text-blue-400 underline underline-offset-2 inline-flex items-center gap-0.5'
-                onClick={(e) => e.stopPropagation()}
-              >
-                이용약관 <ExternalLink className='h-3 w-3' />
-              </a>
-              에 동의합니다.{' '}
-              <span className='text-red-400 font-medium'>(필수)</span>
-            </span>
+            {check1 && <span style={{ color: 'white', fontSize: '14px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
           </div>
-
-          <div
-            onClick={() => setPurposeChecked((v) => !v)}
-            className='flex items-center gap-3 p-3 rounded-xl cursor-pointer active:bg-white/10'
-            style={{ WebkitTapHighlightColor: 'transparent', userSelect: 'none' }}
-          >
-            <div className={'h-6 w-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ' +
-              (purposeChecked ? 'bg-blue-500 border-blue-500' : 'border-white/30 bg-white/5')}>
-              {purposeChecked && <Check className='h-4 w-4 text-white' strokeWidth={3} />}
-            </div>
-            <span className='text-sm text-white/80 leading-relaxed flex-1'>
-              비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{' '}
-              <span className='text-red-400 font-medium'>(필수)</span>
-            </span>
-          </div>
-
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px', lineHeight: '1.5' }}>
+            <a
+              href='/terms'
+              target='_blank'
+              rel='noopener noreferrer'
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: '#60a5fa', textDecoration: 'underline' }}
+            >
+              이용약관
+            </a>
+            에 동의합니다.{' '}
+            <span style={{ color: '#f87171', fontWeight: 600 }}>(필수)</span>
+          </span>
         </div>
 
-        <button
-          type='button'
-          onClick={() => void handleSubmit()}
-          disabled={!canSubmit || isSubmitting}
-          style={{ minHeight: '52px', WebkitTapHighlightColor: 'transparent' }}
-          className={'w-full rounded-xl text-white font-semibold text-base transition-all flex items-center justify-center gap-2 ' +
-            (canSubmit && !isSubmitting
-              ? 'bg-blue-600 active:bg-blue-700'
-              : 'bg-slate-700 opacity-50 cursor-not-allowed')}
+        {/* 체크박스 2 */}
+        <div
+          onClick={() => setCheck2(!check2)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            padding: '14px',
+            marginBottom: '20px',
+            backgroundColor: check2 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)',
+            border: check2 ? '1.5px solid #3b82f6' : '1.5px solid rgba(255,255,255,0.1)',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
         >
-          {isSubmitting
-            ? <><Loader2 className='h-4 w-4 animate-spin' /> 처리 중...</>
-            : '동의하고 시작하기'}
-        </button>
+          <div
+            style={{
+              width: '22px',
+              height: '22px',
+              minWidth: '22px',
+              borderRadius: '6px',
+              backgroundColor: check2 ? '#3b82f6' : 'transparent',
+              border: check2 ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: '1px',
+            }}
+          >
+            {check2 && <span style={{ color: 'white', fontSize: '14px', fontWeight: 900, lineHeight: 1 }}>✓</span>}
+          </div>
+          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px', lineHeight: '1.5' }}>
+            비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{' '}
+            <span style={{ color: '#f87171', fontWeight: 600 }}>(필수)</span>
+          </span>
+        </div>
 
-        <p className='text-xs text-white/25 text-center mt-3'>
+        {/* 동의 버튼 */}
+        <div
+          onClick={() => void handleSubmit()}
+          style={{
+            width: '100%',
+            minHeight: '52px',
+            backgroundColor: bothChecked ? '#2563eb' : 'rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: bothChecked ? 'pointer' : 'not-allowed',
+            color: bothChecked ? 'white' : 'rgba(255,255,255,0.3)',
+            fontSize: '15px',
+            fontWeight: 700,
+            transition: 'all 0.2s',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        >
+          {loading ? '처리 중...' : '동의하고 시작하기'}
+        </div>
+
+        <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', marginTop: '12px', marginBottom: 0 }}>
           동의하지 않으면 서비스를 이용할 수 없습니다.
         </p>
-
       </div>
     </div>
   )
