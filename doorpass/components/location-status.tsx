@@ -9,6 +9,7 @@ interface LocationStatusProps {
   location: { lat: number; lng: number } | null
   lastUpdated: Date | null
   buildingCount: number
+  radius: number
   onRetry: () => void
 }
 
@@ -18,6 +19,7 @@ export function LocationStatus({
   location,
   lastUpdated,
   buildingCount,
+  radius,
   onRetry,
 }: LocationStatusProps) {
   if (error) {
@@ -47,7 +49,7 @@ export function LocationStatus({
                 </p>
                 <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
                   <Radio className="mr-1 h-3 w-3" />
-                  100m
+                  {`${radius}m`}
                 </span>
               </div>
               {lastUpdated && (

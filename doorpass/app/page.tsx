@@ -23,6 +23,7 @@ export default function Home() {
     allBuildings,
     viewportBuildings,
     nearbyBuildings,
+    nearbyRadius,
     searchResults,
     searchQuery,
     lastUpdated,
@@ -37,6 +38,7 @@ export default function Home() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [selectedRadius, setSelectedRadius] = useState<number>(50)
 
   const error = locationError ?? buildingsError
 
@@ -44,17 +46,17 @@ export default function Home() {
 
   const refreshLocation = useCallback(() => {
     getLocation(
-      (lat, lng) => fetchBuildings(lat, lng),
+      (lat, lng) => fetchBuildings(lat, lng, selectedRadius),
       () => fetchBuildings()
     )
-  }, [getLocation, fetchBuildings])
+  }, [getLocation, fetchBuildings, selectedRadius])
 
   const handleLocateMe = useCallback(
     () =>
       new Promise<boolean>((resolve) => {
         getLocation(
           async (lat, lng) => {
-            await fetchBuildings(lat, lng)
+            await fetchBuildings(lat, lng, selectedRadius)
             resolve(true)
           },
           async () => {
@@ -63,7 +65,7 @@ export default function Home() {
           }
         )
       }),
-    [getLocation, fetchBuildings]
+    [getLocation, fetchBuildings, selectedRadius]
   )
 
   // 초기 마운트 시 GPS 없이 건물 목록만 로드 (검색 탭에서 바로 사용)
@@ -177,6 +179,11 @@ export default function Home() {
           onBoundsChange={fetchBuildingsByViewport}
           onGoToSearch={() => handleTabChange("search")}
           onLocateMe={handleLocateMe}
+          radius={selectedRadius}
+          onRadiusChange={(r) => {
+            setSelectedRadius(r)
+            if (location) fetchBuildings(location.lat, location.lng, r)
+          }}
         />
       )}
 

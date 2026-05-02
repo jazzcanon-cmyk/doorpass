@@ -21,6 +21,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
   const [allBuildings, setAllBuildings] = useState<Building[]>([])
   const [viewportBuildings, setViewportBuildings] = useState<Building[]>([])
   const [nearbyBuildings, setNearbyBuildings] = useState<Building[]>([])
+  const [nearbyRadius, setNearbyRadius] = useState<number>(50)
   const [searchResults, setSearchResults] = useState<Building[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -31,7 +32,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
     currentUserRef.current = currentUser
   }, [currentUser])
 
-  const fetchBuildings = useCallback(async (lat?: number, lng?: number) => {
+  const fetchBuildings = useCallback(async (lat?: number, lng?: number, radius: number = 50) => {
     setError(null)
     const ctrl = new AbortController()
     const timeoutId = setTimeout(() => ctrl.abort(), 10000)
@@ -46,14 +47,15 @@ export function useBuildings(currentUser: CurrentUser | null) {
       const data = await response.json()
       const buildings: Building[] = data.buildings ?? []
       if (lat !== undefined && lng !== undefined) {
-        const within100 = buildings
+        const withinRadius = buildings
           .map((b) => ({
             ...b,
             distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
           }))
-          .filter((b) => (b.distance ?? 0) <= 100)
+          .filter((b) => (b.distance ?? 0) <= radius)
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
-        setNearbyBuildings(within100)
+        setNearbyBuildings(withinRadius)
+        setNearbyRadius(radius)
         setAllBuildings(buildings)
       } else {
         setAllBuildings(buildings)
@@ -148,6 +150,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
     allBuildings,
     viewportBuildings,
     nearbyBuildings,
+    nearbyRadius,
     searchResults,
     searchQuery,
     lastUpdated,

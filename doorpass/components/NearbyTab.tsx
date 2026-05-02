@@ -37,6 +37,8 @@ interface NearbyTabProps {
   onBoundsChange: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void
   onGoToSearch?: () => void
   onLocateMe?: () => Promise<boolean>
+  radius: number
+  onRadiusChange: (r: number) => void
 }
 
 export function NearbyTab({
@@ -55,6 +57,8 @@ export function NearbyTab({
   onBoundsChange,
   onGoToSearch,
   onLocateMe,
+  radius,
+  onRadiusChange,
 }: NearbyTabProps) {
   const [showAll, setShowAll] = useState(false)
 
@@ -75,8 +79,24 @@ export function NearbyTab({
         location={location}
         lastUpdated={lastUpdated}
         buildingCount={nearbyBuildings.length}
+        radius={radius}
         onRetry={onRetry}
       />
+      <div className="container mx-auto px-4 pt-3 flex gap-2">
+        {[50, 100].map((r) => (
+          <button
+            key={r}
+            onClick={() => onRadiusChange(r)}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              radius === r
+                ? "bg-blue-500 border-blue-500 text-white"
+                : "bg-white/5 border-white/20 text-white/60 hover:bg-white/10"
+            }`}
+          >
+            {r}m
+          </button>
+        ))}
+      </div>
       {!loading && !error && location && (
         <section className="container mx-auto px-4 pt-4">
           <BuildingMap
@@ -100,9 +120,9 @@ export function NearbyTab({
       <section className="container mx-auto px-4 py-6">
         <h2 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
           {totalCount === 0
-            ? "반경 100m 내 건물"
+            ? `반경 ${radius}m 내 건물`
             : showAll
-              ? `반경 100m 내 전체 ${totalCount}개`
+              ? `반경 ${radius}m 내 전체 ${totalCount}개`
               : `가장 가까운 건물 ${Math.min(totalCount, NEARBY_TOP_LIMIT)}개`}
         </h2>
         {loading ? (
@@ -137,7 +157,7 @@ export function NearbyTab({
         ) : totalCount === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center backdrop-blur-sm">
             <MapPin className="h-10 w-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/40 text-sm mb-1">반경 100m 내 등록된 건물이 없습니다</p>
+            <p className="text-white/40 text-sm mb-1">{`반경 ${radius}m 내 등록된 건물이 없습니다`}</p>
             <p className="text-white/30 text-xs mb-4">검색 탭에서 주소로 찾아보세요</p>
             {onGoToSearch && (
               <button
@@ -176,7 +196,7 @@ export function NearbyTab({
                   ) : (
                     <>
                       <ChevronDown className="h-3.5 w-3.5" />
-                      더 보기 (반경 100m 내 전체 {totalCount}개)
+                      {`더 보기 (반경 ${radius}m 내 전체 ${totalCount}개)`}
                     </>
                   )}
                 </button>
