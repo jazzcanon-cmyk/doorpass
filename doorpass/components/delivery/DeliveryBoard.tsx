@@ -41,6 +41,9 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
   const [applyTarget, setApplyTarget] = useState<DeliveryRequest | null>(null)
   const [detailId, setDetailId] = useState<string | number | null>(null)
   const [pendingCount, setPendingCount] = useState(0)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth())
 
   const fetchList = useCallback(async () => {
     setLoading(true)
@@ -79,9 +82,18 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "all", label: "전체" },
-    { key: "mine", label: "내 요청" },
-    { key: "applied", label: "내 신청" },
+    { key: "mine", label: "내 공고" },
+    { key: "applied", label: "내 지원" },
   ]
+
+  const countByDate = useMemo(() => {
+    const map: Record<string, number> = {}
+    requests.forEach((r) => {
+      if (!r.request_date) return
+      map[r.request_date] = (map[r.request_date] ?? 0) + 1
+    })
+    return map
+  }, [requests])
 
   const handleApply = (r: DeliveryRequest) => {
     if (r.requester_email === currentEmail) {
@@ -149,12 +161,12 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
           <option value="matched">매칭완료</option>
           <option value="closed">마감</option>
         </select>
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="text-xs rounded-lg px-2 py-1.5 text-white bg-slate-800 border border-slate-600 [&::-webkit-calendar-picker-indicator]:invert"
-        />
+        <button
+          onClick={() => setShowCalendar((v) => !v)}
+          className={'text-xs rounded-lg px-3 py-1.5 border transition-all ' + (showCalendar ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-600 text-white/70 hover:text-white')}
+        >
+          📅 달력 {showCalendar ? '닫기' : '보기'}
+        </button>
         {(statusFilter || dateFilter) && (
           <button
             onClick={() => {
@@ -168,6 +180,78 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
         )}
       </div>
 
+      {showCalendar && (
+        <div className='bg-slate-800/80 border border-white/10 rounded-2xl p-4 mb-3'>
+          <div className='flex items-center justify-between mb-3'>
+            <button
+              onClick={() => {
+                if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
+                else setCalMonth(m => m - 1)
+              }}
+              className='text-white/50 hover:text-white px-2 py-1 text-sm'
+            >‹</button>
+            <span className='text-sm font-semibold text-white'>{calYear}년 {calMonth + 1}월</span>
+            <button
+              onClick={() => {
+                if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) }
+                else setCalMonth(m => m + 1)
+              }}
+              className='text-white/50 hover:text-white px-2 py-1 text-sm'
+            >›</button>
+          </div>
+
+          <div className='grid grid-cols-7 mb-1'>
+            {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+              <div key={d} className='text-center text-[10px] text-white/30 py-1'>{d}</div>
+            ))}
+          </div>
+
+          <div className='grid grid-cols-7 gap-y-1'>
+            {(() => {
+              const firstDay = new Date(calYear, calMonth, 1).getDay()
+              const lastDate = new Date(calYear, calMonth + 1, 0).getDate()
+              const today = new Date().toISOString().slice(0, 10)
+              const cells = []
+              for (let i = 0; i < firstDay; i++) {
+                cells.push(<div key={'e' + i} />)
+              }
+              for (let d = 1; d <= lastDate; d++) {
+                const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0')
+                const count = countByDate[dateStr] ?? 0
+                const isToday = dateStr === today
+                const isSelected = dateStr === dateFilter
+                const hasPost = count > 0
+                cells.push(
+                  <button
+                    key={d}
+                    onClick={() => {
+                      if (!hasPost) return
+                      setDateFilter(isSelected ? '' : dateStr)
+                    }}
+                    className={'flex flex-col items-center justify-start py-1 rounded-lg transition-all ' + (isSelected ? 'bg-blue-600' : isToday ? 'bg-blue-500/20' : hasPost ? 'hover:bg-white/10' : 'opacity-30 cursor-default')}
+                  >
+                    <span className={'text-[11px] leading-tight ' + (isSelected ? 'text-white font-bold' : isToday ? 'text-blue-400 font-bold' : 'text-white/70')}>{d}</span>
+                    {count > 0 && (
+                      <span className={'text-[9px] font-bold rounded-full px-1 leading-tight mt-0.5 ' + (count >= 3 ? 'bg-red-500 text-white' : 'bg-blue-500 text-white')}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              }
+              return cells
+            })()}
+          </div>
+
+          {dateFilter && (
+            <div className='mt-3 pt-3 border-t border-white/10 flex justify-between items-center'>
+              <span className='text-xs text-blue-300'>📅 {dateFilter} 공고 {countByDate[dateFilter] ?? 0}건</span>
+              <button onClick={() => setDateFilter('')} className='text-xs text-white/40 hover:text-white'>초기화</button>
+            </div>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
@@ -178,9 +262,9 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
             <Truck className="h-12 w-12 text-white/20" />
             <p className="mt-4 text-white/50 text-sm text-center">
               {tab === "mine"
-                ? "내가 요청한 대체배송이 없습니다"
+                ? "내가 등록한 공고가 없습니다"
                 : tab === "applied"
-                ? "내가 신청한 대체배송이 없습니다"
+                ? "내가 지원한 공고가 없습니다"
                 : "대체배송 요청이 없습니다"}
             </p>
           </CardContent>
@@ -254,7 +338,7 @@ function DeliveryCard({
               </span>
               {isMine && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  내 요청
+                  내 공고
                 </span>
               )}
               {applied && !isMine && (
