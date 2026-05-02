@@ -33,11 +33,13 @@ export async function GET() {
     const users = authUsers.map((u) => {
       const email = u.email?.toLowerCase() ?? ""
 
-      // 이메일 매칭 → Supabase user.id 매칭 순으로 fallback
+      // 이메일 매칭 → 카카오 provider_id 매칭 순으로 fallback
+      const providerId =
+        (u.user_metadata?.provider_id as string | undefined) ??
+        (u.user_metadata?.sub as string | undefined)
       const approved =
         (email ? byEmail.get(email) : undefined) ??
-        byKakaoId.get(u.id) ??
-        undefined
+        (providerId ? byKakaoId.get(providerId) : undefined)
 
       const provider = (u.app_metadata?.provider as string | undefined) ?? "unknown"
       return {
