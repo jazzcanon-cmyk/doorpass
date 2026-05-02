@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
+import LeafletPreloader from '@/components/LeafletPreloader'
 import { Toaster } from 'sonner'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <PWAInstallPrompt />
+        <LeafletPreloader />
         {children}
         <Toaster position="top-center" richColors />
         <script

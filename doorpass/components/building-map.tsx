@@ -83,11 +83,13 @@ export function BuildingMap({
 
   // Leaflet + markercluster 동적 로드
   useEffect(() => {
-    import("leaflet").then(async (leafletModule) => {
-      const leaflet = leafletModule.default as unknown as typeof import("leaflet")
-      await import("leaflet.markercluster")
-      setL(leaflet)
-    })
+    import("leaflet")
+      .then(async (leafletModule) => {
+        const leaflet = leafletModule.default as unknown as typeof import("leaflet")
+        await import("leaflet.markercluster")
+        setL(leaflet)
+      })
+      .catch(() => {})
   }, [])
 
   // 지도 초기화
