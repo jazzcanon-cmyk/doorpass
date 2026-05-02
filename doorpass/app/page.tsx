@@ -12,6 +12,7 @@ import { NewBuildingModal } from "@/components/NewBuildingModal"
 import { TermsAgreementModal } from "@/components/TermsAgreementModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
+import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
 import { useBuildings } from "@/hooks/useBuildings"
@@ -44,7 +45,7 @@ export default function Home() {
 
   const error = locationError ?? buildingsError
 
-  useEffect(() => { trackPageView("/") }, [])
+  useEffect(() => { trackPageView("/"); pageview("/") }, [])
 
   const refreshLocation = useCallback(() => {
     getLocation(
@@ -87,6 +88,7 @@ export default function Home() {
     setSelectedBuilding(b)
     if (b) {
       trackBuildingView(b.id, b.name || b.address, currentUser?.email)
+      gaEvents.buildingView(b.name || b.address)
       void fetch("/api/activity/log-view", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,6 +107,11 @@ export default function Home() {
     if (selectedBuilding?.id === id)
       setSelectedBuilding((prev) => (prev ? { ...prev, ...updated } : null))
   }, [handleUpdate, selectedBuilding])
+
+  const handleSearchWithGA = useCallback((query: string) => {
+    handleSearch(query)
+    if (query.trim()) gaEvents.search(query.trim())
+  }, [handleSearch])
 
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab)
@@ -198,7 +205,7 @@ export default function Home() {
           searchResults={searchResults}
           allBuildings={allBuildings}
           canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
-          onSearch={handleSearch}
+          onSearch={handleSearchWithGA}
           onBuildingUpdate={handleBuildingUpdate}
           onAddBuilding={
             currentUser?.canRevealBuildingPassword === true

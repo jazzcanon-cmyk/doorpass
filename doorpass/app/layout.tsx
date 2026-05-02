@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import Script from 'next/script'
 import './globals.css'
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt'
 import LeafletPreloader from '@/components/LeafletPreloader'
@@ -51,6 +52,20 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-4VT7N36ZS0"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-4VT7N36ZS0', {
+            page_path: window.location.pathname,
+          });
+        `}
+      </Script>
       <body className="font-sans antialiased">
         <PWAInstallPrompt />
         <LeafletPreloader />
