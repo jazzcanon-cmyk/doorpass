@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { Navigation, Pencil, X, Check, MapPin, Lock } from "lucide-react"
+import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,10 +97,11 @@ export function BuildingCard({
   canRevealBuildingPassword = false,
   onUpdate,
 }: BuildingCardProps) {
-  const { canEdit } = useIsAdmin()
+  const { canEdit, role } = useIsAdmin()
   const [showPopup, setShowPopup] = useState(false)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
 
   const [accessType, setAccessType] = useState<"free" | "password">(
@@ -168,6 +169,23 @@ export function BuildingCard({
       toast.error("저장 중 오류가 발생했습니다.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm("이 건물을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.")) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/buildings/${currentBuilding.id}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "삭제 실패")
+      toast.success("건물이 삭제되었습니다.")
+      setShowPopup(false)
+      onUpdate?.(currentBuilding.id, { _deleted: true } as Partial<Building>)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "삭제에 실패했습니다.")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -568,6 +586,25 @@ export function BuildingCard({
                 title={currentBuilding.name}
               />
             </div>
+
+            {/* 관리자 삭제 버튼 */}
+            {(role === "admin" || role === "sub_admin") && (
+              <div className="px-4 pt-3 pb-1 border-t border-border">
+                <Button
+                  variant="destructive"
+                  className="w-full gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50"
+                  onClick={() => void handleDelete()}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {isDeleting ? "삭제 중..." : "이 건물 삭제"}
+                </Button>
+              </div>
+            )}
 
             {/* 하단 닫기 버튼 */}
             <div className="px-4 py-3 border-t border-border">
