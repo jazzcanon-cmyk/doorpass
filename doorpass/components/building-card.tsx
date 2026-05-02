@@ -157,6 +157,14 @@ export function BuildingCard({
     return (prefix + text).trim()
   }
 
+  const isPasswordLocked = !!(
+    currentBuilding.password &&
+    currentBuilding.password.trim() !== "" &&
+    currentBuilding.password !== "미입력"
+  )
+  const isElevatorLocked = elevatorStatus !== ""
+  const isMemoLocked = memoText.trim() !== ""
+
   const ACTION_LABEL: Record<string, string> = {
     building_name: "건물명 입력",
     building_password: "비밀번호 입력",
@@ -366,7 +374,7 @@ export function BuildingCard({
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          disabled={!canEdit || !canRevealBuildingPassword || saving}
+                          disabled={!canEdit || !canRevealBuildingPassword || saving || isPasswordLocked}
                           onClick={() => {
                             setAccessType("free")
                             setIsEditingPassword(false)
@@ -376,13 +384,13 @@ export function BuildingCard({
                             accessType === "free"
                               ? "bg-blue-500/20 border-blue-400 text-blue-300"
                               : "bg-secondary border-border text-muted-foreground"
-                          } ${!canEdit || !canRevealBuildingPassword ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                          } ${(!canEdit || !canRevealBuildingPassword || isPasswordLocked) ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
                         >
                           자유출입
                         </button>
                         <button
                           type="button"
-                          disabled={!canEdit || !canRevealBuildingPassword || saving}
+                          disabled={!canEdit || !canRevealBuildingPassword || saving || isPasswordLocked}
                           onClick={() => {
                             setAccessType("password")
                             setIsEditingPassword(true)
@@ -391,7 +399,7 @@ export function BuildingCard({
                             accessType === "password"
                               ? "bg-blue-500/20 border-blue-400 text-blue-300"
                               : "bg-secondary border-border text-muted-foreground"
-                          } ${!canEdit || !canRevealBuildingPassword ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                          } ${(!canEdit || !canRevealBuildingPassword || isPasswordLocked) ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
                         >
                           직접입력
                         </button>
@@ -449,7 +457,7 @@ export function BuildingCard({
                                   <span className="text-muted-foreground italic font-sans font-normal">미입력</span>
                                 )}
                               </span>
-                              {canEdit && canRevealBuildingPassword && (
+                              {canEdit && canRevealBuildingPassword && !isPasswordLocked && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -458,6 +466,9 @@ export function BuildingCard({
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </Button>
+                              )}
+                              {canEdit && isPasswordLocked && (
+                                <Lock className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
                               )}
                             </div>
                           )}
@@ -485,7 +496,7 @@ export function BuildingCard({
                   <div className="flex flex-wrap">
                     <button
                       type="button"
-                      disabled={!canEdit || saving}
+                      disabled={!canEdit || saving || isElevatorLocked}
                       onClick={() => {
                         const next = elevatorStatus === "yes" ? "" : "yes"
                         setElevatorStatus(next)
@@ -494,15 +505,15 @@ export function BuildingCard({
                       className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
                         elevatorStatus === "yes"
                           ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
-                          : "bg-secondary border-border text-muted-foreground"
-                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                          : `bg-secondary border-border text-muted-foreground${isElevatorLocked ? " opacity-30" : ""}`
+                      } ${(!canEdit || isElevatorLocked) ? "cursor-not-allowed" : "hover:bg-secondary/80"}`}
                     >
                       <span style={{ fontSize: "20px", lineHeight: 1 }}>🛗</span>
                       <span className="text-xs font-medium">엘리베이터</span>
                     </button>
                     <button
                       type="button"
-                      disabled={!canEdit || saving}
+                      disabled={!canEdit || saving || isElevatorLocked}
                       onClick={() => {
                         const next = elevatorStatus === "no" ? "" : "no"
                         setElevatorStatus(next)
@@ -511,8 +522,8 @@ export function BuildingCard({
                       className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
                         elevatorStatus === "no"
                           ? "bg-orange-500/20 border-orange-400 text-orange-300"
-                          : "bg-secondary border-border text-muted-foreground"
-                      } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
+                          : `bg-secondary border-border text-muted-foreground${isElevatorLocked ? " opacity-30" : ""}`
+                      } ${(!canEdit || isElevatorLocked) ? "cursor-not-allowed" : "hover:bg-secondary/80"}`}
                     >
                       <span style={{ fontSize: "20px", lineHeight: 1 }}>🪜</span>
                       <span className="text-xs font-medium">계단만</span>
@@ -573,7 +584,7 @@ export function BuildingCard({
                             <span className="text-muted-foreground italic">미입력</span>
                           )}
                         </span>
-                        {canEdit && (
+                        {canEdit && !isMemoLocked && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -586,6 +597,9 @@ export function BuildingCard({
                             <Pencil className="h-3 w-3" />
                           </Button>
                         )}
+                        {canEdit && isMemoLocked && (
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground/40 flex-shrink-0" />
+                        )}
                       </div>
                     )}
                   </div>
@@ -596,6 +610,12 @@ export function BuildingCard({
                   <Lock className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="flex-1">건물 정보 수정은 편집자만 가능합니다.</span>
                   <Link href="/settings" className="text-blue-400 hover:underline whitespace-nowrap">권한 요청</Link>
+                </div>
+              )}
+              {canEdit && (isPasswordLocked || isElevatorLocked || isMemoLocked) && (
+                <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 flex items-center gap-2 text-xs text-white/50">
+                  <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>입력된 정보는 부관리자에게 문의하여 수정 가능합니다</span>
                 </div>
               )}
             </div>
