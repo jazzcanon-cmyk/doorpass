@@ -37,6 +37,7 @@ interface NewBuildingModalProps {
   branchId?: string | null
   userEmail: string
   onSuccess: () => void
+  onGoToBuilding?: (buildingId: string, address: string) => void
 }
 
 interface DuplicateBuilding {
@@ -67,6 +68,7 @@ export function NewBuildingModal({
   branchId,
   userEmail,
   onSuccess,
+  onGoToBuilding,
 }: NewBuildingModalProps) {
   const [form, setForm] = useState({
     name: "",
@@ -246,10 +248,13 @@ export function NewBuildingModal({
                   <p className="text-sm font-semibold text-yellow-300">
                     이미 등록된 건물입니다
                   </p>
-                  <p className="text-sm text-yellow-400 mt-0.5 truncate">
+                  <p className="text-sm text-yellow-400 mt-0.5 font-medium">
                     {duplicateCheck.building.name}
                   </p>
-                  <p className="text-xs text-yellow-500 mt-0.5">
+                  <p className="text-xs text-yellow-500 mt-0.5 truncate">
+                    {duplicateCheck.building.address}
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-0.5">
                     등록일: {new Date(duplicateCheck.building.created_at).toLocaleDateString("ko-KR")}
                   </p>
                 </div>
@@ -271,13 +276,14 @@ export function NewBuildingModal({
           <div className="flex gap-3">
             <Button
               type="button"
-              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
               onClick={() => {
-                toast.info("비밀번호 수정 기능은 건물 카드에서 이용해주세요.")
+                const { id, address } = duplicateCheck.building
                 resetAndClose()
+                onGoToBuilding?.(id, address)
               }}
             >
-              비밀번호 수정하기 +50P
+              🔑 이 건물 비밀번호 수정하기
             </Button>
             <Button type="button" onClick={resetAndClose} variant="outline" className="flex-1 border-gray-600 text-gray-200 hover:bg-gray-700">
               닫기

@@ -40,6 +40,7 @@ export default function Home() {
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [selectedRadius, setSelectedRadius] = useState<number>(50)
+  const [autoOpenBuildingId, setAutoOpenBuildingId] = useState<string | undefined>()
 
   const error = locationError ?? buildingsError
 
@@ -108,6 +109,7 @@ export default function Home() {
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab)
     setSelectedBuilding(null)
+    setAutoOpenBuildingId(undefined)
   }, [])
 
   // 기존 회원 약관 동의 확인
@@ -203,6 +205,7 @@ export default function Home() {
               ? () => setIsAddBuildingOpen(true)
               : undefined
           }
+          autoOpenBuildingId={autoOpenBuildingId}
         />
       )}
 
@@ -213,6 +216,14 @@ export default function Home() {
           branchId={currentUser.branchId}
           userEmail={currentUser.email}
           onSuccess={fetchBuildings}
+          onGoToBuilding={(buildingId, address) => {
+            setIsAddBuildingOpen(false)
+            handleTabChange("search")
+            handleSearch(address)
+            setAutoOpenBuildingId(buildingId)
+            // 검색 debounce(300ms) + 네트워크 응답 후 팝업이 열리면 id를 정리
+            setTimeout(() => setAutoOpenBuildingId(undefined), 2000)
+          }}
         />
       )}
 

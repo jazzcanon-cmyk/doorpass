@@ -12,6 +12,7 @@ interface SearchTabProps {
   onSearch: (query: string) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
   onAddBuilding?: () => void
+  autoOpenBuildingId?: string
 }
 
 export function SearchTab({
@@ -21,6 +22,7 @@ export function SearchTab({
   onSearch,
   onBuildingUpdate,
   onAddBuilding,
+  autoOpenBuildingId,
 }: SearchTabProps) {
   return (
     <>
@@ -73,6 +75,7 @@ export function SearchTab({
                 showDistance={false}
                 canRevealBuildingPassword={canRevealBuildingPassword}
                 onUpdate={onBuildingUpdate}
+                autoOpen={autoOpenBuildingId === b.id}
               />
             ))}
           </div>

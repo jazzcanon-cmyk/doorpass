@@ -28,6 +28,8 @@ interface BuildingCardProps {
   /** 승인·역할이 갖춰진 사용자만 실제 비밀번호 노출 (서버와 동일 기준) */
   canRevealBuildingPassword?: boolean
   onUpdate?: (buildingId: string, updated: Partial<Building>) => void
+  /** true이면 마운트 즉시 팝업 오픈 (중복 건물에서 이동 시 사용) */
+  autoOpen?: boolean
 }
 
 // 수정 가능한 필드 행 컴포넌트
@@ -96,6 +98,7 @@ export function BuildingCard({
   showDistance = true,
   canRevealBuildingPassword = false,
   onUpdate,
+  autoOpen = false,
 }: BuildingCardProps) {
   const { canEdit, role } = useIsAdmin()
   const [showPopup, setShowPopup] = useState(false)
@@ -117,6 +120,10 @@ export function BuildingCard({
   useEffect(() => {
     setCurrentBuilding(building)
   }, [building])
+
+  useEffect(() => {
+    if (autoOpen) setShowPopup(true)
+  }, [autoOpen])
 
   useEffect(() => {
     setAccessType(currentBuilding.access_type === "free" ? "free" : "password")
