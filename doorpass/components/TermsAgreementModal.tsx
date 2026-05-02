@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Shield, AlertTriangle, ExternalLink, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
 interface TermsAgreementModalProps {
@@ -88,17 +87,25 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
           </label>
         </div>
 
-        <Button
+        <button
+          type="button"
           onClick={() => void handleSubmit()}
           disabled={!canSubmit || isSubmitting}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white"
+          style={{ minHeight: '52px' }}
+          className={'w-full rounded-xl text-white font-semibold text-base transition-all ' +
+            (canSubmit && !isSubmitting
+              ? 'bg-blue-600 active:bg-blue-700 cursor-pointer'
+              : 'bg-blue-600/40 cursor-not-allowed opacity-40')}
         >
           {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>처리 중...</span>
+            </div>
           ) : (
-            "동의하고 시작하기"
+            '동의하고 시작하기'
           )}
-        </Button>
+        </button>
 
         <p className="text-[11px] text-white/25 text-center">
           동의하지 않으면 서비스를 이용할 수 없습니다.
