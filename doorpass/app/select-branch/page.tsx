@@ -26,6 +26,18 @@ export default function SelectBranchPage() {
       .catch(() => setBranches([]))
   }, [])
 
+  useEffect(() => {
+    const token = sessionStorage.getItem('referral_token')
+    if (!token) return
+    fetch('/api/users/referral/use', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+      .then(() => sessionStorage.removeItem('referral_token'))
+      .catch(console.error)
+  }, [])
+
   const branchesByRegion = useMemo(() => {
     return branches.reduce<Record<string, Branch[]>>((acc, branch) => {
       if (!acc[branch.region]) acc[branch.region] = []

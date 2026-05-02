@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Gift, Trophy, Calendar } from 'lucide-react'
+import { ArrowLeft, Gift, Trophy, Calendar, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PointLog {
@@ -24,6 +24,8 @@ const ACTION_LABEL: Record<string, string> = {
   building_free_access: '🚪 자유출입 입력',
   building_elevator: '🛗 엘리베이터 정보',
   building_new: '✨ 새 건물 등록',
+  referral_send: '🔗 친구 초대 보상',
+  referral_receive: '🎉 추천 가입 보너스',
   exchange: '🎁 GS상품권 교환',
 }
 
@@ -33,6 +35,8 @@ export default function MyPointsPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'all' | 'earn' | 'exchange'>('all')
   const [exchanging, setExchanging] = useState(false)
+  const [inviting, setInviting] = useState(false)
+  const [todayInviteCount, setTodayInviteCount] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/users/points')
@@ -41,6 +45,40 @@ export default function MyPointsPage() {
       .catch(() => toast.error('불러오기 실패'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    fetch('/api/users/referral/count')
+      .then((r) => r.json())
+      .then((d: { count: number }) => setTodayInviteCount(d.count ?? 0))
+      .catch(() => {})
+  }, [])
+
+  const handleInvite = async () => {
+    setInviting(true)
+    try {
+      const res = await fetch('/api/users/referral/generate', { method: 'POST' })
+      const d = await res.json() as { url?: string; error?: string }
+      if (!res.ok) throw new Error(d.error || '링크 생성 실패')
+      const referralUrl = d.url!
+      setTodayInviteCount((c) => (c ?? 0) + 1)
+      if (navigator.share) {
+        await navigator.share({
+          title: 'DoorPass 초대장',
+          text: '공동현관 비밀번호 앱 DoorPass에 초대합니다! 가입하면 300P를 드려요 🎁',
+          url: referralUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(referralUrl)
+        toast.success('링크가 복사됐어요! 카카오톡에 붙여넣기 해주세요 📋')
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'AbortError') {
+        toast.error(e.message)
+      }
+    } finally {
+      setInviting(false)
+    }
+  }
 
   const handleExchange = async () => {
     if (!window.confirm('10,000P를 차감하고 GS상품권을 신청하시겠습니까?')) return
@@ -121,6 +159,32 @@ export default function MyPointsPage() {
         >
           <Gift className='h-4 w-4' />
           {exchanging ? '처리 중...' : canExchange ? 'GS상품권 교환하기 (10,000P)' : `${(10000 - total).toLocaleString()}P 더 모으면 교환 가능`}
+        </button>
+      </div>
+
+      {/* 친구 초대 */}
+      <div className='mx-4 mt-3 bg-white/5 border border-white/10 rounded-2xl p-4'>
+        <div className='flex items-center justify-between mb-2'>
+          <div>
+            <div className='text-sm font-bold text-white'>친구 초대하기 🔗</div>
+            <div className='text-xs text-white/50 mt-0.5'>
+              초대받은 친구 승인 시 나 +500P, 친구 +300P
+            </div>
+          </div>
+          {todayInviteCount !== null && (
+            <div className='text-xs text-white/40 shrink-0 ml-3'>
+              오늘 {todayInviteCount}/3회
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => void handleInvite()}
+          disabled={inviting || (todayInviteCount ?? 0) >= 3}
+          className={'w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ' +
+            ((todayInviteCount ?? 0) < 3 ? 'bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white' : 'bg-white/10 text-white/30 cursor-not-allowed')}
+        >
+          <Link2 className='h-4 w-4' />
+          {inviting ? '생성 중...' : (todayInviteCount ?? 0) >= 3 ? '오늘 초대 한도 초과' : '카카오톡으로 초대 링크 보내기'}
         </button>
       </div>
 

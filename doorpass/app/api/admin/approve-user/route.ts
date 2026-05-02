@@ -62,6 +62,43 @@ export async function POST(request: Request) {
       approved: action === "approve",
     })
 
+    if (action === "approve") {
+      try {
+        const { data: referralToken } = await supabaseAdmin
+          .from('referral_tokens')
+          .select('id, token, referrer_email')
+          .eq('referred_email', row.user_email)
+          .eq('status', 'pending')
+          .maybeSingle()
+
+        if (referralToken) {
+          await supabaseAdmin
+            .from('referral_tokens')
+            .update({ status: 'used', used_at: new Date().toISOString() })
+            .eq('id', referralToken.id)
+
+          const { addPoints } = await import('@/lib/points')
+          await addPoints({
+            email: referralToken.referrer_email,
+            action: 'referral_send',
+            buildingName: '추천인 보상',
+          })
+          await addPoints({
+            email: row.user_email,
+            action: 'referral_receive',
+            buildingName: '추천 가입 보너스',
+          })
+
+          sendTelegramMessage(
+            '[DoorPass] 🎉 추천 가입 완료!\n추천인: ' + referralToken.referrer_email + ' (+500P)\n신규: ' + row.user_email + ' (+300P)',
+            'new_user_notification'
+          ).catch(console.error)
+        }
+      } catch (e) {
+        console.error('[referral]', e)
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[Approve User] 오류:", error)

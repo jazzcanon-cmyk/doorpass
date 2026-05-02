@@ -7,6 +7,8 @@ export const POINT_RULES = {
   building_free_access: 10,
   building_elevator: 20,
   building_new: 200,
+  referral_send: 500,
+  referral_receive: 300,
 } as const
 
 export type PointAction = keyof typeof POINT_RULES
