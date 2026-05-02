@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server'
-import { requireAdminApi } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
-  const { unauthorized } = await requireAdminApi()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  // admin 역할 확인 (is_active/is_blocked 컬럼 없이 role만 조회)
+  const { data: me } = await supabaseAdmin
+    .from('approved_users')
+    .select('role')
+    .eq('email', user!.email!)
+    .single()
+
+  if (me?.role !== 'admin') {
+    return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
+  }
 
   try {
     const body = await request.json().catch(() => ({}))

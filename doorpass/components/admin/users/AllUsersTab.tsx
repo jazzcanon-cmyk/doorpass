@@ -150,10 +150,13 @@ export function AllUsersTab() {
     )) return
 
     try {
-      await adminApi('/api/admin/users/reset', {
+      const res = await fetch('/api/admin/users/reset', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: u.email }),
       })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((data as { error?: string }).error || '초기화 실패')
       toast.success((u.name ?? u.email ?? '회원') + '이 초기화되었습니다.')
       void load()
     } catch (e) {
