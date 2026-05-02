@@ -1,5 +1,5 @@
 "use client"
-import { User, ShieldCheck, Ban, Crown } from "lucide-react"
+import { User, ShieldCheck, Ban, Crown, RotateCcw } from "lucide-react"
 import { formatDate, providerLabel } from "@/lib/admin-api"
 import type { AuthUser } from "@/types/admin-users"
 
@@ -66,9 +66,10 @@ interface AuthUserRowProps {
   onUnblock: () => void
   onDetail: () => void
   onAssignRole?: () => void
+  onReset?: () => void
 }
 
-export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail, onAssignRole }: AuthUserRowProps) {
+export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail, onAssignRole, onReset }: AuthUserRowProps) {
   const prov = providerLabel(u.provider)
   const roleKey = u.role && (u.role === "admin" || u.role === "sub_admin" || u.role === "editor")
     ? u.role
@@ -147,6 +148,15 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail,
           </button>
         )}
         <BlockAction u={u} currentUserEmail={currentUserEmail} onBlock={onBlock} onUnblock={onUnblock} />
+        {u.role !== 'admin' && u.email !== currentUserEmail && onReset && (
+          <button
+            type='button'
+            onClick={onReset}
+            className='flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20'
+          >
+            <RotateCcw className='h-3 w-3' /> 초기화
+          </button>
+        )}
       </div>
     </div>
   )

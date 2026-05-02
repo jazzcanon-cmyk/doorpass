@@ -144,6 +144,24 @@ export function AllUsersTab() {
     }
   }
 
+  const handleReset = async (u: AuthUser) => {
+    if (!window.confirm(
+      (u.name ?? u.email ?? '이 회원') + '을 초기화하시겠습니까?\n초기화하면 승인 정보가 삭제되고 다음 로그인 시 신규 회원으로 처음부터 시작합니다.'
+    )) return
+
+    try {
+      const identifier = u.approved_id ?? u.email
+      await adminApi('/api/admin/users/' + identifier + '/reset', {
+        method: 'POST',
+        body: JSON.stringify({ email: u.email }),
+      })
+      toast.success((u.name ?? u.email ?? '회원') + '이 초기화되었습니다.')
+      void load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '초기화 실패')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -176,6 +194,7 @@ export function AllUsersTab() {
               onUnblock={() => void unblock(u)}
               onDetail={() => u.email && router.push(`/admin/users/${encodeURIComponent(u.email)}`)}
               onAssignRole={() => openAssign(u)}
+              onReset={() => void handleReset(u)}
             />
           ))}
         </div>
