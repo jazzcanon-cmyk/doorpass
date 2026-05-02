@@ -6,30 +6,51 @@ export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
-  // admin 역할 확인 (is_active/is_blocked 컬럼 없이 role만 조회)
-  const { data: me } = await supabaseAdmin
-    .from('approved_users')
-    .select('role')
-    .eq('email', user!.email!)
-    .single()
-
-  if (me?.role !== 'admin') {
-    return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
-  }
-
   try {
-    const text = await request.text()
-    console.log('reset body:', text)
-    const body = text ? JSON.parse(text) : {}
-    const email = body?.email as string | undefined
+    // 관리자 권한 확인
+    const { data: me } = await supabaseAdmin
+      .from('approved_users')
+      .select('role')
+      .eq('email', user!.email!)
+      .single()
 
-    if (!email) {
-      console.error('email 없음. body:', body)
-      return NextResponse.json({ error: 'email 필요' }, { status: 400 })
+    if (!me || me.role !== 'admin') {
+      return NextResponse.json({ error: '관리자만 가능합니다.' }, { status: 403 })
     }
 
-    await supabaseAdmin.from('approved_users').delete().eq('email', email)
-    await supabaseAdmin.from('pending_approvals').delete().eq('user_email', email)
+    const text = await request.text()
+    const body = text ? JSON.parse(text) : {}
+    const { approved_id, email } = body as { approved_id?: number | null; email?: string | null }
+
+    if (!approved_id && !email) {
+      return NextResponse.json({ error: '회원 정보가 없습니다.' }, { status: 400 })
+    }
+
+    // approved_id로 삭제 (카카오 사용자)
+    if (approved_id) {
+      await supabaseAdmin
+        .from('approved_users')
+        .delete()
+        .eq('id', approved_id)
+
+      await supabaseAdmin
+        .from('pending_approvals')
+        .delete()
+        .eq('id', approved_id)
+    }
+
+    // email로 삭제 (구글 사용자)
+    if (email) {
+      await supabaseAdmin
+        .from('approved_users')
+        .delete()
+        .eq('email', email)
+
+      await supabaseAdmin
+        .from('pending_approvals')
+        .delete()
+        .eq('user_email', email)
+    }
 
     return NextResponse.json({ success: true })
   } catch (e) {

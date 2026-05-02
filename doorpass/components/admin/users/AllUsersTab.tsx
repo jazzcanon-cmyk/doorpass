@@ -149,12 +149,19 @@ export function AllUsersTab() {
       (u.name ?? u.email ?? '이 회원') + '을 초기화하시겠습니까?\n초기화하면 승인 정보가 삭제되고 다음 로그인 시 신규 회원으로 처음부터 시작합니다.'
     )) return
 
+    if (!u.approved_id && !u.email) {
+      toast.error('초기화할 수 없는 회원입니다.')
+      return
+    }
+
     try {
-      console.log('reset email:', u.email)
       const res = await fetch('/api/admin/users/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: u.email }),
+        body: JSON.stringify({
+          approved_id: u.approved_id ?? null,
+          email: u.email ?? null,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((data as { error?: string }).error || '초기화 실패')
