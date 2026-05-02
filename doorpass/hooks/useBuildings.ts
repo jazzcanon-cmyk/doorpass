@@ -139,11 +139,19 @@ export function useBuildings(currentUser: CurrentUser | null) {
   }, [searchQuery])
 
   const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
-    const upd = (list: Building[]) =>
-      list.map((b) => (b.id === id ? { ...b, ...updated } : b))
-    setAllBuildings(upd)
-    setNearbyBuildings(upd)
-    setSearchResults(upd)
+    if ((updated as Record<string, unknown>)._deleted) {
+      const del = (list: Building[]) => list.filter((b) => b.id !== id)
+      setAllBuildings(del)
+      setNearbyBuildings(del)
+      setSearchResults(del)
+      setViewportBuildings(del)
+    } else {
+      const upd = (list: Building[]) =>
+        list.map((b) => (b.id === id ? { ...b, ...updated } : b))
+      setAllBuildings(upd)
+      setNearbyBuildings(upd)
+      setSearchResults(upd)
+    }
   }, [])
 
   return {
