@@ -18,10 +18,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json().catch(() => ({}))
-    const { email } = body as { email?: string }
+    const text = await request.text()
+    console.log('reset body:', text)
+    const body = text ? JSON.parse(text) : {}
+    const email = body?.email as string | undefined
 
-    if (!email) return NextResponse.json({ error: 'email 필요' }, { status: 400 })
+    if (!email) {
+      console.error('email 없음. body:', body)
+      return NextResponse.json({ error: 'email 필요' }, { status: 400 })
+    }
 
     await supabaseAdmin.from('approved_users').delete().eq('email', email)
     await supabaseAdmin.from('pending_approvals').delete().eq('user_email', email)

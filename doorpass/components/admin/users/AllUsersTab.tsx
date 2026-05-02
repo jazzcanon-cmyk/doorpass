@@ -150,6 +150,7 @@ export function AllUsersTab() {
     )) return
 
     try {
+      console.log('reset email:', u.email)
       const res = await fetch('/api/admin/users/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
