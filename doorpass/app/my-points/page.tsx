@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trophy, Calendar } from 'lucide-react'
+import { ArrowLeft, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PointLog {
@@ -15,6 +15,13 @@ interface PointLog {
 interface PointData {
   total_points: number
   logs: PointLog[]
+}
+
+interface RankData {
+  totalRank: number
+  totalUsers: number
+  branchRank: number
+  branchUsers: number
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -37,6 +44,7 @@ export default function MyPointsPage() {
   const [exchanging, setExchanging] = useState(false)
   const [inviting, setInviting] = useState(false)
   const [remainingInvites, setRemainingInvites] = useState(3)
+  const [rank, setRank] = useState<RankData | null>(null)
 
   useEffect(() => {
     document.title = '🏆 내 포인트 | DoorPass'
@@ -54,6 +62,13 @@ export default function MyPointsPage() {
     fetch('/api/users/referral/remaining')
       .then((r) => r.json())
       .then((d: { remaining: number }) => setRemainingInvites(d.remaining ?? 3))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/users/points/rank')
+      .then((r) => r.json())
+      .then((d: RankData) => setRank(d))
       .catch(() => {})
   }, [])
 
@@ -126,6 +141,13 @@ export default function MyPointsPage() {
   const progress = Math.min((total / 10000) * 100, 100)
   const canExchange = total >= 10000
 
+  const getRankEmoji = (r: number) => {
+    if (r === 1) return '🥇'
+    if (r === 2) return '🥈'
+    if (r === 3) return '🥉'
+    return '🏅'
+  }
+
   if (loading) return (
     <div className='min-h-screen bg-slate-950 flex items-center justify-center'>
       <div className='text-white/50'>로딩 중...</div>
@@ -145,39 +167,117 @@ export default function MyPointsPage() {
       </div>
 
       {/* 포인트 요약 카드 */}
-      <div className='mx-4 mt-4 rounded-2xl p-5' style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-        <div className='flex items-center gap-2 mb-1'>
-          <Trophy className='h-5 w-5 text-white' />
-          <span className='text-sm text-white/80'>누적 포인트</span>
+      <div style={{
+        margin: '16px',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        background: 'linear-gradient(160deg, #1a2744 0%, #0f172a 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+      }}>
+        {/* 상단 포인트 + 랭킹 */}
+        <div style={{ padding: '20px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              🏆 누적 포인트
+            </div>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 900,
+              color: 'white',
+              lineHeight: 1,
+              textShadow: '0 2px 20px rgba(245,158,11,0.4)',
+              letterSpacing: '-1px',
+            }}>
+              {total.toLocaleString()}
+              <span style={{ fontSize: '20px', fontWeight: 600, marginLeft: '4px', color: 'rgba(255,255,255,0.7)' }}>P</span>
+            </div>
+          </div>
+
+          {/* 랭킹 뱃지 */}
+          {rank && (
+            <div style={{
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '16px',
+              padding: '10px 14px',
+              textAlign: 'center',
+              backdropFilter: 'blur(10px)',
+              minWidth: '80px',
+            }}>
+              <div style={{ fontSize: '24px', lineHeight: 1, marginBottom: '4px' }}>
+                {rank.branchRank > 0 ? getRankEmoji(rank.branchRank) : '🏅'}
+              </div>
+              {rank.branchRank > 0 && (
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>
+                  대리점 {rank.branchRank}위
+                </div>
+              )}
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                전체 {rank.totalRank > 0 ? rank.totalRank + '위' : '-'} / {rank.totalUsers}명
+              </div>
+            </div>
+          )}
         </div>
-        <div className='text-4xl font-black text-white mb-3'>{total.toLocaleString()}P</div>
 
         {/* 진행도 바 */}
-        <div className='bg-white/20 rounded-full h-2 mb-1 overflow-hidden'>
-          <div className='bg-white rounded-full h-2 transition-all duration-500' style={{ width: progress + '%' }} />
-        </div>
-
-        {/* 마일스톤 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', marginBottom: '12px' }}>
-          {[2500, 5000, 7500, 10000].map((milestone) => (
-            <div key={milestone} style={{ textAlign: 'center', fontSize: '9px', color: total >= milestone ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)' }}>
-              <div style={{ marginBottom: '2px' }}>{total >= milestone ? '★' : '☆'}</div>
-              <div>{(milestone / 1000).toFixed(0)}천P</div>
-            </div>
-          ))}
+        <div style={{ padding: '0 20px 8px' }}>
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '999px', height: '10px', overflow: 'hidden' }}>
+            <div style={{
+              background: 'linear-gradient(90deg, #f59e0b, #ef4444)',
+              borderRadius: '999px',
+              height: '100%',
+              width: Math.min(progress, 100) + '%',
+              transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 0 12px rgba(245,158,11,0.6)',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+            {[2500, 5000, 7500, 10000].map((m) => (
+              <div key={m} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '12px', color: total >= m ? '#f59e0b' : 'rgba(255,255,255,0.2)' }}>
+                  {total >= m ? '★' : '☆'}
+                </div>
+                <div style={{ fontSize: '9px', color: total >= m ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)', marginTop: '1px' }}>
+                  {m >= 10000 ? '1만P' : (m / 1000) + '천P'}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 교환 버튼 */}
-        <button
-          onClick={() => { if (canExchange) void handleExchange() }}
-          disabled={exchanging}
-          className={'w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ' +
-            (canExchange ? 'bg-white text-amber-500 active:bg-white/90' : 'bg-white/20 text-white/40 cursor-not-allowed')}
-        >
-          {exchanging ? '처리 중...' : canExchange
-            ? '🎁 GS상품권 1만원 교환하기'
-            : `🎁 ${(10000 - total).toLocaleString()}P 더 모으면 GS상품권 교환!`}
-        </button>
+        <div style={{ padding: '8px 20px 20px' }}>
+          <button
+            onClick={() => canExchange && void handleExchange()}
+            disabled={!canExchange || exchanging}
+            style={{
+              width: '100%',
+              padding: '15px',
+              borderRadius: '14px',
+              background: canExchange
+                ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
+                : 'rgba(255,255,255,0.04)',
+              color: canExchange ? 'white' : 'rgba(255,255,255,0.25)',
+              border: canExchange ? 'none' : '1px solid rgba(255,255,255,0.08)',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: canExchange ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: canExchange ? '0 4px 20px rgba(245,158,11,0.35)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            {exchanging
+              ? '⏳ 처리 중...'
+              : canExchange
+              ? '🎁 GS상품권 1만원 교환하기'
+              : '🎁 ' + (10000 - total).toLocaleString() + 'P 더 모으면 교환 가능'}
+          </button>
+        </div>
       </div>
 
       {/* 친구 초대 */}
