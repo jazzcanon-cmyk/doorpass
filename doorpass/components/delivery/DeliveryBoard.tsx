@@ -181,39 +181,38 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
       </div>
 
       {showCalendar && (
-        <div className='bg-slate-800/80 border border-white/10 rounded-2xl p-4 mb-3'>
-          <div className='flex items-center justify-between mb-3'>
+        <div className='bg-slate-800 border border-white/20 rounded-2xl p-4 mb-3 shadow-xl'>
+          {/* 헤더 */}
+          <div className='flex items-center justify-between mb-4'>
             <button
-              onClick={() => {
-                if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) }
-                else setCalMonth(m => m - 1)
-              }}
-              className='text-white/50 hover:text-white px-2 py-1 text-sm'
+              onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1) } else setCalMonth(m => m - 1) }}
+              className='w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition-all'
             >‹</button>
-            <span className='text-sm font-semibold text-white'>{calYear}년 {calMonth + 1}월</span>
+            <span className='text-white font-bold text-base'>{calYear}년 {calMonth + 1}월</span>
             <button
-              onClick={() => {
-                if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) }
-                else setCalMonth(m => m + 1)
-              }}
-              className='text-white/50 hover:text-white px-2 py-1 text-sm'
+              onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1) } else setCalMonth(m => m + 1) }}
+              className='w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition-all'
             >›</button>
           </div>
 
-          <div className='grid grid-cols-7 mb-1'>
-            {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-              <div key={d} className='text-center text-[10px] text-white/30 py-1'>{d}</div>
+          {/* 요일 헤더 */}
+          <div className='grid grid-cols-7 mb-2'>
+            {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+              <div key={d} className={'text-center text-xs font-semibold py-1 ' + (i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-white/60')}>
+                {d}
+              </div>
             ))}
           </div>
 
-          <div className='grid grid-cols-7 gap-y-1'>
+          {/* 날짜 그리드 */}
+          <div className='grid grid-cols-7 gap-1'>
             {(() => {
               const firstDay = new Date(calYear, calMonth, 1).getDay()
               const lastDate = new Date(calYear, calMonth + 1, 0).getDate()
               const today = new Date().toISOString().slice(0, 10)
               const cells = []
               for (let i = 0; i < firstDay; i++) {
-                cells.push(<div key={'e' + i} />)
+                cells.push(<div key={'e' + i} className='h-10' />)
               }
               for (let d = 1; d <= lastDate; d++) {
                 const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0')
@@ -221,18 +220,30 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
                 const isToday = dateStr === today
                 const isSelected = dateStr === dateFilter
                 const hasPost = count > 0
+                const dayOfWeek = new Date(calYear, calMonth, d).getDay()
                 cells.push(
                   <button
                     key={d}
-                    onClick={() => {
-                      if (!hasPost) return
-                      setDateFilter(isSelected ? '' : dateStr)
-                    }}
-                    className={'flex flex-col items-center justify-start py-1 rounded-lg transition-all ' + (isSelected ? 'bg-blue-600' : isToday ? 'bg-blue-500/20' : hasPost ? 'hover:bg-white/10' : 'opacity-30 cursor-default')}
+                    onClick={() => { if (!hasPost) return; setDateFilter(isSelected ? '' : dateStr) }}
+                    className={'flex flex-col items-center justify-center h-10 rounded-xl transition-all relative ' +
+                      (isSelected ? 'bg-blue-500 shadow-lg shadow-blue-500/30' :
+                       isToday ? 'bg-blue-500/20 ring-1 ring-blue-400' :
+                       hasPost ? 'bg-white/10 hover:bg-white/20 active:bg-white/30' :
+                       'opacity-25 cursor-default')}
                   >
-                    <span className={'text-[11px] leading-tight ' + (isSelected ? 'text-white font-bold' : isToday ? 'text-blue-400 font-bold' : 'text-white/70')}>{d}</span>
+                    <span className={'text-xs font-semibold leading-none ' +
+                      (isSelected ? 'text-white' :
+                       isToday ? 'text-blue-300' :
+                       dayOfWeek === 0 ? 'text-red-400' :
+                       dayOfWeek === 6 ? 'text-blue-400' :
+                       'text-white')}>
+                      {d}
+                    </span>
                     {count > 0 && (
-                      <span className={'text-[9px] font-bold rounded-full px-1 leading-tight mt-0.5 ' + (count >= 3 ? 'bg-red-500 text-white' : 'bg-blue-500 text-white')}>
+                      <span className={'text-[9px] font-bold rounded-full px-1 mt-0.5 leading-tight ' +
+                        (isSelected ? 'bg-white/30 text-white' :
+                         count >= 3 ? 'bg-red-500 text-white' :
+                         'bg-blue-500 text-white')}>
                         {count}
                       </span>
                     )}
@@ -243,10 +254,18 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
             })()}
           </div>
 
+          {/* 선택 날짜 표시 */}
           {dateFilter && (
             <div className='mt-3 pt-3 border-t border-white/10 flex justify-between items-center'>
-              <span className='text-xs text-blue-300'>📅 {dateFilter} 공고 {countByDate[dateFilter] ?? 0}건</span>
-              <button onClick={() => setDateFilter('')} className='text-xs text-white/40 hover:text-white'>초기화</button>
+              <span className='text-sm text-blue-300 font-medium'>
+                📅 {dateFilter} · {countByDate[dateFilter] ?? 0}건
+              </span>
+              <button
+                onClick={() => setDateFilter('')}
+                className='text-xs text-white/40 hover:text-white/70 px-2 py-1 rounded-lg hover:bg-white/10 transition-all'
+              >
+                ✕ 초기화
+              </button>
             </div>
           )}
         </div>
