@@ -150,8 +150,7 @@ export function AllUsersTab() {
     )) return
 
     try {
-      const identifier = u.approved_id ?? u.email
-      await adminApi('/api/admin/users/' + identifier + '/reset', {
+      await adminApi('/api/admin/users/reset', {
         method: 'POST',
         body: JSON.stringify({ email: u.email }),
       })
