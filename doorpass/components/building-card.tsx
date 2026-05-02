@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
+import { PointPopup } from "@/components/PointPopup"
 
 interface Building {
   id: string
@@ -116,6 +117,7 @@ export function BuildingCard({
   const [memoText, setMemoText] = useState("")
   const [memoDraft, setMemoDraft] = useState("")
   const [isEditingMemo, setIsEditingMemo] = useState(false)
+  const [pointPopup, setPointPopup] = useState<{ points: number; action: string; total: number } | null>(null)
 
   useEffect(() => {
     setCurrentBuilding(building)
@@ -155,25 +157,45 @@ export function BuildingCard({
     return (prefix + text).trim()
   }
 
+  const ACTION_LABEL: Record<string, string> = {
+    building_name: "건물명 입력",
+    building_password: "비밀번호 입력",
+    building_free_access: "자유출입 입력",
+    building_elevator: "엘리베이터 정보 입력",
+    building_memo: "메모 입력",
+  }
+
   const saveField = async (field: "name" | "password" | "memo", value: string) => {
     if (field === "password" && !canRevealBuildingPassword) return
     setSaving(true)
     try {
-      const res = await fetch("/api/buildings/update", {
+      const res = await fetch("/api/buildings/save-field", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ buildingId: currentBuilding.id, [field]: value }),
+        body: JSON.stringify({ buildingId: currentBuilding.id, field, value }),
       })
-      if (res.ok) {
-        const updated = { ...currentBuilding, [field]: value }
-        setCurrentBuilding(updated)
-        onUpdate?.(currentBuilding.id, { [field]: value })
-        toast.success("저장되었습니다.")
-      } else {
-        toast.error("저장에 실패했습니다.")
+      const data = await res.json() as {
+        success?: boolean
+        error?: string
+        points?: number
+        newTotal?: number | null
+        action?: string | null
       }
-    } catch {
-      toast.error("저장 중 오류가 발생했습니다.")
+      if (!res.ok) throw new Error(data.error ?? "저장 실패")
+
+      setCurrentBuilding({ ...currentBuilding, [field]: value })
+      onUpdate?.(currentBuilding.id, { [field]: value })
+      toast.success("저장되었습니다.")
+
+      if (data.points && data.points > 0 && data.newTotal != null) {
+        setPointPopup({
+          points: data.points,
+          action: ACTION_LABEL[data.action ?? ""] ?? "정보 입력",
+          total: data.newTotal,
+        })
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "저장 실패")
     } finally {
       setSaving(false)
     }
@@ -219,6 +241,15 @@ export function BuildingCard({
 
   return (
     <>
+      {pointPopup && (
+        <PointPopup
+          points={pointPopup.points}
+          action={pointPopup.action}
+          totalPoints={pointPopup.total}
+          onClose={() => setPointPopup(null)}
+        />
+      )}
+
       {/* 카드 */}
       <Card
         className="overflow-hidden border-border bg-card transition-all hover:border-primary/50 cursor-pointer active:scale-[0.98]"

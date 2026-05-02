@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppLogo } from "@/components/AppLogo"
@@ -22,6 +23,16 @@ const TABS: { key: TabType; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefresh, onLogout }: AppHeaderProps) {
+  const [animate, setAnimate] = useState(false)
+  const total_points = currentUser?.total_points
+
+  useEffect(() => {
+    if (!total_points) return
+    setAnimate(true)
+    const t = setTimeout(() => setAnimate(false), 600)
+    return () => clearTimeout(t)
+  }, [total_points])
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/80 backdrop-blur-xl">
       <div className="container mx-auto px-4 py-3">
@@ -33,7 +44,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
               <p className="text-[11px] text-white/40 flex items-center gap-1">
                 {currentUser ? currentUser.userName : "공동현관 비밀번호"}
                 {currentUser && (currentUser.total_points ?? 0) > 0 && (
-                  <Link href="/my-points" className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5 hover:opacity-80 transition-opacity">
+                  <Link href="/my-points" className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5 hover:opacity-80 transition-opacity" style={{ transform: animate ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'inline-block' }}>
                     🏆 {(currentUser.total_points ?? 0).toLocaleString()}P
                   </Link>
                 )}
