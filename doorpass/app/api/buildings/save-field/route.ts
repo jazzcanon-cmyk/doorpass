@@ -78,8 +78,9 @@ export async function POST(request: Request) {
         action = value.includes('엘리베이터') ? 'building_elevator' : 'building_memo'
       }
     } else if (field === 'has_elevator') {
-      const wasEmpty = existing.has_elevator === null || existing.has_elevator === undefined
-      if (wasEmpty) action = 'building_elevator'
+      const currentVal = (existing as Record<string, unknown>).has_elevator
+      const wasNull = currentVal === null || currentVal === undefined
+      if (wasNull) action = 'building_elevator'
     }
 
     let pointResult: { success: boolean; points?: number; newTotal?: number } = { success: false }
