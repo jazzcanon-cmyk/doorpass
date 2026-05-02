@@ -47,7 +47,7 @@ export function LocationStatus({
                 </p>
                 <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
                   <Radio className="mr-1 h-3 w-3" />
-                  50m
+                  100m
                 </span>
               </div>
               {lastUpdated && (

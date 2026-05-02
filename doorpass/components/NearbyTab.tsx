@@ -1,10 +1,13 @@
 "use client"
+import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { MapPin, Loader2, AlertCircle } from "lucide-react"
+import { MapPin, Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react"
 import { BuildingCard } from "@/components/building-card"
 import { LocationStatus } from "@/components/location-status"
 import { SelectedBuildingInfo } from "@/components/selected-building-info"
 import type { Building } from "@/types/building"
+
+const NEARBY_TOP_LIMIT = 5
 
 const BuildingMap = dynamic(
   () => import("@/components/building-map").then((mod) => mod.BuildingMap),
@@ -53,6 +56,17 @@ export function NearbyTab({
   onGoToSearch,
   onLocateMe,
 }: NearbyTabProps) {
+  const [showAll, setShowAll] = useState(false)
+
+  // 결과가 바뀌면(재검색·새 위치) 항상 상위 5개로 리셋
+  useEffect(() => {
+    setShowAll(false)
+  }, [nearbyBuildings])
+
+  const totalCount = nearbyBuildings.length
+  const visibleBuildings = showAll ? nearbyBuildings : nearbyBuildings.slice(0, NEARBY_TOP_LIMIT)
+  const hasMore = totalCount > NEARBY_TOP_LIMIT
+
   return (
     <>
       <LocationStatus
@@ -85,7 +99,11 @@ export function NearbyTab({
       )}
       <section className="container mx-auto px-4 py-6">
         <h2 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
-          반경 50m 내 건물
+          {totalCount === 0
+            ? "반경 100m 내 건물"
+            : showAll
+              ? `반경 100m 내 전체 ${totalCount}개`
+              : `가장 가까운 건물 ${Math.min(totalCount, NEARBY_TOP_LIMIT)}개`}
         </h2>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -116,10 +134,10 @@ export function NearbyTab({
               )}
             </div>
           </div>
-        ) : nearbyBuildings.length === 0 ? (
+        ) : totalCount === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center backdrop-blur-sm">
             <MapPin className="h-10 w-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/40 text-sm mb-1">반경 50m 내 등록된 건물이 없습니다</p>
+            <p className="text-white/40 text-sm mb-1">반경 100m 내 등록된 건물이 없습니다</p>
             <p className="text-white/30 text-xs mb-4">검색 탭에서 주소로 찾아보세요</p>
             {onGoToSearch && (
               <button
@@ -131,17 +149,40 @@ export function NearbyTab({
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {nearbyBuildings.map((b) => (
-              <BuildingCard
-                key={b.id}
-                building={b}
-                showDistance
-                canRevealBuildingPassword={canRevealBuildingPassword}
-                onUpdate={onBuildingUpdate}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {visibleBuildings.map((b) => (
+                <BuildingCard
+                  key={b.id}
+                  building={b}
+                  showDistance
+                  canRevealBuildingPassword={canRevealBuildingPassword}
+                  onUpdate={onBuildingUpdate}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAll((v) => !v)}
+                  className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-medium text-white/70 transition-all duration-200"
+                >
+                  {showAll ? (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5" />
+                      접기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                      더 보기 (반경 100m 내 전체 {totalCount}개)
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </>

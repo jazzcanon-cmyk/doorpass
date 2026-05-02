@@ -46,14 +46,14 @@ export function useBuildings(currentUser: CurrentUser | null) {
       const data = await response.json()
       const buildings: Building[] = data.buildings ?? []
       if (lat !== undefined && lng !== undefined) {
-        const within50 = buildings
+        const within100 = buildings
           .map((b) => ({
             ...b,
             distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
           }))
-          .filter((b) => (b.distance ?? 0) <= 50)
+          .filter((b) => (b.distance ?? 0) <= 100)
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
-        setNearbyBuildings(within50)
+        setNearbyBuildings(within100)
         setAllBuildings(buildings)
       } else {
         setAllBuildings(buildings)

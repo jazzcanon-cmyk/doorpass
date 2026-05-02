@@ -112,7 +112,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ buildings: [] })
       }
       const { revealPasswords } = await getBuildingsListAuth()
-      // 약 ±0.005도(≈555m) bbox — 50m 클라이언트 필터를 넉넉히 커버
+      // 약 ±0.005도(≈555m) bbox — 100m 클라이언트 필터를 넉넉히 커버
       const latDelta = 0.005
       const lngDelta = 0.006
       const { data, error } = await supabase
