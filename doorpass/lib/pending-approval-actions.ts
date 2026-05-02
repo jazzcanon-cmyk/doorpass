@@ -39,7 +39,7 @@ export async function executePendingApprovalById(
   if (action === "approve") {
     const { data: existing } = await supabaseAdmin
       .from("approved_users")
-      .select("id")
+      .select("id, role")
       .eq("email", row.user_email)
       .maybeSingle()
 
@@ -50,6 +50,8 @@ export async function executePendingApprovalById(
           is_active: true,
           branch_id: row.selected_branch_id,
           first_login_at: new Date().toISOString(),
+          // role이 null/빈값인 경우 driver로 설정 (재승인 시 비밀번호 안 보이는 문제 방지)
+          ...(!existing.role ? { role: "driver" } : {}),
         })
         .eq("id", existing.id)
       if (updateError) throw updateError

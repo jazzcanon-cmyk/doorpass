@@ -31,7 +31,7 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
 
-      void fetch("/api/users/me", { signal: controller.signal })
+      void fetch("/api/users/me", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
         .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
           if (cancelled) return

@@ -129,7 +129,7 @@ export async function GET(request: Request) {
           .order("created_at", { ascending: false }),
         supabaseAdmin
           .from("user_points")
-          .select("user_email, total_points")
+          .select("email, total_points")
           .order("total_points", { ascending: false })
           .limit(10),
       ])
@@ -138,7 +138,7 @@ export async function GET(request: Request) {
         list: usersRes.data ?? [],
         topItems: (pointsRes.data ?? []).map((p, i) => ({
           rank: i + 1,
-          email: p.user_email,
+          email: p.email,
           points: p.total_points,
         })),
       })
