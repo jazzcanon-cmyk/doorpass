@@ -3,6 +3,7 @@ import { requireAuth, canEditBuilding } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { addPoints } from "@/lib/points"
 
 type Params = Promise<{ id: string }>
 
@@ -106,17 +107,27 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   const access = await assertBuildingAccess(user!.email!, id)
   if ("response" in access) return access.response
 
+  const existingBuilding = access.row
+
+  const { data: userInfo } = await supabaseAdmin
+    .from("approved_users")
+    .select("role")
+    .eq("email", user!.email!)
+    .single()
+  const userRole = userInfo?.role
+
   const body = (await request.json().catch(() => ({}))) as {
     name?: string
     password?: string | null
     memo?: string | null
   }
+  const { name, password, memo } = body
 
   const updateData: Record<string, string | null> = {}
-  if (typeof body.name === "string") updateData.name = body.name
-  if (body.memo !== undefined) updateData.memo = body.memo === null ? null : String(body.memo)
-  if (body.password !== undefined) {
-    const p = body.password
+  if (typeof name === "string") updateData.name = name
+  if (memo !== undefined) updateData.memo = memo === null ? null : String(memo)
+  if (password !== undefined) {
+    const p = password
     if (p === null || p === "") updateData.password = null
     else updateData.password = encryptPassword(String(p))
   }
@@ -130,14 +141,37 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     if (error) throw error
 
     const displayName =
-      typeof body.name === "string"
-        ? body.name
-        : (access.row.name ?? access.row.address?.split(" ").slice(-1)[0] ?? "")
+      typeof name === "string"
+        ? name
+        : (existingBuilding.name ?? existingBuilding.address?.split(" ").slice(-1)[0] ?? "")
 
     await sendTelegramMessage(
       `✏️ 건물 정보 수정 (관리)\n건물 ID: ${id}\n이름: ${displayName}\n수정자: ${user!.email}`,
       "comment_notification"
     ).catch(console.error)
+
+    if (user?.email && ["editor", "sub_admin", "admin"].includes(userRole ?? "")) {
+      const existingPassword = plaintextPassword(existingBuilding.password)
+      const tasks: Promise<unknown>[] = []
+      if (name !== undefined && name !== existingBuilding.name) {
+        tasks.push(addPoints({ email: user.email, action: "building_name", buildingId: Number(id), buildingName: name }))
+      }
+      if (password !== undefined && password !== "자유출입" && password !== existingPassword) {
+        tasks.push(addPoints({ email: user.email, action: "building_password", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+      }
+      if (password === "자유출입" && existingPassword !== "자유출입") {
+        tasks.push(addPoints({ email: user.email, action: "building_free_access", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+      }
+      if (memo !== undefined && memo !== existingBuilding.memo) {
+        const hasElevator = memo?.includes("엘리베이터")
+        if (hasElevator) {
+          tasks.push(addPoints({ email: user.email, action: "building_elevator", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+        } else {
+          tasks.push(addPoints({ email: user.email, action: "building_memo", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+        }
+      }
+      Promise.allSettled(tasks).catch(console.error)
+    }
 
     return NextResponse.json({ success: true })
   } catch (e) {

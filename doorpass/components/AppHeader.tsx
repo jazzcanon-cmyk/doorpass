@@ -30,8 +30,13 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             <AppLogo />
             <div>
               <h1 className="text-sm font-bold text-white leading-tight">DoorPass</h1>
-              <p className="text-[11px] text-white/40">
+              <p className="text-[11px] text-white/40 flex items-center gap-1">
                 {currentUser ? currentUser.userName : "공동현관 비밀번호"}
+                {currentUser && (currentUser.total_points ?? 0) > 0 && (
+                  <span className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5">
+                    🏆 {(currentUser.total_points ?? 0).toLocaleString()}P
+                  </span>
+                )}
               </p>
             </div>
           </div>

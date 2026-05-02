@@ -35,6 +35,12 @@ export async function GET() {
 
     const canReveal = await canRevealBuildingPassword(user!.email)
 
+    const { data: pointData } = await supabaseAdmin
+      .from("user_points")
+      .select("total_points")
+      .eq("email", user!.email!)
+      .single()
+
     return NextResponse.json({
       email: userData.email,
       name: userData.name,
@@ -44,6 +50,7 @@ export async function GET() {
       canEdit: ["admin", "sub_admin", "editor"].includes(String(userData.role ?? role)),
       canUploadCSV: ["admin", "sub_admin"].includes(String(userData.role ?? role)),
       canRevealBuildingPassword: canReveal,
+      total_points: pointData?.total_points ?? 0,
     })
   } catch (error) {
     console.error("[Users Me] 오류:", error)

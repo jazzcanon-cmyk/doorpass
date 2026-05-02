@@ -5,6 +5,7 @@ import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth } from "@/
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
+import { addPoints } from "@/lib/points"
 
 interface BuildingRow {
   id: number
@@ -395,6 +396,15 @@ export async function POST(request: Request) {
       `🏠 [새 건물 등록]\n건물명: ${displayName}\n주소: ${normalizedAddress}\n등록자: ${uploaded_by ?? "-"}${memo ? `\n메모: ${memo}` : ""}${region ? `\n지역: ${region}` : ""}`,
       "comment_notification"
     ).catch(console.error)
+
+    if (user?.email && ["editor", "sub_admin", "admin"].includes(approvedUser.role ?? "")) {
+      addPoints({
+        email: user.email,
+        action: "building_new",
+        buildingId: data?.id,
+        buildingName: name,
+      }).catch(console.error)
+    }
 
     return NextResponse.json({ building: data }, { status: 201 })
   } catch (error) {
