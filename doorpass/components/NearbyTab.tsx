@@ -125,7 +125,7 @@ export function NearbyTab({
               ? `반경 ${radius}m 내 전체 ${totalCount}개`
               : `가장 가까운 건물 ${Math.min(totalCount, NEARBY_TOP_LIMIT)}개`}
         </h2>
-        {loading ? (
+        {loading && totalCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="relative">
               <Loader2 className="h-10 w-10 animate-spin text-blue-400" />
@@ -133,7 +133,7 @@ export function NearbyTab({
             </div>
             <p className="text-white/40 text-sm">주변 건물 검색 중...</p>
           </div>
-        ) : error ? (
+        ) : error && totalCount === 0 ? (
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center backdrop-blur-sm">
             <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
             <p className="text-red-300 text-sm mb-4">{error}</p>

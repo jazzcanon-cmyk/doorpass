@@ -97,14 +97,14 @@ export function BuildingMap({
     if (!document.querySelector('link[href*="leaflet.css"]')) {
       const link = document.createElement("link")
       link.rel = "stylesheet"
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      link.href = "/leaflet.css"
       document.head.appendChild(link)
     }
     if (!document.querySelector('link[href*="MarkerCluster"]')) {
       for (const file of ["MarkerCluster.css", "MarkerCluster.Default.css"]) {
         const link = document.createElement("link")
         link.rel = "stylesheet"
-        link.href = `https://unpkg.com/leaflet.markercluster@1.5.3/dist/${file}`
+        link.href = `/${file}`
         document.head.appendChild(link)
       }
     }
