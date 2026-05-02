@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     const { error: updateError } = await supabaseAdmin
       .from('buildings')
-      .update({ [field]: value, updated_at: new Date().toISOString() })
+      .update({ [field]: value })
       .eq('id', buildingId)
 
     if (updateError) {
