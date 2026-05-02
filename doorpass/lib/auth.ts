@@ -343,16 +343,14 @@ export async function getUserRole(userEmail: string | null | undefined): Promise
 export async function canRevealBuildingPassword(email: string | null | undefined): Promise<boolean> {
   if (!email?.trim()) return false
   const { data } = await supabaseAdmin
-    .from("approved_users")
-    .select("is_active, is_blocked, role")
-    .eq("email", email.trim())
+    .from('approved_users')
+    .select('role')
+    .eq('email', email.trim())
     .maybeSingle()
 
   if (!data) return false
-  if (data.is_blocked === true) return false
-  if (data.is_active === false) return false
   const role = data.role as string | null | undefined
-  if (role == null || String(role).trim() === "") return false
+  if (role == null || String(role).trim() === '') return false
   return true
 }
 
