@@ -372,24 +372,26 @@ export function NewBuildingModal({
                   <button
                     type="button"
                     onClick={() => toggleElevator("yes")}
-                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border font-medium transition ${
                       elevatorStatus === "yes"
-                        ? "bg-green-500/20 border-green-400 text-green-300"
+                        ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
                         : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
                     }`}
                   >
-                    엘리베이터 있음
+                    <span style={{ fontSize: "20px", lineHeight: 1 }}>🛗</span>
+                    <span className="text-xs">엘리베이터</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleElevator("no")}
-                    className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                    className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border font-medium transition ${
                       elevatorStatus === "no"
-                        ? "bg-green-500/20 border-green-400 text-green-300"
+                        ? "bg-orange-500/20 border-orange-400 text-orange-300"
                         : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
                     }`}
                   >
-                    엘리베이터 없음
+                    <span style={{ fontSize: "20px", lineHeight: 1 }}>🪜</span>
+                    <span className="text-xs">계단만</span>
                   </button>
                 </div>
                 <textarea

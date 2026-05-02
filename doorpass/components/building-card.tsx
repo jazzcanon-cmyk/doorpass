@@ -491,13 +491,14 @@ export function BuildingCard({
                         setElevatorStatus(next)
                         void saveField("memo", composeMemo(next, memoText))
                       }}
-                      className={`px-3 py-1 rounded-lg border text-xs font-medium mr-2 transition-all ${
+                      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
                         elevatorStatus === "yes"
-                          ? "bg-green-500/20 border-green-400 text-green-300"
+                          ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
                           : "bg-secondary border-border text-muted-foreground"
                       } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
                     >
-                      엘리베이터 있음
+                      <span style={{ fontSize: "20px", lineHeight: 1 }}>🛗</span>
+                      <span className="text-xs font-medium">엘리베이터</span>
                     </button>
                     <button
                       type="button"
@@ -507,13 +508,14 @@ export function BuildingCard({
                         setElevatorStatus(next)
                         void saveField("memo", composeMemo(next, memoText))
                       }}
-                      className={`px-3 py-1 rounded-lg border text-xs font-medium mr-2 transition-all ${
+                      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
                         elevatorStatus === "no"
-                          ? "bg-green-500/20 border-green-400 text-green-300"
+                          ? "bg-orange-500/20 border-orange-400 text-orange-300"
                           : "bg-secondary border-border text-muted-foreground"
                       } ${!canEdit ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/80"}`}
                     >
-                      엘리베이터 없음
+                      <span style={{ fontSize: "20px", lineHeight: 1 }}>🪜</span>
+                      <span className="text-xs font-medium">계단만</span>
                     </button>
                   </div>
 
