@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
+import { shortenAddress } from "@/lib/utils"
 
 interface Building {
   id: string
@@ -105,7 +106,7 @@ export function SelectedBuildingInfo({
                 <p className="text-sm text-foreground">
                   <span className="font-bold">{building.name}</span>
                   <span className="text-muted-foreground"> - </span>
-                  <span className="text-muted-foreground">{building.address}</span>
+                  <span className="text-muted-foreground">{shortenAddress(building.address)}</span>
                 </p>
               </div>
               <Button

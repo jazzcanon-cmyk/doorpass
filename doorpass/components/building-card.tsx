@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
 import { PointPopup } from "@/components/PointPopup"
+import { shortenAddress } from "@/lib/utils"
 
 interface Building {
   id: string
@@ -276,7 +277,7 @@ export function BuildingCard({
                 <p className="text-sm text-foreground line-clamp-2">
                   <span className="font-semibold">{currentBuilding.name}</span>
                   <span className="text-muted-foreground"> - </span>
-                  <span className="text-muted-foreground">{currentBuilding.address.replace("울산광역시", "울산")}</span>
+                  <span className="text-muted-foreground">{shortenAddress(currentBuilding.address)}</span>
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -341,7 +342,7 @@ export function BuildingCard({
               {/* 주소 (수정 불가) */}
               <div className="flex items-center gap-2 py-2 border-b border-border/40">
                 <span className="text-xs text-muted-foreground w-16 flex-shrink-0">주소</span>
-                <span className="text-sm text-foreground flex-1">{currentBuilding.address.replace("울산광역시", "울산")}</span>
+                <span className="text-sm text-foreground flex-1">{shortenAddress(currentBuilding.address)}</span>
               </div>
 
               {/* 수정 가능 필드들 */}
