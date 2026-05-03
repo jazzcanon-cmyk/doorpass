@@ -267,6 +267,7 @@ export async function requireManager() {
 
 /**
  * API 라우트에서 admin 또는 sub_admin 권한 검증.
+ * is_active/is_blocked 체크 없이 role만 확인 (단순화).
  */
 export async function requireManagerApi() {
   const cookieStore = await cookies()
@@ -284,38 +285,22 @@ export async function requireManagerApi() {
     }
   }
 
-  const approved = await fetchApprovedUserForAuth<{
-    id: string
-    is_active: boolean
-    is_blocked: boolean
-    role: string
-  }>(supabase, user as User, "id, is_active, is_blocked, role")
+  const approved = await fetchApprovedUserForAuth<{ role: string }>(
+    supabase,
+    user as User,
+    "role"
+  )
 
-  if (approved?.is_blocked) {
+  const role = approved?.role as string | undefined
+
+  if (!role || (role !== "admin" && role !== "sub_admin")) {
     return {
       user: null,
       role: null as UserRole | null,
-      unauthorized: NextResponse.json({ error: "차단된 계정입니다." }, { status: 403 }),
+      unauthorized: NextResponse.json({ error: "권한 없음" }, { status: 403 }),
     }
   }
 
-  if (approved && approved.is_active === false) {
-    return {
-      user: null,
-      role: null as UserRole | null,
-      unauthorized: NextResponse.json({ error: "관리자에 의해 사용이 제한된 계정입니다." }, { status: 403 }),
-    }
-  }
-
-  if (!approved || (approved.role !== "admin" && approved.role !== "sub_admin")) {
-    return {
-      user: null,
-      role: null as UserRole | null,
-      unauthorized: NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 }),
-    }
-  }
-
-  const role = approved.role === "admin" || approved.role === "sub_admin" ? approved.role : "driver"
   return { user, role: role as UserRole, unauthorized: null }
 }
 
