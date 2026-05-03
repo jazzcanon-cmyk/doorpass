@@ -2,14 +2,26 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
+function resolveIdentifier(user: NonNullable<Awaited<ReturnType<typeof requireAuth>>["user"]>) {
+  const email = user.email
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+  const userId =
+    ((meta?.provider_id as string | undefined) ??
+      (meta?.sub as string | undefined) ??
+      user.id) as string
+  return email || userId
+}
+
 export async function GET() {
   const { unauthorized, user } = await requireAuth()
   if (unauthorized) return unauthorized
 
+  const identifier = resolveIdentifier(user!)
+
   const { count, error } = await supabaseAdmin
     .from("login_history")
     .select("id", { count: "exact", head: true })
-    .eq("user_email", user!.email)
+    .eq("user_email", identifier)
 
   if (error) {
     console.error("[Login Count] 오류:", error)
@@ -23,10 +35,12 @@ export async function POST() {
   const { unauthorized, user } = await requireAuth()
   if (unauthorized) return unauthorized
 
+  const identifier = resolveIdentifier(user!)
+
   try {
     const { error } = await supabaseAdmin
       .from("login_history")
-      .insert({ user_email: user!.email })
+      .insert({ user_email: identifier })
 
     if (error) {
       console.error("[Login Count] 기록 오류:", error)

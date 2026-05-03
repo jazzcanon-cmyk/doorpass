@@ -47,7 +47,6 @@ export async function executePendingApprovalById(
       const { error: updateError } = await supabaseAdmin
         .from("approved_users")
         .update({
-          is_active: true,
           branch_id: row.selected_branch_id,
           first_login_at: new Date().toISOString(),
           // role이 null/빈값인 경우 driver로 설정 (재승인 시 비밀번호 안 보이는 문제 방지)
@@ -60,7 +59,6 @@ export async function executePendingApprovalById(
         email: row.user_email,
         name: row.user_name,
         role: "driver",
-        is_active: true,
         branch_id: row.selected_branch_id,
         first_login_at: new Date().toISOString(),
       })
