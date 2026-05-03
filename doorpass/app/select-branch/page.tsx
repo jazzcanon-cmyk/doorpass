@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { MapPin, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TermsAgreementModal } from "@/components/TermsAgreementModal"
 
 interface Branch {
   id: string
@@ -16,8 +15,9 @@ export default function SelectBranchPage() {
   const router = useRouter()
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedBranch, setSelectedBranch] = useState("")
-  const [termsAgreed, setTermsAgreed] = useState(false)
-  const [showTerms, setShowTerms] = useState(false)
+  const [termsChecked, setTermsChecked] = useState(false)
+  const [purposeChecked, setPurposeChecked] = useState(false)
+  const [userName, setUserName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -28,14 +28,23 @@ export default function SelectBranchPage() {
   }, [])
 
   useEffect(() => {
-    const token = sessionStorage.getItem('referral_token')
+    fetch("/api/users/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.name) setUserName(d.name)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("referral_token")
     if (!token) return
-    fetch('/api/users/referral/use', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    fetch("/api/users/referral/use", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
     })
-      .then(() => sessionStorage.removeItem('referral_token'))
+      .then(() => sessionStorage.removeItem("referral_token"))
       .catch(console.error)
   }, [])
 
@@ -47,15 +56,19 @@ export default function SelectBranchPage() {
     }, {})
   }, [branches])
 
-  const canSubmit = !!selectedBranch
+  const canSubmit = !!selectedBranch && termsChecked && purposeChecked
 
-  const submitApproval = async () => {
+  const handleSubmit = async () => {
+    if (!canSubmit) return
     setIsLoading(true)
     try {
       const res = await fetch("/api/users/request-approval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ branchId: selectedBranch }),
+        body: JSON.stringify({
+          branchId: selectedBranch,
+          userName: userName || "",
+        }),
       })
       if (!res.ok) throw new Error("승인 요청 실패")
       router.push("/pending-approval")
@@ -67,30 +80,11 @@ export default function SelectBranchPage() {
     }
   }
 
-  const handleSubmit = () => {
-    if (!canSubmit) return
-    if (!termsAgreed) {
-      setShowTerms(true)
-      return
-    }
-    void submitApproval()
-  }
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6"
       style={{ background: "linear-gradient(135deg, #0A1628 0%, #0D2144 40%, #0A3A6B 100%)" }}
     >
-      {showTerms && (
-        <TermsAgreementModal
-          onAgreed={() => {
-            setTermsAgreed(true)
-            setShowTerms(false)
-            void submitApproval()
-          }}
-        />
-      )}
-
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">소속 대리점 선택</h1>
@@ -134,9 +128,102 @@ export default function SelectBranchPage() {
             ))}
           </div>
 
+          {/* 약관 동의 (div 클릭 방식 — 모바일 호환) */}
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">이용약관 동의</p>
+
+            <div
+              onClick={() => setTermsChecked((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "12px",
+                padding: "12px",
+                borderRadius: "10px",
+                cursor: "pointer",
+                background: termsChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)",
+                border: termsChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                marginBottom: "8px",
+              }}
+            >
+              <div
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  minWidth: "20px",
+                  borderRadius: "6px",
+                  marginTop: "1px",
+                  background: termsChecked ? "#3b82f6" : "transparent",
+                  border: termsChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {termsChecked && (
+                  <span style={{ color: "white", fontSize: "12px", fontWeight: 900 }}>✓</span>
+                )}
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px", lineHeight: "1.5" }}>
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ color: "#60a5fa", textDecoration: "underline" }}
+                >
+                  이용약관
+                </a>
+                에 동의합니다.{" "}
+                <span style={{ color: "#f87171", fontWeight: 600 }}>(필수)</span>
+              </span>
+            </div>
+
+            <div
+              onClick={() => setPurposeChecked((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "12px",
+                padding: "12px",
+                borderRadius: "10px",
+                cursor: "pointer",
+                background: purposeChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)",
+                border: purposeChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }}
+            >
+              <div
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  minWidth: "20px",
+                  borderRadius: "6px",
+                  marginTop: "1px",
+                  background: purposeChecked ? "#3b82f6" : "transparent",
+                  border: purposeChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {purposeChecked && (
+                  <span style={{ color: "white", fontSize: "12px", fontWeight: 900 }}>✓</span>
+                )}
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px", lineHeight: "1.5" }}>
+                비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
+                <span style={{ color: "#f87171", fontWeight: 600 }}>(필수)</span>
+              </span>
+            </div>
+          </div>
+
           <div className="mt-6">
             <Button
-              onClick={handleSubmit}
+              onClick={() => void handleSubmit()}
               disabled={!canSubmit || isLoading}
               className="w-full py-6 text-lg disabled:opacity-40"
             >
@@ -144,7 +231,7 @@ export default function SelectBranchPage() {
             </Button>
           </div>
           <p className="text-center text-sm text-white/40 mt-4">
-            선택 후 약관 동의를 거쳐 승인이 완료되면 이용 가능합니다
+            선택한 대리점의 관리자가 승인하면 계속 이용 가능합니다
           </p>
         </div>
       </div>

@@ -103,7 +103,28 @@ export async function getBuildingsListAuth(): Promise<{
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  const revealPasswords = await canRevealBuildingPassword(user?.email)
+
+  let revealPasswords = false
+  if (user) {
+    const email = user.email
+    const userId = getUserIdentifier(user)
+
+    if (email) {
+      revealPasswords = await canRevealBuildingPassword(email)
+    }
+
+    if (!revealPasswords && userId) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("id, role")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      if (data?.id && data?.role) {
+        revealPasswords = true
+      }
+    }
+  }
+
   return { user, revealPasswords }
 }
 
@@ -324,21 +345,23 @@ export async function getUserRole(userEmail: string | null | undefined): Promise
 
 /**
  * 메인 지도 등에서 건물 비밀번호 평문 노출 여부.
- * approved_users에 행이 있고, 차단이 아니며, 활성(is_active !== false)이고 role이 비어 있지 않을 때만 true.
- * (요청 문구의 status=active는 DB의 is_active 승인 상태에 대응)
+ * approved_users에 행이 있고 role이 비어있지 않을 때만 true.
+ * is_active/is_blocked 등은 체크하지 않음 (단순화).
  */
-export async function canRevealBuildingPassword(email: string | null | undefined): Promise<boolean> {
+export async function canRevealBuildingPassword(
+  email: string | null | undefined
+): Promise<boolean> {
   if (!email?.trim()) return false
   try {
     const { data } = await supabaseAdmin
-      .from('approved_users')
-      .select('id, role')
-      .eq('email', email.trim())
+      .from("approved_users")
+      .select("id, role")
+      .eq("email", email.trim())
       .maybeSingle()
-    // approved_users에 행이 있고 role이 설정돼 있으면 무조건 true
-    // is_active, is_blocked 등 없을 수 있는 컬럼은 체크하지 않음
-    if (data?.id && data?.role) return true
-    return false
+    if (!data?.id) return false
+    const role = data.role as string | null | undefined
+    if (!role || String(role).trim() === "") return false
+    return true
   } catch {
     return false
   }
