@@ -47,15 +47,25 @@ export function useBuildings(currentUser: CurrentUser | null) {
       const data = await response.json()
       const buildings: Building[] = data.buildings ?? []
       if (lat !== undefined && lng !== undefined) {
-        const withinRadius = buildings
+        const RADIUS_STEPS = [50, 100, 200, 500]
+        const withDistance = buildings
           .map((b) => ({
             ...b,
-            distance: Math.round(calculateDistance(lat, lng, b.lat, b.lng)),
+            distance: Math.round(calculateDistance(lat, lng, b.lat ?? 0, b.lng ?? 0)),
           }))
-          .filter((b) => (b.distance ?? 0) <= radius)
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+
+        let usedRadius = radius
+        let withinRadius: Building[] = []
+        for (const r of RADIUS_STEPS) {
+          if (r < radius) continue
+          withinRadius = withDistance.filter((b) => (b.distance ?? 0) <= r)
+          usedRadius = r
+          if (withinRadius.length > 0) break
+        }
+
         setNearbyBuildings(withinRadius)
-        setNearbyRadius(radius)
+        setNearbyRadius(usedRadius)
         setAllBuildings(buildings)
       } else {
         setAllBuildings(buildings)
