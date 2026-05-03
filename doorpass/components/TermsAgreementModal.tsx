@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from 'sonner'
 
 interface TermsAgreementModalProps {
   onAgreed: () => void
@@ -19,7 +18,9 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
     setLoading(true)
     try {
       const res = await fetch('/api/users/terms-check', { method: 'POST' })
-      if (!res.ok) throw new Error('저장 실패')
+      if (!res.ok) {
+        console.warn('[terms] 저장 실패, 앱 진입 허용')
+      }
 
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -31,7 +32,8 @@ export function TermsAgreementModal({ onAgreed }: TermsAgreementModalProps) {
 
       onAgreed()
     } catch {
-      toast.error('다시 시도해주세요.')
+      onAgreed()
+    } finally {
       setLoading(false)
     }
   }
