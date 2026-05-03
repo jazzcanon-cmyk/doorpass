@@ -232,6 +232,7 @@ export async function requireAdmin() {
 
 /**
  * admin 또는 sub_admin 전용 페이지 보호.
+ * is_active/is_blocked 체크 없이 role만 확인 (단순화).
  */
 export async function requireManager() {
   const cookieStore = await cookies()
@@ -245,53 +246,38 @@ export async function requireManager() {
     redirect("/login")
   }
 
-  const approved = await fetchApprovedUserForAuth<{
-    id: string
-    is_active: boolean
-    is_blocked: boolean
-    role: string
-  }>(supabase, user as User, "id, is_active, is_blocked, role")
+  const { data } = await supabaseAdmin
+    .from("approved_users")
+    .select("role")
+    .eq("email", user.email!)
+    .maybeSingle()
 
-  if (approved?.is_blocked) {
-    redirect("/")
+  const role = (data?.role as string | null) ?? null
+
+  if (!role || (role !== "admin" && role !== "sub_admin")) {
+    redirect("/login")
   }
 
-  if (approved && approved.is_active === false) {
-    redirect("/")
-  }
-
-  if (!approved || (approved.role !== "admin" && approved.role !== "sub_admin")) {
-    redirect("/")
-  }
+  return { user, role: role as UserRole }
 }
 
 /**
  * API 라우트에서 admin 또는 sub_admin 권한 검증.
- * is_active/is_blocked 체크 없이 role만 확인 (단순화).
+ * requireAuth 통과 후 role만 확인.
  */
 export async function requireManagerApi() {
-  const cookieStore = await cookies()
-  const supabase = makeSupabaseServer(cookieStore)
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return {
-      user: null,
-      role: null as UserRole | null,
-      unauthorized: NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 }),
-    }
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) {
+    return { user: null, role: null as UserRole | null, unauthorized }
   }
 
-  const approved = await fetchApprovedUserForAuth<{ role: string }>(
-    supabase,
-    user as User,
-    "role"
-  )
+  const { data } = await supabaseAdmin
+    .from("approved_users")
+    .select("role")
+    .eq("email", user!.email!)
+    .maybeSingle()
 
-  const role = approved?.role as string | undefined
+  const role = (data?.role as string | null) ?? null
 
   if (!role || (role !== "admin" && role !== "sub_admin")) {
     return {
