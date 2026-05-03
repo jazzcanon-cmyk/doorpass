@@ -14,7 +14,7 @@ export async function GET() {
         (meta?.sub as string | undefined) ??
         user!.id) as string
 
-    // approved_users: email 우선, 실패 시 kakao_id로 fallback
+    // approved_users 조회 (email → kakao_id 순)
     let approvedUser: { id: string } | null = null
     if (email) {
       const { data } = await supabaseAdmin
@@ -32,37 +32,26 @@ export async function GET() {
         .maybeSingle()
       approvedUser = data
     }
+    if (approvedUser) return NextResponse.json({ status: "approved" })
 
-    if (approvedUser) {
-      return NextResponse.json({ status: "approved" })
-    }
-
-    // pending_approvals: email 우선, 실패 시 userId(kakao provider_id)로 fallback
+    // pending_approvals 조회 (email, userId 순회)
     let pendingApproval: { status: string; selected_branch_id: string } | null = null
-    if (email) {
+    const identifiers = [email, userId].filter(Boolean) as string[]
+    for (const id of identifiers) {
       const { data } = await supabaseAdmin
         .from("pending_approvals")
         .select("status, selected_branch_id")
-        .eq("user_email", email)
+        .eq("user_email", id)
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle()
-      pendingApproval = data
-    }
-    if (!pendingApproval) {
-      const { data } = await supabaseAdmin
-        .from("pending_approvals")
-        .select("status, selected_branch_id")
-        .eq("user_email", userId)
-        .order("requested_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      pendingApproval = data
+      if (data) {
+        pendingApproval = data
+        break
+      }
     }
 
-    if (!pendingApproval) {
-      return NextResponse.json({ status: "none" })
-    }
+    if (!pendingApproval) return NextResponse.json({ status: "none" })
 
     const { data: branch } = await supabaseAdmin
       .from("branches")

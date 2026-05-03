@@ -60,10 +60,9 @@ export async function requireAuth() {
 
   const approved = await fetchApprovedUserForAuth<{
     id: string
-    is_active: boolean
     is_blocked: boolean
     role: string
-  }>(supabase, user as User, "id, is_active, is_blocked, role")
+  }>(supabase, user as User, "id, is_blocked, role")
 
   if (approved?.is_blocked) {
     return {
@@ -71,17 +70,6 @@ export async function requireAuth() {
       isAdmin: false,
       unauthorized: NextResponse.json(
         { error: "차단된 계정입니다." },
-        { status: 403 }
-      ),
-    }
-  }
-
-  if (approved && approved.is_active === false) {
-    return {
-      user: null,
-      isAdmin: false,
-      unauthorized: NextResponse.json(
-        { error: "관리자에 의해 사용이 제한된 계정입니다." },
         { status: 403 }
       ),
     }

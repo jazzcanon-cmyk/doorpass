@@ -31,12 +31,6 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
 
-      // 로그인 기록 (login-count POST)
-      void fetch("/api/users/login-count", {
-        method: "POST",
-        signal: controller.signal,
-      }).catch(() => {})
-
       void fetch("/api/users/me", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
         .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
@@ -59,6 +53,11 @@ export function useAuth() {
         if (cancelled) return
         const count = Number(loginCountData?.count ?? 0)
         const status = String(approvalStatusData?.status ?? "none")
+
+        // 오늘 첫 로그인일 때만 기록 추가 (중복 방지)
+        if (count === 0) {
+          fetch("/api/users/login-count", { method: "POST" }).catch(() => {})
+        }
 
         // 첫 로그인부터 승인 프로세스 적용 (count >= 1)
         if (count >= 1) {
