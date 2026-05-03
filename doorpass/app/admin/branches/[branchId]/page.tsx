@@ -64,8 +64,19 @@ interface UserCandidate {
   id: number
   email: string
   name: string | null
+  kakao_name?: string | null
   role: string
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "관리자",
+  sub_admin: "부관리자",
+  editor: "편집자",
+  driver: "기사",
+}
+
+const getDisplayName = (u: UserCandidate) =>
+  u.kakao_name?.trim() || u.name?.trim() || u.email.split("@")[0] || u.email
 
 export default function BranchDetailPage() {
   const router = useRouter()
@@ -353,40 +364,47 @@ export default function BranchDetailPage() {
                 검색 결과가 없습니다
               </p>
             ) : (
-              searchResults.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                      {u.name || u.email}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
-                    <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${
-                      u.role === "sub_admin"
-                        ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                    }`}>
-                      {u.role === "sub_admin" ? "부관리자" : u.role === "editor" ? "편집자" : "일반"}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    disabled={isAssigning === u.email || branch.manager_email === u.email}
-                    onClick={() => void handleAssign(u.email)}
-                    className="ml-3 shrink-0"
+              searchResults.map((u) => {
+                const displayName = getDisplayName(u)
+                const roleBadgeClass =
+                  u.role === "sub_admin"
+                    ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300"
+                    : u.role === "editor"
+                    ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    : u.role === "driver"
+                    ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                return (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    {isAssigning === u.email ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : branch.manager_email === u.email ? (
-                      "현재 부관리자"
-                    ) : (
-                      "지정"
-                    )}
-                  </Button>
-                </div>
-              ))
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
+                      <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${roleBadgeClass}`}>
+                        {ROLE_LABEL[u.role] ?? u.role}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={isAssigning === u.email || branch.manager_email === u.email}
+                      onClick={() => void handleAssign(u.email)}
+                      className="ml-3 shrink-0"
+                    >
+                      {isAssigning === u.email ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : branch.manager_email === u.email ? (
+                        "현재 부관리자"
+                      ) : (
+                        "지정"
+                      )}
+                    </Button>
+                  </div>
+                )
+              })
             )}
           </div>
         </DialogContent>
