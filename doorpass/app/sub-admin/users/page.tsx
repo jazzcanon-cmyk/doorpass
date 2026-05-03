@@ -10,6 +10,9 @@ interface User {
   role: string
   created_at: string
   branch_id: string
+  kakao_name?: string | null
+  kakao_nickname?: string | null
+  profile_image_url?: string | null
 }
 
 export default function SubAdminUsersPage() {
@@ -109,47 +112,84 @@ export default function SubAdminUsersPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {filteredUsers.map((user) => (
-          <div key={user.email} className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{user.name || user.email}</h3>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    user.role === "admin" ? "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300" :
-                    user.role === "sub_admin" ? "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300" :
-                    user.role === "editor" ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300" :
-                    "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                  }`}>
-                    {user.role === "admin" ? "관리자" : user.role === "sub_admin" ? "부관리자" : user.role === "editor" ? "편집자" : "기사"}
-                  </span>
-                </div>
-                <div className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <p className="flex items-center gap-2"><Mail className="h-4 w-4" />{user.email}</p>
-                  <p className="flex items-center gap-2"><Calendar className="h-4 w-4" />{new Date(user.created_at).toLocaleDateString("ko-KR")} 가입</p>
+      <div className="space-y-3">
+        {filteredUsers.map((user) => {
+          const displayName = user.kakao_name || user.name || user.email
+          const initial = (displayName || "?").trim().charAt(0).toUpperCase()
+          const roleBadgeClass =
+            user.role === "sub_admin"
+              ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+              : user.role === "editor"
+              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+              : user.role === "driver"
+              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
+              : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+
+          return (
+            <div
+              key={user.email}
+              className="bg-white dark:bg-gray-800 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700"
+            >
+              <div className="flex items-center gap-3">
+                {user.profile_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.profile_image_url}
+                    alt={displayName}
+                    className="h-11 w-11 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-11 w-11 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-base font-semibold text-gray-600 dark:text-gray-300 flex-shrink-0">
+                    {initial}
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {displayName}
+                    </h3>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded border ${roleBadgeClass} flex-shrink-0`}>
+                      {getRoleLabel(user.role)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                    <p className="flex items-center gap-1.5 truncate">
+                      <Mail className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{user.email}</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3 flex-shrink-0" />
+                      {new Date(user.created_at).toLocaleDateString("ko-KR")} 가입
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 ml-4">
+              <div className="mt-3 flex gap-2">
                 <select
                   value={user.role}
                   onChange={(e) => void handleRoleChange(user.email, e.target.value)}
-                  className="min-w-[120px] px-3 py-1.5 rounded-md text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
                 >
                   <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="driver">기사</option>
                   <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="editor">편집자</option>
                   <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="sub_admin">부관리자</option>
                 </select>
 
-                <Button onClick={() => void handleBlockUser(user.email, user.name || user.email)} variant="destructive" size="sm">
-                  <Ban className="h-4 w-4 mr-2" />
+                <Button
+                  onClick={() => void handleBlockUser(user.email, displayName)}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 min-w-0 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900 dark:hover:bg-red-950"
+                >
+                  <Ban className="h-3.5 w-3.5 mr-1" />
                   차단
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {filteredUsers.length === 0 && <div className="text-center py-12 text-gray-500">등록된 회원이 없습니다</div>}
       </div>
     </div>

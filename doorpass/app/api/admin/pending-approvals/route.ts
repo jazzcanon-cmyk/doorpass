@@ -34,7 +34,7 @@ export async function GET() {
 
     let query = supabaseAdmin
       .from("pending_approvals")
-      .select("id, user_email, user_name, selected_branch_id, requested_at, branches(id, name, region)")
+      .select("id, user_email, user_name, kakao_name, kakao_nickname, profile_image_url, selected_branch_id, requested_at, branches(id, name, region)")
       .eq("status", "pending")
       .order("requested_at", { ascending: false })
 
