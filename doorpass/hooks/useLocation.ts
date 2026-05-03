@@ -1,29 +1,51 @@
 "use client"
 import { useState, useCallback } from "react"
+import { saveLocation, loadCachedLocation, getLocationAge } from "@/lib/app-state"
 
 export function useLocation() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [locationAge, setLocationAge] = useState<number | null>(null)
 
   const getLocation = useCallback(
     (onPosition?: (lat: number, lng: number) => Promise<void> | void, onFallback?: () => Promise<void> | void) => {
-      setLoading(true)
       setError(null)
-      if (!navigator.geolocation) {
-        setError("위치 서비스를 지원하지 않는 브라우저입니다.")
+
+      const cachedLoc = loadCachedLocation()
+      if (cachedLoc) {
+        setLocation(cachedLoc)
+        setLocationAge(getLocationAge())
         setLoading(false)
+        if (onPosition) void onPosition(cachedLoc.lat, cachedLoc.lng)
+      } else {
+        setLoading(true)
+      }
+
+      if (!navigator.geolocation) {
+        if (!cachedLoc) {
+          setError("위치 서비스를 지원하지 않는 브라우저입니다.")
+          setLoading(false)
+        }
         return
       }
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords
+          saveLocation(latitude, longitude)
           setLocation({ lat: latitude, lng: longitude })
+          setLocationAge(0)
           if (onPosition) await onPosition(latitude, longitude)
           setLoading(false)
         },
         (geoErr: GeolocationPositionError) => {
           console.warn("[geolocation]", geoErr.code, geoErr.message)
+          if (cachedLoc) {
+            // 캐시 있으면 에러 무시 (이미 화면에 표시됨)
+            setLoading(false)
+            return
+          }
           const code = geoErr?.code
           const msg =
             code === 1
@@ -47,5 +69,5 @@ export function useLocation() {
     []
   )
 
-  return { location, getLocation, loading, error }
+  return { location, getLocation, loading, error, locationAge }
 }

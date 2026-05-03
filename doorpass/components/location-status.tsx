@@ -7,6 +7,7 @@ interface LocationStatusProps {
   loading: boolean
   error: string | null
   location: { lat: number; lng: number } | null
+  locationAge?: number | null
   lastUpdated: Date | null
   buildingCount: number
   radius: number
@@ -17,6 +18,7 @@ export function LocationStatus({
   loading,
   error,
   location,
+  locationAge,
   lastUpdated,
   buildingCount,
   radius,
@@ -51,6 +53,11 @@ export function LocationStatus({
                   <Radio className="mr-1 h-3 w-3" />
                   {`${radius}m`}
                 </span>
+                {locationAge !== null && locationAge !== undefined && locationAge > 0 && loading && (
+                  <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.4)", marginLeft: "6px" }}>
+                    ({locationAge}분 전 위치 · 업데이트 중...)
+                  </span>
+                )}
               </div>
               {lastUpdated && (
                 <p className="text-xs text-muted-foreground">

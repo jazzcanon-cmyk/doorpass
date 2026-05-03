@@ -25,6 +25,7 @@ interface NearbyTabProps {
   loading: boolean
   error: string | null
   location: { lat: number; lng: number } | null
+  locationAge?: number | null
   lastUpdated: Date | null
   nearbyBuildings: Building[]
   allBuildings: Building[]
@@ -45,6 +46,7 @@ export function NearbyTab({
   loading,
   error,
   location,
+  locationAge,
   lastUpdated,
   nearbyBuildings,
   allBuildings,
@@ -77,6 +79,7 @@ export function NearbyTab({
         loading={loading}
         error={error}
         location={location}
+        locationAge={locationAge ?? null}
         lastUpdated={lastUpdated}
         buildingCount={nearbyBuildings.length}
         radius={radius}

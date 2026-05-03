@@ -16,11 +16,14 @@ import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
 import { useBuildings } from "@/hooks/useBuildings"
+import { saveAppState, loadAppState } from "@/lib/app-state"
 import type { Building, TabType } from "@/types/building"
+
+const STATE_TTL = 10 * 60 * 1000
 
 export default function Home() {
   const { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout } = useAuth()
-  const { location, getLocation, loading, error: locationError } = useLocation()
+  const { location, getLocation, loading, error: locationError, locationAge } = useLocation()
   const {
     allBuildings,
     viewportBuildings,
@@ -36,7 +39,18 @@ export default function Home() {
     handleUpdate,
   } = useBuildings(currentUser)
 
-  const [activeTab, setActiveTab] = useState<TabType>("search")
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try {
+      const saved = loadAppState()
+      if (saved.lastVisited && Date.now() - saved.lastVisited < STATE_TTL) {
+        const tab = saved.activeTab as TabType
+        if (tab === "nearby" || tab === "search" || tab === "board" || tab === "delivery") {
+          return tab
+        }
+      }
+    } catch {}
+    return "search"
+  })
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -110,6 +124,7 @@ export default function Home() {
 
   const handleSearchWithGA = useCallback((query: string) => {
     handleSearch(query)
+    saveAppState({ searchQuery: query })
     if (query.trim()) gaEvents.search(query.trim())
   }, [handleSearch])
 
@@ -117,7 +132,19 @@ export default function Home() {
     setActiveTab(tab)
     setSelectedBuilding(null)
     setAutoOpenBuildingId(undefined)
+    saveAppState({ activeTab: tab })
   }, [])
+
+  // 검색어 sessionStorage 복원 (10분 이내)
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    try {
+      const saved = loadAppState()
+      if (saved.lastVisited && Date.now() - saved.lastVisited < STATE_TTL && saved.searchQuery) {
+        handleSearch(saved.searchQuery)
+      }
+    } catch {}
+  }, [authStatus, handleSearch])
 
   // 기존 회원 약관 동의 확인
   useEffect(() => {
@@ -179,6 +206,7 @@ export default function Home() {
           loading={loading}
           error={error}
           location={location}
+          locationAge={locationAge}
           lastUpdated={lastUpdated}
           nearbyBuildings={nearbyBuildings}
           allBuildings={allBuildings}
