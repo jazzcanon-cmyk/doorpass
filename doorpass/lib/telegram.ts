@@ -12,18 +12,22 @@ async function isNotificationEnabled(settingKey: string): Promise<boolean> {
       .maybeSingle()
     if (!data) return true // 설정 row가 없으면 기본 활성
     return !!data.setting_value
-  } catch (err) {
-    console.error("[Telegram] 설정 조회 오류:", err)
+  } catch {
+    // admin_settings 테이블이 없거나 접근 불가해도 기본 활성
     return true
   }
 }
 
 export async function sendTelegramMessage(text: string, settingKey?: string): Promise<void> {
   if (settingKey) {
-    const enabled = await isNotificationEnabled(settingKey)
-    if (!enabled) {
-      console.log(`[Telegram] Notification disabled for ${settingKey}`)
-      return
+    try {
+      const enabled = await isNotificationEnabled(settingKey)
+      if (!enabled) {
+        console.log(`[Telegram] Notification disabled for ${settingKey}`)
+        return
+      }
+    } catch {
+      // DB 조회 실패해도 텔레그램 발송은 계속
     }
   }
 

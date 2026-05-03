@@ -7,11 +7,30 @@ export async function GET() {
   if (unauthorized) return unauthorized
 
   try {
-    const { data: currentUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("branch_id")
-      .eq("email", user!.email)
-      .maybeSingle()
+    const email = user!.email
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId =
+      ((meta?.provider_id as string | undefined) ??
+        (meta?.sub as string | undefined) ??
+        user!.id) as string
+
+    let currentUser: { branch_id: string | null } | null = null
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("email", email)
+        .maybeSingle()
+      currentUser = data
+    }
+    if (!currentUser) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      currentUser = data
+    }
 
     let query = supabaseAdmin
       .from("pending_approvals")

@@ -7,11 +7,30 @@ export async function GET() {
   if (unauthorized) return unauthorized
 
   try {
-    const { data: userData } = await supabaseAdmin
-      .from("approved_users")
-      .select("role, branch_id")
-      .eq("email", user!.email)
-      .maybeSingle()
+    const email = user!.email
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId =
+      ((meta?.provider_id as string | undefined) ??
+        (meta?.sub as string | undefined) ??
+        user!.id) as string
+
+    let userData: { role: string | null; branch_id: string | null } | null = null
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("role, branch_id")
+        .eq("email", email)
+        .maybeSingle()
+      userData = data
+    }
+    if (!userData) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("role, branch_id")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      userData = data
+    }
 
     if (!userData || (userData.role !== "sub_admin" && userData.role !== "admin")) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })

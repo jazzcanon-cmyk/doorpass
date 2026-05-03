@@ -14,10 +14,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '유효하지 않은 구독 정보' }, { status: 400 })
     }
 
+    const identifier = user!.email ?? user!.id
+
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
       .upsert({
-        user_email: user!.email!,
+        user_email: identifier,
         subscription: subscription,
         updated_at: new Date().toISOString(),
       }, {
