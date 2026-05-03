@@ -21,12 +21,23 @@ export async function POST(request: NextRequest) {
         (meta?.sub as string | undefined) ??
         user!.id) as string
 
+    const kakaoName =
+      (meta?.name as string) ||
+      (meta?.full_name as string) ||
+      (meta?.preferred_username as string) ||
+      userName ||
+      ''
+    const profileImage = (meta?.avatar_url as string) || null
+
     // 1. pending_approvals insert
     const { error: insertError } = await supabaseAdmin
       .from('pending_approvals')
       .insert({
         user_email: userEmail || userId,
-        user_name: userName || '',
+        user_name: kakaoName || userName || '',
+        kakao_name: kakaoName,
+        kakao_nickname: (meta?.preferred_username as string) || null,
+        profile_image_url: profileImage,
         selected_branch_id: branchId,
         status: 'pending',
       })
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           userEmail: targetEmail,
           title: '🔔 새 회원 승인 요청',
-          body: (userName || userEmail || '신규 회원') + '님이 ' + branchDisplayName + ' 가입을 요청했습니다.',
+          body: (kakaoName || userName || userEmail || '신규 회원') + '님이 ' + branchDisplayName + ' 가입을 요청했습니다.',
           url: '/sub-admin/pending-approvals',
         }),
       }).catch(console.error)
@@ -85,7 +96,7 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: telegramChatId,
-          text: '[DoorPass] 새 승인 요청\n신청자: ' + (userName || userEmail || userId) + '\n대리점: ' + branchDisplayName,
+          text: '[DoorPass] 새 승인 요청\n신청자: ' + (kakaoName || userName || userEmail || userId) + '\n대리점: ' + branchDisplayName,
         }),
       }).catch(console.error)
     }

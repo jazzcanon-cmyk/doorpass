@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "ENTER TO SUBMIT",
+      "Bash"
+    ]
+  }
+}
