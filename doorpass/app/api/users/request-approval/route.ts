@@ -29,11 +29,32 @@ export async function POST(request: NextRequest) {
       ''
     const profileImage = (meta?.avatar_url as string) || null
 
+    // 0. 중복 신청 방어: 동일 user_email로 pending/approved 상태가 있으면 차단
+    const lookupEmail = userEmail || userId
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from('pending_approvals')
+      .select('id, status')
+      .eq('user_email', lookupEmail)
+      .in('status', ['pending', 'approved'])
+      .maybeSingle()
+
+    if (existingError) {
+      console.error('[request-approval] 중복 확인 에러:', existingError)
+      return NextResponse.json({ success: false, error: existingError.message }, { status: 500 })
+    }
+
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: '이미 가입 신청하셨습니다. 승인 대기 중입니다.' },
+        { status: 409 }
+      )
+    }
+
     // 1. pending_approvals insert
     const { error: insertError } = await supabaseAdmin
       .from('pending_approvals')
       .insert({
-        user_email: userEmail || userId,
+        user_email: lookupEmail,
         user_name: kakaoName || userName || '',
         kakao_name: kakaoName,
         kakao_nickname: (meta?.preferred_username as string) || null,
