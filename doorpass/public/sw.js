@@ -1,4 +1,4 @@
-const CACHE_NAME = 'doorpass-v2'
+const CACHE_NAME = 'doorpass-v3'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

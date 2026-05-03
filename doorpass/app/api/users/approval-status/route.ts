@@ -7,23 +7,48 @@ export async function GET() {
   if (unauthorized) return unauthorized
 
   try {
-    const { data: approvedUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("id")
-      .eq("email", user!.email)
-      .maybeSingle()
+    const email = user!.email
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId =
+      ((meta?.provider_id as string | undefined) ??
+        (meta?.sub as string | undefined) ??
+        user!.id) as string
+
+    // approved_users: email 우선, 실패 시 kakao_id로 fallback
+    let approvedUser: { id: string } | null = null
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle()
+      approvedUser = data
+    }
+    if (!approvedUser) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("id")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      approvedUser = data
+    }
 
     if (approvedUser) {
       return NextResponse.json({ status: "approved" })
     }
 
-    const { data: pendingApproval } = await supabaseAdmin
-      .from("pending_approvals")
-      .select("status, selected_branch_id")
-      .eq("user_email", user!.email)
-      .order("requested_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // pending_approvals: email 기반 조회 (email 없는 카카오 사용자는 미지원 — none 반환)
+    let pendingApproval: { status: string; selected_branch_id: string } | null = null
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("pending_approvals")
+        .select("status, selected_branch_id")
+        .eq("user_email", email)
+        .order("requested_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      pendingApproval = data
+    }
 
     if (!pendingApproval) {
       return NextResponse.json({ status: "none" })
