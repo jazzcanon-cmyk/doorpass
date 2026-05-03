@@ -85,7 +85,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 const getDisplayName = (u: UserCandidate) =>
-  u.kakao_name?.trim() || u.name?.trim() || u.email.split("@")[0] || u.email
+  u.kakao_name?.trim() || u.name?.trim() || ""
 
 export default function BranchDetailPage() {
   const router = useRouter()
@@ -338,7 +338,7 @@ export default function BranchDetailPage() {
         ) : branch.sub_admins && branch.sub_admins.length > 0 ? (
           <div className="space-y-2">
             {branch.sub_admins.map((sa) => {
-              const displayName = getDisplayName({
+              const realName = getDisplayName({
                 id: sa.id,
                 email: sa.email,
                 name: sa.name,
@@ -351,8 +351,12 @@ export default function BranchDetailPage() {
                   className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-gray-700/40"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-gray-900 dark:text-white truncate">{displayName}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{sa.email}</p>
+                    <p className="font-bold text-gray-900 dark:text-white truncate">
+                      {realName || sa.email}
+                    </p>
+                    {realName && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{sa.email}</p>
+                    )}
                   </div>
                   <span className="ml-3 text-xs px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 flex-shrink-0">
                     부관리자
@@ -395,7 +399,7 @@ export default function BranchDetailPage() {
               </p>
             ) : (
               searchResults.map((u) => {
-                const displayName = getDisplayName(u)
+                const realName = getDisplayName(u)
                 const isAlreadySubAdmin = !!branch.sub_admins?.some((sa) => sa.email === u.email)
                 const roleBadgeClass =
                   u.role === "sub_admin"
@@ -412,9 +416,11 @@ export default function BranchDetailPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                        {displayName}
+                        {realName || u.email}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
+                      {realName && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
+                      )}
                       <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded ${roleBadgeClass}`}>
                         {ROLE_LABEL[u.role] ?? u.role}
                       </span>
