@@ -16,12 +16,39 @@ export async function GET() {
   const role = await getUserRole(user!.email)
 
   try {
+    const email = user!.email
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId =
+      ((meta?.provider_id as string | undefined) ??
+        (meta?.sub as string | undefined) ??
+        user!.id) as string
+
     // branches 조인 제거: FK 미설정 환경에서 조인 실패 시 userData=null이 되는 문제 방지
-    const { data: userData } = await supabaseAdmin
-      .from("approved_users")
-      .select("id, email, name, role, branch_id")
-      .eq("email", user!.email)
-      .maybeSingle()
+    let userData: {
+      id: string
+      email: string | null
+      name: string | null
+      role: string | null
+      branch_id: string | null
+    } | null = null
+
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("id, email, name, role, branch_id")
+        .eq("email", email)
+        .maybeSingle()
+      userData = data
+    }
+
+    if (!userData) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("id, email, name, role, branch_id")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      userData = data
+    }
 
     if (!userData) {
       return NextResponse.json(
