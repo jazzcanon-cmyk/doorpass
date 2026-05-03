@@ -55,17 +55,28 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
     return () => window.removeEventListener("beforeinstallprompt", handler)
   }, [])
 
-  const handleInstall = async () => {
+  const handleInstall = () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
-      if (outcome === "accepted") {
-        setIsInstalled(true)
-        setDeferredPrompt(null)
-        toast.success("DoorPass가 홈화면에 설치됐어요! 📱")
-      }
+      toast.info("📲 아래 팝업에서 추가 버튼을 누르면 설치 완료!", {
+        duration: 4000,
+      })
+      setTimeout(async () => {
+        deferredPrompt.prompt()
+        const { outcome } = await deferredPrompt.userChoice
+        if (outcome === "accepted") {
+          setIsInstalled(true)
+          setDeferredPrompt(null)
+          toast.success("🎉 DoorPass가 홈화면에 설치됐어요!")
+        } else {
+          toast.info("나중에 언제든 설치할 수 있어요 😊")
+        }
+      }, 500)
     } else {
-      toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요")
+      if (window.matchMedia("(display-mode: standalone)").matches) {
+        toast.success("이미 설치된 앱이에요! 😊")
+      } else {
+        toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요", { duration: 5000 })
+      }
     }
   }
 
@@ -90,13 +101,15 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
           <div className="flex items-center gap-1">
             {!isInstalled && (
               <button
-                onClick={() => void handleInstall()}
-                title="앱 설치하기"
+                onClick={handleInstall}
+                title="홈화면에 앱 설치하기"
                 style={{
-                  background: "linear-gradient(135deg, #10b981, #059669)",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "4px 8px",
+                  background: deferredPrompt
+                    ? "linear-gradient(135deg, #10b981, #059669)"
+                    : "rgba(255,255,255,0.1)",
+                  border: deferredPrompt ? "none" : "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "20px",
+                  padding: "5px 10px",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -105,9 +118,11 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
                   fontWeight: 700,
                   color: "white",
                   whiteSpace: "nowrap",
+                  boxShadow: deferredPrompt ? "0 2px 8px rgba(16,185,129,0.4)" : "none",
+                  transition: "all 0.2s",
                 }}
               >
-                📲 앱설치
+                📲 <span>{deferredPrompt ? "앱 설치" : "설치 안내"}</span>
               </button>
             )}
             {activeTab !== "board" && activeTab !== "delivery" && (
