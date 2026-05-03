@@ -45,6 +45,8 @@ export default function MyPointsPage() {
   const [inviting, setInviting] = useState(false)
   const [remainingInvites, setRemainingInvites] = useState(3)
   const [rank, setRank] = useState<RankData | null>(null)
+  const [cachedInviteUrl, setCachedInviteUrl] = useState<string | null>(null)
+  const [isPreloading, setIsPreloading] = useState(false)
 
   useEffect(() => {
     document.title = '🏆 내 포인트 | DoorPass'
@@ -72,23 +74,64 @@ export default function MyPointsPage() {
       .catch(() => {})
   }, [])
 
-  const handleInvite = async () => {
-    if (inviting) return
-    setInviting(true)
-    try {
-      const res = await fetch('/api/users/referral/generate', { method: 'POST' })
-      const d = await res.json() as { url?: string; error?: string }
-      if (!res.ok) {
-        toast.error(d.error ?? '링크 생성 실패')
-        return
+  // 페이지 로드 시 초대 링크 미리 발급 (사용자 제스처 손실 방지)
+  useEffect(() => {
+    const preloadInviteUrl = async () => {
+      if (isPreloading || cachedInviteUrl) return
+      setIsPreloading(true)
+      try {
+        const res = await fetch('/api/users/referral/generate', { method: 'POST' })
+        const data = await res.json()
+        if (res.ok && data.url) setCachedInviteUrl(data.url as string)
+      } catch {}
+      finally {
+        setIsPreloading(false)
       }
-      const url = d.url!
-      setRemainingInvites((prev) => Math.max(0, prev - 1))
+    }
+    void preloadInviteUrl()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-      if (navigator.share) {
+  const handleInvite = async () => {
+    if (remainingInvites === 0) {
+      toast.error('오늘 초대 한도 완료 (3회)')
+      return
+    }
+    let url = cachedInviteUrl
+    if (!url) {
+      setInviting(true)
+      try {
+        const res = await fetch('/api/users/referral/generate', { method: 'POST' })
+        const data = await res.json()
+        if (!res.ok) {
+          toast.error((data as { error?: string }).error ?? '링크 생성 실패')
+          return
+        }
+        url = data.url as string
+      } catch {
+        toast.error('링크 생성 실패')
+        return
+      } finally {
+        setInviting(false)
+      }
+    }
+    setCachedInviteUrl(null)
+    setRemainingInvites((prev) => Math.max(0, prev - 1))
+    if (remainingInvites > 1) {
+      setTimeout(() => {
+        fetch('/api/users/referral/generate', { method: 'POST' })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.url) setCachedInviteUrl(d.url as string)
+          })
+          .catch(() => {})
+      }, 1000)
+    }
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({
           title: 'DoorPass 초대장 🎁',
-          text: '공동현관 비밀번호 앱 DoorPass! 가입하면 300P를 드려요.',
+          text: '공동현관 비밀번호 앱 DoorPass! 가입하면 300P를 드려요 🎁',
           url,
         })
       } else {
@@ -96,11 +139,13 @@ export default function MyPointsPage() {
         toast.success('링크가 복사됐어요! 카카오톡에 붙여넣기 하세요 📋')
       }
     } catch (e) {
-      if (e instanceof Error && e.name !== 'AbortError') {
-        toast.error('링크 생성에 실패했습니다.')
+      if (e instanceof Error && e.name === 'AbortError') return
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success('링크 복사됐어요 📋')
+      } catch {
+        toast.error('공유 실패')
       }
-    } finally {
-      setInviting(false)
     }
   }
 
