@@ -56,13 +56,12 @@ export async function POST(request: NextRequest) {
 
     const branchDisplayName = branch?.name || '미지정'
 
-    // 3. 부관리자/관리자 찾기
-    const { data: subAdmin } = await supabaseAdmin
+    // 3. 부관리자(다중)/관리자 찾기
+    const { data: subAdmins } = await supabaseAdmin
       .from('approved_users')
       .select('email')
       .eq('branch_id', branchId)
       .eq('role', 'sub_admin')
-      .maybeSingle()
 
     const { data: admin } = await supabaseAdmin
       .from('approved_users')
@@ -70,9 +69,12 @@ export async function POST(request: NextRequest) {
       .eq('role', 'admin')
       .maybeSingle()
 
-    // 4. PWA 푸시 알림
+    // 4. PWA 푸시 알림 (해당 대리점 부관리자 전원 + 관리자)
     const baseUrl = request.nextUrl.origin
-    const notifyTargets = [subAdmin?.email, admin?.email].filter(Boolean) as string[]
+    const subAdminEmails = (subAdmins ?? []).map((s) => s.email).filter(Boolean) as string[]
+    const notifyTargets = Array.from(
+      new Set([...subAdminEmails, admin?.email].filter(Boolean) as string[])
+    )
 
     for (const targetEmail of notifyTargets) {
       fetch(baseUrl + '/api/push/send', {

@@ -108,10 +108,19 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       resolvedManagerName = managerUser?.name ?? null
     }
 
+    // 이 대리점의 모든 부관리자 (다중 지원)
+    const { data: subAdminRows } = await supabaseAdmin
+      .from("approved_users")
+      .select("id, email, name, kakao_name, role")
+      .eq("branch_id", branchId)
+      .eq("role", "sub_admin")
+      .order("created_at", { ascending: false })
+
     return NextResponse.json({
       branch: {
         ...branch,
         manager_name: resolvedManagerName,
+        sub_admins: subAdminRows ?? [],
         stats: {
           userCount: userCount || 0,
           buildingCount: buildingCount || 0,

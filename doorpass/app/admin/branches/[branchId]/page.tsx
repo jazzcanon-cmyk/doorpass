@@ -38,12 +38,21 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
+interface SubAdminEntry {
+  id: number
+  email: string
+  name: string | null
+  kakao_name?: string | null
+  role: string
+}
+
 interface BranchDetail {
   id: string
   name: string
   region: string
   manager_email: string | null
   manager_name: string | null
+  sub_admins: SubAdminEntry[]
   created_at: string
   stats: {
     userCount: number
@@ -299,18 +308,24 @@ export default function BranchDetailPage() {
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">부관리자 정보</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            부관리자 정보 {branch.sub_admins?.length > 0 && (
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                ({branch.sub_admins.length}명)
+              </span>
+            )}
+          </h2>
           {!isEditing && (
             <Button onClick={handleOpenAssignModal} variant="outline" size="sm">
               <UserCog className="h-4 w-4 mr-2" />
-              {branch.manager_email ? "부관리자 변경" : "부관리자 지정"}
+              부관리자 추가
             </Button>
           )}
         </div>
         {isEditing ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">이메일</label>
+              <label className="block text-sm font-medium mb-2">대표 이메일 (참조용)</label>
               <input
                 type="email"
                 value={editForm.manager_email}
@@ -320,14 +335,31 @@ export default function BranchDetailPage() {
               />
             </div>
           </div>
-        ) : branch.manager_email ? (
-          <div>
-            <p className="font-bold text-gray-900 dark:text-white">
-              {branch.manager_name?.trim()
-                ? branch.manager_name.trim()
-                : branch.manager_email.split("@")[0]}
-            </p>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{branch.manager_email}</p>
+        ) : branch.sub_admins && branch.sub_admins.length > 0 ? (
+          <div className="space-y-2">
+            {branch.sub_admins.map((sa) => {
+              const displayName = getDisplayName({
+                id: sa.id,
+                email: sa.email,
+                name: sa.name,
+                kakao_name: sa.kakao_name ?? null,
+                role: sa.role,
+              })
+              return (
+                <div
+                  key={sa.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-gray-700/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{displayName}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{sa.email}</p>
+                  </div>
+                  <span className="ml-3 text-xs px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 flex-shrink-0">
+                    부관리자
+                  </span>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <p className="font-medium text-gray-700 dark:text-gray-300">부관리자가 지정되지 않았습니다</p>
@@ -338,9 +370,7 @@ export default function BranchDetailPage() {
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
         <DialogContent className="max-w-md w-full">
           <DialogHeader>
-            <DialogTitle>
-              {branch.manager_email ? "부관리자 변경" : "부관리자 지정"}
-            </DialogTitle>
+            <DialogTitle>부관리자 추가 지정</DialogTitle>
           </DialogHeader>
 
           <div className="relative">
@@ -366,6 +396,7 @@ export default function BranchDetailPage() {
             ) : (
               searchResults.map((u) => {
                 const displayName = getDisplayName(u)
+                const isAlreadySubAdmin = !!branch.sub_admins?.some((sa) => sa.email === u.email)
                 const roleBadgeClass =
                   u.role === "sub_admin"
                     ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300"
@@ -390,14 +421,14 @@ export default function BranchDetailPage() {
                     </div>
                     <Button
                       size="sm"
-                      disabled={isAssigning === u.email || branch.manager_email === u.email}
+                      disabled={isAssigning === u.email || isAlreadySubAdmin}
                       onClick={() => void handleAssign(u.email)}
                       className="ml-3 shrink-0"
                     >
                       {isAssigning === u.email ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : branch.manager_email === u.email ? (
-                        "현재 부관리자"
+                      ) : isAlreadySubAdmin ? (
+                        "이미 지정됨"
                       ) : (
                         "지정"
                       )}

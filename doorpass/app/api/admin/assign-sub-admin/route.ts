@@ -49,16 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "해당 이메일의 사용자를 찾을 수 없습니다." }, { status: 404 })
   }
 
-  // 기존 부관리자 강등 (이 대리점의 기존 sub_admin → driver)
-  if (branch.manager_email && branch.manager_email !== userEmail) {
-    await supabaseAdmin
-      .from("approved_users")
-      .update({ role: "driver", branch_id: null })
-      .eq("email", branch.manager_email)
-      .eq("role", "sub_admin")
-  }
-
-  // 새 부관리자 승격
+  // 다중 부관리자 지원: 기존 부관리자 강등하지 않음, 새 부관리자만 추가 승격
   const { error: updateError } = await supabaseAdmin
     .from("approved_users")
     .update({ role: "sub_admin", branch_id: branchId })
