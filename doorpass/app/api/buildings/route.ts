@@ -12,6 +12,7 @@ interface BuildingRow {
   name: string | null
   address: string | null
   password: string | null
+  password_encrypted?: string | null
   lat: number
   lng: number
   memo: string | null
@@ -72,11 +73,17 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
     }
   }
 
+  // password_encrypted 우선, 없으면 password 컬럼(레거시 평문 또는 구버전 암호화) fallback
+  const encryptedField = b.password_encrypted ?? null
   const rawPassword = b.password ?? ""
-  let password = rawPassword
+  let password = ""
   try {
-    if (rawPassword && isValidEncryptedPassword(rawPassword)) {
+    if (encryptedField && isValidEncryptedPassword(encryptedField)) {
+      password = decryptPassword(encryptedField)
+    } else if (rawPassword && isValidEncryptedPassword(rawPassword)) {
       password = decryptPassword(rawPassword)
+    } else {
+      password = rawPassword
     }
   } catch {
     password = rawPassword
@@ -118,7 +125,7 @@ export async function GET(request: Request) {
       const lngDelta = 0.006
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo, access_type")
+        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
         .gte("lat", lat - latDelta)
         .lte("lat", lat + latDelta)
         .gte("lng", lng - lngDelta)
@@ -151,7 +158,7 @@ export async function GET(request: Request) {
       const quoted = `"%${esc}%"`
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo, access_type")
+        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
         .or(`name.ilike.${quoted},address.ilike.${quoted}`)
         .order("address", { ascending: true })
         .limit(100)
@@ -189,7 +196,7 @@ export async function GET(request: Request) {
     if (minLat && maxLat && minLng && maxLng) {
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo, access_type")
+        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
         .gte("lat", parseFloat(minLat))
         .lte("lat", parseFloat(maxLat))
         .gte("lng", parseFloat(minLng))
@@ -282,7 +289,7 @@ export async function GET(request: Request) {
     while (true) {
       const { data, error } = await supabase
         .from("buildings")
-        .select("id, name, address, password, lat, lng, memo, access_type")
+        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
         .order("address", { ascending: true })
         .range(from, from + pageSize - 1)
 
