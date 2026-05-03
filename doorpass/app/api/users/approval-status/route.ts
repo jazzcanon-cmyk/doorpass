@@ -37,13 +37,23 @@ export async function GET() {
       return NextResponse.json({ status: "approved" })
     }
 
-    // pending_approvals: email 기반 조회 (email 없는 카카오 사용자는 미지원 — none 반환)
+    // pending_approvals: email 우선, 실패 시 userId(kakao provider_id)로 fallback
     let pendingApproval: { status: string; selected_branch_id: string } | null = null
     if (email) {
       const { data } = await supabaseAdmin
         .from("pending_approvals")
         .select("status, selected_branch_id")
         .eq("user_email", email)
+        .order("requested_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      pendingApproval = data
+    }
+    if (!pendingApproval) {
+      const { data } = await supabaseAdmin
+        .from("pending_approvals")
+        .select("status, selected_branch_id")
+        .eq("user_email", userId)
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle()

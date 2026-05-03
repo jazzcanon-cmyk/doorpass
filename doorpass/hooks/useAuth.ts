@@ -31,6 +31,12 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
 
+      // 로그인 기록 (login-count POST)
+      void fetch("/api/users/login-count", {
+        method: "POST",
+        signal: controller.signal,
+      }).catch(() => {})
+
       void fetch("/api/users/me", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
         .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
