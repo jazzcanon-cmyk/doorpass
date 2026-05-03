@@ -55,12 +55,10 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
     return () => window.removeEventListener("beforeinstallprompt", handler)
   }, [])
 
-  const handleInstall = () => {
+  const handleInstall = async () => {
     if (deferredPrompt) {
-      toast.info("📲 아래 팝업에서 추가 버튼을 누르면 설치 완료!", {
-        duration: 4000,
-      })
-      setTimeout(async () => {
+      try {
+        // 딜레이 없이 즉시 prompt() 호출 (사용자 제스처 컨텍스트 유지)
         deferredPrompt.prompt()
         const { outcome } = await deferredPrompt.userChoice
         if (outcome === "accepted") {
@@ -70,9 +68,12 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
         } else {
           toast.info("나중에 언제든 설치할 수 있어요 😊")
         }
-      }, 500)
+      } catch (e) {
+        console.error("[install]", e)
+        toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요", { duration: 5000 })
+      }
     } else {
-      if (window.matchMedia("(display-mode: standalone)").matches) {
+      if (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) {
         toast.success("이미 설치된 앱이에요! 😊")
       } else {
         toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요", { duration: 5000 })
@@ -101,7 +102,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
           <div className="flex items-center gap-1">
             {!isInstalled && (
               <button
-                onClick={handleInstall}
+                onClick={() => void handleInstall()}
                 title="홈화면에 앱 설치하기"
                 style={{
                   background: deferredPrompt
