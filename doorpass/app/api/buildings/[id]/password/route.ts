@@ -48,7 +48,7 @@ export async function POST(
     if (user?.email) {
       void trackActivity({
         userEmail: user.email,
-        actionType: 'password_decrypt',
+        actionType: 'password_update',
         targetInfo: {
           building_id: buildingId,
           building_name: updatedBuilding.name ?? null,
