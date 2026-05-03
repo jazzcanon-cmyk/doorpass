@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { MapPin, Building2, ExternalLink } from "lucide-react"
+import { MapPin, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { TermsAgreementModal } from "@/components/TermsAgreementModal"
 
 interface Branch {
   id: string
@@ -15,8 +16,8 @@ export default function SelectBranchPage() {
   const router = useRouter()
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedBranch, setSelectedBranch] = useState("")
-  const [termsChecked, setTermsChecked] = useState(false)
-  const [purposeChecked, setPurposeChecked] = useState(false)
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -46,10 +47,9 @@ export default function SelectBranchPage() {
     }, {})
   }, [branches])
 
-  const canSubmit = selectedBranch && termsChecked && purposeChecked
+  const canSubmit = !!selectedBranch
 
-  const handleSubmit = async () => {
-    if (!canSubmit) return
+  const submitApproval = async () => {
     setIsLoading(true)
     try {
       const res = await fetch("/api/users/request-approval", {
@@ -67,11 +67,30 @@ export default function SelectBranchPage() {
     }
   }
 
+  const handleSubmit = () => {
+    if (!canSubmit) return
+    if (!termsAgreed) {
+      setShowTerms(true)
+      return
+    }
+    void submitApproval()
+  }
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6"
       style={{ background: "linear-gradient(135deg, #0A1628 0%, #0D2144 40%, #0A3A6B 100%)" }}
     >
+      {showTerms && (
+        <TermsAgreementModal
+          onAgreed={() => {
+            setTermsAgreed(true)
+            setShowTerms(false)
+            void submitApproval()
+          }}
+        />
+      )}
+
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">소속 대리점 선택</h1>
@@ -115,49 +134,9 @@ export default function SelectBranchPage() {
             ))}
           </div>
 
-          {/* 이용약관 동의 */}
-          <div className="mt-8 space-y-3 border-t border-white/10 pt-6">
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-4">이용약관 동의</p>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={termsChecked}
-                onChange={(e) => setTermsChecked(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
-              />
-              <span className="text-sm text-white/80 leading-relaxed">
-                <a
-                  href="/terms"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 underline underline-offset-2 hover:text-blue-300 inline-flex items-center gap-0.5"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  이용약관 <ExternalLink className="h-3 w-3" />
-                </a>
-                에 동의합니다.{" "}
-                <span className="text-red-400 font-medium">(필수)</span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={purposeChecked}
-                onChange={(e) => setPurposeChecked(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-blue-500 shrink-0 cursor-pointer"
-              />
-              <span className="text-sm text-white/80 leading-relaxed">
-                비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
-                <span className="text-red-400 font-medium">(필수)</span>
-              </span>
-            </label>
-          </div>
-
           <div className="mt-6">
             <Button
-              onClick={() => void handleSubmit()}
+              onClick={handleSubmit}
               disabled={!canSubmit || isLoading}
               className="w-full py-6 text-lg disabled:opacity-40"
             >
@@ -165,7 +144,7 @@ export default function SelectBranchPage() {
             </Button>
           </div>
           <p className="text-center text-sm text-white/40 mt-4">
-            선택한 대리점의 관리자가 승인하면 계속 이용 가능합니다
+            선택 후 약관 동의를 거쳐 승인이 완료되면 이용 가능합니다
           </p>
         </div>
       </div>
