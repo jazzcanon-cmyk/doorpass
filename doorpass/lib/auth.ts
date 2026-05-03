@@ -232,7 +232,7 @@ export async function requireAdmin() {
 
 /**
  * admin 또는 sub_admin 전용 페이지 보호.
- * is_active/is_blocked 체크 없이 role만 확인 (단순화).
+ * email 우선, 없으면 카카오 provider_id로 fallback 조회.
  */
 export async function requireManager() {
   const cookieStore = await cookies()
@@ -246,13 +246,7 @@ export async function requireManager() {
     redirect("/login")
   }
 
-  const { data } = await supabaseAdmin
-    .from("approved_users")
-    .select("role")
-    .eq("email", user.email!)
-    .maybeSingle()
-
-  const role = (data?.role as string | null) ?? null
+  const role = await lookupManagerRole(user)
 
   if (!role || (role !== "admin" && role !== "sub_admin")) {
     redirect("/login")
@@ -261,9 +255,37 @@ export async function requireManager() {
   return { user, role: role as UserRole }
 }
 
+async function lookupManagerRole(user: User): Promise<string | null> {
+  const email = user.email
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+  const providerId = meta?.provider_id as string | undefined
+
+  let roleData: { role: string | null } | null = null
+
+  if (email) {
+    const { data } = await supabaseAdmin
+      .from("approved_users")
+      .select("role")
+      .eq("email", email)
+      .maybeSingle()
+    roleData = data as { role: string | null } | null
+  }
+
+  if (!roleData && providerId) {
+    const { data } = await supabaseAdmin
+      .from("approved_users")
+      .select("role")
+      .eq("kakao_id", providerId)
+      .maybeSingle()
+    roleData = data as { role: string | null } | null
+  }
+
+  return (roleData?.role as string | null) ?? null
+}
+
 /**
  * API 라우트에서 admin 또는 sub_admin 권한 검증.
- * requireAuth 통과 후 role만 확인.
+ * email 우선, 없으면 카카오 provider_id로 fallback.
  */
 export async function requireManagerApi() {
   const { user, unauthorized } = await requireAuth()
@@ -271,13 +293,7 @@ export async function requireManagerApi() {
     return { user: null, role: null as UserRole | null, unauthorized }
   }
 
-  const { data } = await supabaseAdmin
-    .from("approved_users")
-    .select("role")
-    .eq("email", user!.email!)
-    .maybeSingle()
-
-  const role = (data?.role as string | null) ?? null
+  const role = await lookupManagerRole(user as User)
 
   if (!role || (role !== "admin" && role !== "sub_admin")) {
     return {
