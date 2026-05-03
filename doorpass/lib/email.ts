@@ -81,7 +81,7 @@ export async function sendApprovalResultEmail(params: {
 }): Promise<void> {
   const client = resendClient()
   if (!client) {
-    console.warn("[email] RESEND_API_KEY 없음 — 결과 메일 생략")
+    console.warn("[email] RESEND_API_KEY 없음 — 승인 결과 메일 생략")
     return
   }
   const { toEmail, approved } = params

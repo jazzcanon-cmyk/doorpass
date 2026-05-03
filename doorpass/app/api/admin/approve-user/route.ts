@@ -3,7 +3,6 @@ import { requireManagerApi } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { executePendingApprovalById } from "@/lib/pending-approval-actions"
-import { sendApprovalResultEmail } from "@/lib/email"
 
 export async function POST(request: Request) {
   const { user, role, unauthorized } = await requireManagerApi()
@@ -21,11 +20,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
     }
 
-    const { data: currentUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("branch_id")
-      .eq("email", user!.email)
-      .maybeSingle()
+    const email = user!.email
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId =
+      ((meta?.provider_id as string | undefined) ??
+        (meta?.sub as string | undefined) ??
+        user!.id) as string
+
+    let currentUser: { branch_id: string | null } | null = null
+    if (email) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("email", email)
+        .maybeSingle()
+      currentUser = data
+    }
+    if (!currentUser) {
+      const { data } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("kakao_id", userId)
+        .maybeSingle()
+      currentUser = data
+    }
 
     const { data: approval } = await supabaseAdmin
       .from("pending_approvals")
@@ -56,11 +74,6 @@ export async function POST(request: Request) {
         ? `✅ 회원 승인 완료\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 승인자: ${user!.email}\n📅 승인일시: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
         : `❌ 회원 승인 거부\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 처리자: ${user!.email}`
     ).catch(console.error)
-
-    await sendApprovalResultEmail({
-      toEmail: row.user_email,
-      approved: action === "approve",
-    })
 
     // 신규 회원에게 승인 완료 PWA 푸시 알림
     if (action === "approve" && row.user_email) {

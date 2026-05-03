@@ -19,7 +19,7 @@ export default function PendingApprovalPage() {
 
       if (data.status === "approved") {
         setStatus("approved")
-        setTimeout(() => router.push("/"), 1500)
+        setTimeout(() => router.push("/"), 3000)
       } else if (data.status === "rejected") {
         setStatus("rejected")
       } else {
@@ -59,8 +59,8 @@ export default function PendingApprovalPage() {
           {status === "approved" && (
             <>
               <CheckCircle2 className="h-16 w-16 text-green-400 mx-auto mb-6" />
-              <h1 className="text-2xl font-bold text-white mb-2">승인 완료!</h1>
-              <p className="text-white/60 mb-6">잠시 후 메인 화면으로 이동합니다</p>
+              <h1 className="text-2xl font-bold text-white mb-2">승인이 완료됐어요! 🎉</h1>
+              <p className="text-white/60 mb-6">잠시 후 앱으로 이동합니다...</p>
             </>
           )}
 

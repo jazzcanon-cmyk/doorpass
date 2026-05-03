@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { executePendingApprovalById } from "@/lib/pending-approval-actions"
-import { sendApprovalResultEmail } from "@/lib/email"
 import { sendTelegramMessage } from "@/lib/telegram"
 
 const UUID_RE =
@@ -91,11 +90,6 @@ export async function GET(request: Request) {
         ? `✅ 회원 승인 완료 (이메일 링크)\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name ?? "-"}\n📅 처리: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
         : `❌ 회원 승인 거부 (이메일 링크)\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name ?? "-"}`,
     ).catch(console.error)
-
-    await sendApprovalResultEmail({
-      toEmail: approval.user_email,
-      approved: action === "approve",
-    })
 
     if (action === "approve") {
       return htmlPage("승인 완료", "승인이 완료되었습니다.")
