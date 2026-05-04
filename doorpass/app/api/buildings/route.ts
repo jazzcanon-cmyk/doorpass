@@ -385,7 +385,9 @@ export async function POST(request: Request) {
         ? "자유출입"
         : access_type === "etc"
         ? "기타(메모참조)"
-        : encryptPassword(password!)
+        : (password && password.trim())
+        ? encryptPassword(password)
+        : null
 
     const { data, error } = await supabase
       .from("buildings")
