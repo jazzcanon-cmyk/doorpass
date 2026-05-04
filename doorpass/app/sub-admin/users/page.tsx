@@ -13,6 +13,7 @@ interface User {
   kakao_name?: string | null
   kakao_nickname?: string | null
   profile_image_url?: string | null
+  approved_by?: string | null
 }
 
 export default function SubAdminUsersPage() {
@@ -84,8 +85,11 @@ export default function SubAdminUsersPage() {
     }
   }
 
+  const referralUsers = users.filter((u) => u.approved_by?.startsWith("referral:"))
+
   const filteredUsers = users.filter((user) => {
     if (roleFilter === "all") return true
+    if (roleFilter === "referral") return user.approved_by?.startsWith("referral:")
     return user.role === roleFilter
   })
 
@@ -99,7 +103,7 @@ export default function SubAdminUsersPage() {
       </div>
 
       <div className="mb-6">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => setRoleFilter("all")} variant={roleFilter === "all" ? "default" : "outline"} size="sm">
             전체 ({users.length})
           </Button>
@@ -108,6 +112,9 @@ export default function SubAdminUsersPage() {
           </Button>
           <Button onClick={() => setRoleFilter("editor")} variant={roleFilter === "editor" ? "default" : "outline"} size="sm">
             편집자 ({users.filter((u) => u.role === "editor").length})
+          </Button>
+          <Button onClick={() => setRoleFilter("referral")} variant={roleFilter === "referral" ? "default" : "outline"} size="sm">
+            🔗 자동승인 ({referralUsers.length})
           </Button>
         </div>
       </div>
@@ -162,6 +169,13 @@ export default function SubAdminUsersPage() {
                       <Calendar className="h-3 w-3 flex-shrink-0" />
                       {new Date(user.created_at).toLocaleDateString("ko-KR")} 가입
                     </p>
+                    {user.approved_by?.startsWith("referral:") && (
+                      <p className="flex items-center gap-1 mt-1">
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                          🔗 추천인: {user.approved_by.replace("referral:", "")}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

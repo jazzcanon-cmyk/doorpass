@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Building2, Users, Activity, Search,
   BarChart2, Upload, MessageSquare, Settings,
-  ArrowRight, Loader2, TrendingUp, Eye, MapPin, RefreshCw, X, Trophy,
+  ArrowRight, Loader2, TrendingUp, Eye, MapPin, RefreshCw, X, Trophy, Link2,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import {
@@ -614,6 +614,7 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [liveHint, setLiveHint] = useState<string | null>(null)
+  const [referralCount, setReferralCount] = useState<number | null>(null)
 
   const [openPanel, setOpenPanel] = useState<PanelType>(null)
   const [panelData, setPanelData] = useState<PanelData>({})
@@ -655,6 +656,13 @@ export function AdminDashboard() {
   const closePanel = useCallback(() => {
     setOpenPanel(null)
     setPanelData({})
+  }, [])
+
+  useEffect(() => {
+    void fetch("/api/admin/users?filter=referral")
+      .then((r) => r.json())
+      .then((d: { users?: unknown[] }) => setReferralCount(d.users?.length ?? 0))
+      .catch(() => {})
   }, [])
 
   useEffect(() => { void refresh() }, [refresh])
@@ -758,7 +766,7 @@ export function AdminDashboard() {
         </div>
 
         {/* Stats — Totals */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <StatCard
             icon={Building2}
             label="등록 건물"
@@ -774,6 +782,13 @@ export function AdminDashboard() {
             sub="등록·이용 가능"
             color="bg-indigo-500/20 text-indigo-400"
             onClick={() => void openDetail("users")}
+          />
+          <StatCard
+            icon={Link2}
+            label="🔗 자동승인 회원"
+            value={referralCount ?? "—"}
+            sub="추천 링크 가입"
+            color="bg-emerald-500/20 text-emerald-400"
           />
         </div>
 

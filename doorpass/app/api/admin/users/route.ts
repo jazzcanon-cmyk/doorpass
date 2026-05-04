@@ -40,6 +40,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const excludeAdmin = searchParams.get("excludeAdmin") === "true"
+  const filterReferral = searchParams.get("filter") === "referral"
   const search = searchParams.get("search")?.trim().toLowerCase() ?? ""
 
   const supabase = await createSupabaseRouteHandlerClient()
@@ -69,6 +70,10 @@ export async function GET(request: Request) {
 
   if (excludeAdmin) {
     query = query.neq("role", "admin")
+  }
+
+  if (filterReferral) {
+    query = query.like("approved_by", "referral:%")
   }
 
   const { data, error } = await query
