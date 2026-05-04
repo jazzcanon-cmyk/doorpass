@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { MapPin, Building2, Briefcase, Truck, User, Loader2, Clock } from "lucide-react"
+import { MapPin, Building2, Loader2, Clock, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
-type MemberType = "headquarters" | "branch" | "public"
-
 interface Branch {
   id: string
   name: string
@@ -23,12 +21,6 @@ interface Branch {
 
 type ApprovalStatus = "loading" | "none" | "pending" | "approved"
 
-const MEMBER_TYPES: { key: MemberType; label: string; desc: string; icon: React.ReactNode }[] = [
-  { key: "headquarters", label: "지사직원", desc: "울산지사 소속", icon: <Briefcase className="h-5 w-5" /> },
-  { key: "branch", label: "대리점기사", desc: "대리점 소속 기사", icon: <Truck className="h-5 w-5" /> },
-  { key: "public", label: "일반인", desc: "일반 회원", icon: <User className="h-5 w-5" /> },
-]
-
 export function ApprovalRequestModal({
   open,
   onOpenChange,
@@ -37,17 +29,19 @@ export function ApprovalRequestModal({
   onOpenChange: (open: boolean) => void
 }) {
   const [branches, setBranches] = useState<Branch[]>([])
-  const [memberType, setMemberType] = useState<MemberType | null>(null)
   const [selected, setSelected] = useState("")
+  const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>("none")
   const [termsChecked, setTermsChecked] = useState(false)
   const [purposeChecked, setPurposeChecked] = useState(false)
 
+  const isEtc = selected === "etc-branch"
+
   useEffect(() => {
     if (!open) {
-      setMemberType(null)
       setSelected("")
+      setReason("")
       setTermsChecked(false)
       setPurposeChecked(false)
       return
@@ -70,6 +64,7 @@ export function ApprovalRequestModal({
       .catch(() => setBranches([]))
   }, [open, onOpenChange])
 
+  // type='branch'만 필터
   const branchOnly = useMemo(
     () => branches.filter((b) => !b.type || b.type === "branch"),
     [branches]
@@ -83,17 +78,11 @@ export function ApprovalRequestModal({
     }, {})
   }, [branchOnly])
 
-  const getTargetBranchId = () => {
-    if (memberType === "headquarters") return "ulsan-hq"
-    if (memberType === "public") return "public-general"
-    return selected
-  }
-
   const canSubmit =
-    !!memberType &&
+    !!selected &&
     termsChecked &&
     purposeChecked &&
-    (memberType !== "branch" || !!selected)
+    (!isEtc || reason.trim().length >= 2)
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -102,7 +91,10 @@ export function ApprovalRequestModal({
       const res = await fetch("/api/users/request-approval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ branchId: getTargetBranchId() }),
+        body: JSON.stringify({
+          branchId: selected,
+          reason: isEtc ? reason.trim() : undefined,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((data as { error?: string }).error || "요청 실패")
@@ -116,7 +108,7 @@ export function ApprovalRequestModal({
         return
       }
 
-      toast.success("승인 요청이 접수되었습니다. 관리자 승인 후 비밀번호를 볼 수 있어요.")
+      toast.success("승인 요청이 접수됐습니다. 승인 후 비밀번호를 볼 수 있어요.")
       setApprovalStatus("pending")
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "요청에 실패했습니다.")
@@ -129,11 +121,9 @@ export function ApprovalRequestModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] w-full max-w-md overflow-y-auto border-white/10 bg-slate-900 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white text-base">
-            비밀번호를 보려면 승인이 필요해요
-          </DialogTitle>
+          <DialogTitle className="text-white text-base">비밀번호를 보려면 승인이 필요해요</DialogTitle>
           <p className="text-left text-sm text-white/60">
-            소속을 선택하고 약관에 동의하면 관리자에게 승인 요청이 전달됩니다.
+            소속 대리점을 선택하고 약관에 동의하면 승인 요청이 전달됩니다.
           </p>
         </DialogHeader>
 
@@ -155,90 +145,70 @@ export function ApprovalRequestModal({
 
         {approvalStatus === "none" && (
           <>
-            {/* 소속 유형 선택 */}
-            <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">소속 유형</p>
-              <div className="grid grid-cols-3 gap-2">
-                {MEMBER_TYPES.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => { setMemberType(t.key); setSelected("") }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                      memberType === t.key
-                        ? "border-blue-500 bg-blue-500/20"
-                        : "border-white/10 bg-white/5 hover:border-white/30"
-                    }`}
-                  >
-                    <span className={memberType === t.key ? "text-blue-400" : "text-white/50"}>
-                      {t.icon}
-                    </span>
-                    <span className="text-xs font-semibold text-white">{t.label}</span>
-                    <span className="text-[10px] text-white/40 text-center leading-tight">{t.desc}</span>
-                  </button>
-                ))}
-              </div>
+            {/* 대리점 목록 */}
+            <div className="max-h-[32vh] overflow-y-auto space-y-3 pr-1">
+              {Object.entries(branchesByRegion).map(([region, list]) => (
+                <div key={region}>
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                    <span className="text-xs font-semibold text-white">{region}</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {list.map((branch) => (
+                      <button
+                        key={branch.id}
+                        type="button"
+                        onClick={() => { setSelected(branch.id); setReason("") }}
+                        className={`rounded-lg border-2 p-3 text-left transition-colors ${
+                          selected === branch.id
+                            ? "border-blue-500 bg-blue-500/20"
+                            : "border-white/10 bg-white/5 hover:border-white/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Building2 className={`h-4 w-4 shrink-0 ${selected === branch.id ? "text-blue-400" : "text-white/40"}`} />
+                          <span className="text-sm font-medium text-white">{branch.name}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* 기타 옵션 */}
+              <button
+                type="button"
+                onClick={() => setSelected("etc-branch")}
+                className={`w-full rounded-lg border-2 p-3 text-left transition-colors flex items-center gap-2 ${
+                  isEtc
+                    ? "border-amber-500 bg-amber-500/20"
+                    : "border-white/10 bg-white/5 hover:border-white/30"
+                }`}
+              >
+                <HelpCircle className={`h-4 w-4 shrink-0 ${isEtc ? "text-amber-400" : "text-white/40"}`} />
+                <div>
+                  <span className="text-sm font-medium text-white">기타 (소속 대리점 없음)</span>
+                  <p className="text-[11px] text-white/40 mt-0.5">쿠팡, 한진 등 자영업 기사님</p>
+                </div>
+              </button>
             </div>
 
-            {/* 지사직원 안내 */}
-            {memberType === "headquarters" && (
-              <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                <div>
-                  <p className="text-white font-semibold text-sm">울산지사 소속으로 신청됩니다</p>
-                  <p className="text-white/50 text-xs">관리자 승인 후 이용 가능</p>
-                </div>
-              </div>
-            )}
-
-            {/* 일반인 안내 */}
-            {memberType === "public" && (
-              <div className="p-3 rounded-xl border border-purple-500/30 bg-purple-500/10 flex items-center gap-2">
-                <User className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                <div>
-                  <p className="text-white font-semibold text-sm">일반회원으로 신청됩니다</p>
-                  <p className="text-white/50 text-xs">관리자 승인 후 이용 가능</p>
-                </div>
-              </div>
-            )}
-
-            {/* 대리점기사: 대리점 선택 */}
-            {memberType === "branch" && (
-              <div className="max-h-[30vh] overflow-y-auto space-y-3 pr-1">
-                {Object.entries(branchesByRegion).map(([region, list]) => (
-                  <div key={region}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-blue-400" />
-                      <span className="text-xs font-semibold text-white">{region}</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {list.map((branch) => (
-                        <button
-                          key={branch.id}
-                          type="button"
-                          onClick={() => setSelected(branch.id)}
-                          className={`rounded-lg border-2 p-3 text-left transition-colors ${
-                            selected === branch.id
-                              ? "border-blue-500 bg-blue-500/20"
-                              : "border-white/10 bg-white/5 hover:border-white/30"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Building2
-                              className={`h-4 w-4 shrink-0 ${selected === branch.id ? "text-blue-400" : "text-white/40"}`}
-                            />
-                            <span className="text-sm font-medium text-white">{branch.name}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            {/* 기타 사유 입력 */}
+            {isEtc && (
+              <div>
+                <label className="block text-xs text-white/50 mb-1.5">소속/사유 입력 <span className="text-red-400">(필수)</span></label>
+                <input
+                  type="text"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="예: 쿠팡 기사, 한진택배 등"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-500/50"
+                />
               </div>
             )}
 
             {/* 약관 동의 */}
-            {memberType && (
+            {selected && (
               <div className="space-y-2 border-t border-white/10 pt-4">
                 <p className="text-xs font-semibold uppercase tracking-widest text-white/40">이용약관 동의</p>
                 <div

@@ -10,10 +10,15 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized
 
     const body = await request.json()
-    const { branchId, userName } = body
+    const { branchId, userName, reason } = body
 
     if (!branchId) {
       return NextResponse.json({ success: false, error: 'branchId 필요' }, { status: 400 })
+    }
+
+    // 기타 선택 시 사유 필수
+    if (branchId === 'etc-branch' && !reason?.trim()) {
+      return NextResponse.json({ success: false, error: '기타 선택 시 사유를 입력해주세요.' }, { status: 400 })
     }
 
     const userEmail = user!.email ?? ''
@@ -65,6 +70,7 @@ export async function POST(request: NextRequest) {
         selected_branch_id: branchId,
         status: 'pending',
         token,
+        reason: branchId === 'etc-branch' ? (reason?.trim() || null) : null,
       })
 
     if (insertError) {
@@ -94,9 +100,11 @@ export async function POST(request: NextRequest) {
       .eq('role', 'admin')
       .maybeSingle()
 
-    // 4. PWA 푸시 알림 (해당 대리점 부관리자 전원 + 관리자)
+    // 4. PWA 푸시 알림 — 기타는 관리자만, 일반 대리점은 부관리자+관리자
     const baseUrl = request.nextUrl.origin
-    const subAdminEmails = (subAdmins ?? []).map((s) => s.email).filter(Boolean) as string[]
+    const subAdminEmails = branchId === 'etc-branch'
+      ? []
+      : (subAdmins ?? []).map((s) => s.email).filter(Boolean) as string[]
     const notifyTargets = Array.from(
       new Set([...subAdminEmails, admin?.email].filter(Boolean) as string[])
     )

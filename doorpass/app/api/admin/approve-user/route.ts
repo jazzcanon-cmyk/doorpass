@@ -13,10 +13,14 @@ export async function POST(request: Request) {
       approvalId?: number
       action?: "approve" | "reject"
       role?: "driver" | "editor"
+      branch_id_override?: string | null
     }
     const approvalId = Number(body.approvalId)
     const action = body.action
     const assignedRole = body.role === "editor" ? "editor" : "driver"
+    const branchIdOverride = body.branch_id_override !== undefined
+      ? (body.branch_id_override || null)
+      : undefined
 
     if (!Number.isFinite(approvalId) || (action !== "approve" && action !== "reject")) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
     }
 
-    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown", assignedRole)
+    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown", assignedRole, branchIdOverride)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.httpStatus })
     }

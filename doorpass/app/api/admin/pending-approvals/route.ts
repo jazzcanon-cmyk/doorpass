@@ -34,13 +34,16 @@ export async function GET() {
 
     let query = supabaseAdmin
       .from("pending_approvals")
-      .select("id, user_email, user_name, kakao_name, kakao_nickname, profile_image_url, selected_branch_id, requested_at, branches(id, name, region)")
+      .select("id, user_email, user_name, kakao_name, kakao_nickname, profile_image_url, selected_branch_id, requested_at, reason, branches(id, name, region)")
       .eq("status", "pending")
       .order("requested_at", { ascending: false })
 
     if (role === "sub_admin") {
       if (!currentUser?.branch_id) return NextResponse.json({ approvals: [] })
-      query = query.eq("selected_branch_id", currentUser.branch_id)
+      // 부관리자: 자기 대리점 요청만 + 기타(etc-branch) 제외
+      query = query
+        .eq("selected_branch_id", currentUser.branch_id)
+        .neq("selected_branch_id", "etc-branch")
     }
 
     const { data, error } = await query

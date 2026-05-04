@@ -20,7 +20,8 @@ export async function executePendingApprovalById(
   approvalId: number,
   action: "approve" | "reject",
   reviewedBy: string,
-  role?: "driver" | "editor"
+  role?: "driver" | "editor",
+  branchIdOverride?: string | null
 ): Promise<ExecuteApprovalResult> {
   const { data: approval, error: fetchErr } = await supabaseAdmin
     .from("pending_approvals")
@@ -39,6 +40,9 @@ export async function executePendingApprovalById(
 
   if (action === "approve") {
     const assignedRole = role ?? "driver"
+    const assignedBranchId = branchIdOverride !== undefined
+      ? branchIdOverride
+      : row.selected_branch_id
 
     const { data: existing } = await supabaseAdmin
       .from("approved_users")
@@ -50,7 +54,7 @@ export async function executePendingApprovalById(
       const { error: updateError } = await supabaseAdmin
         .from("approved_users")
         .update({
-          branch_id: row.selected_branch_id,
+          branch_id: assignedBranchId,
           first_login_at: new Date().toISOString(),
           role: assignedRole,
         })
@@ -61,7 +65,7 @@ export async function executePendingApprovalById(
         email: row.user_email,
         name: row.user_name,
         role: assignedRole,
-        branch_id: row.selected_branch_id,
+        branch_id: assignedBranchId,
         first_login_at: new Date().toISOString(),
       })
       if (insertError) throw insertError
