@@ -8,6 +8,8 @@ export interface ApprovedUser {
   is_active: boolean
   created_at: string
   managed_region?: string | null
+  branch_id?: string | null
+  branches?: { id: string; name: string; region: string; type?: string | null } | null
 }
 
 export interface AuthUser {

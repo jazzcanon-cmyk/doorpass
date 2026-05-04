@@ -5,7 +5,17 @@ import { UserPlus, Loader2, Clock, CheckCircle2 } from "lucide-react"
 import { adminApi } from "@/lib/admin-api"
 import { ApprovedUserRow } from "./ApprovedUserRow"
 import { AssignRoleModal } from "./AssignRoleModal"
+import { ChangeBranchModal } from "./ChangeBranchModal"
 import type { ApprovedUser } from "@/types/admin-users"
+
+type BranchTypeFilter = "all" | "headquarters" | "branch" | "public"
+
+const BRANCH_FILTERS: { key: BranchTypeFilter; label: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "headquarters", label: "지사" },
+  { key: "branch", label: "대리점" },
+  { key: "public", label: "일반" },
+]
 
 export function ManageTab() {
   const [users, setUsers] = useState<ApprovedUser[]>([])
@@ -16,6 +26,8 @@ export function ManageTab() {
   const [adding, setAdding] = useState(false)
   const [assigning, setAssigning] = useState<ApprovedUser | null>(null)
   const [savingRole, setSavingRole] = useState(false)
+  const [changingBranch, setChangingBranch] = useState<ApprovedUser | null>(null)
+  const [branchFilter, setBranchFilter] = useState<BranchTypeFilter>("all")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,10 +107,7 @@ export function ManageTab() {
         body: JSON.stringify({ role, managed_region }),
       })
       const labels: Record<string, string> = {
-        admin: "관리자",
-        sub_admin: "부관리자",
-        editor: "편집자",
-        driver: "일반 사용자",
+        admin: "관리자", sub_admin: "부관리자", editor: "편집자", driver: "일반 사용자",
       }
       toast.success(`${assigning.name}님 권한: ${labels[role] ?? role}`)
       closeAssign()
@@ -120,14 +129,40 @@ export function ManageTab() {
     }
   }
 
-  const pending = users.filter((u) => !u.is_active)
-  const approved = users.filter((u) => u.is_active)
+  const filterByBranchType = (list: ApprovedUser[]) => {
+    if (branchFilter === "all") return list
+    return list.filter((u) => {
+      const t = u.branches?.type ?? "branch"
+      return t === branchFilter
+    })
+  }
+
+  const pending = filterByBranchType(users.filter((u) => !u.is_active))
+  const approved = filterByBranchType(users.filter((u) => u.is_active))
 
   return (
     <div className="space-y-8">
       <p className="text-sm text-white/40 -mt-4">
-        사용 제한(승인 대기) {pending.length}명 · 이용 가능 {approved.length}명 · 전체 {users.length}명
+        사용 제한(승인 대기) {users.filter(u => !u.is_active).length}명 · 이용 가능 {users.filter(u => u.is_active).length}명 · 전체 {users.length}명
       </p>
+
+      {/* 소속 유형 필터 */}
+      <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl w-fit">
+        {BRANCH_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setBranchFilter(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              branchFilter === f.key
+                ? "bg-blue-600 text-white shadow"
+                : "text-white/50 hover:text-white/80"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
       <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -190,11 +225,12 @@ export function ManageTab() {
                   onReject={() => void reject(u.id, u.name)}
                   onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
+                  onChangeBranch={() => setChangingBranch(u)}
                 />
               ))}
               {pending.length === 0 && (
                 <p className="text-sm text-white/30 text-center py-6 rounded-xl border border-dashed border-white/10">
-                  사용 제한 중인 계정이 없습니다. 문제가 있는 경우에만「추가」로 넣고 승인하면 다시 이용할 수 있습니다.
+                  사용 제한 중인 계정이 없습니다.
                 </p>
               )}
             </div>
@@ -214,6 +250,7 @@ export function ManageTab() {
                   onReject={() => void reject(u.id, u.name)}
                   onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
+                  onChangeBranch={() => setChangingBranch(u)}
                 />
               ))}
               {approved.length === 0 && (
@@ -230,6 +267,17 @@ export function ManageTab() {
           saving={savingRole}
           onClose={closeAssign}
           onSubmit={submitAssign}
+        />
+      )}
+
+      {changingBranch && (
+        <ChangeBranchModal
+          user={changingBranch}
+          onClose={() => setChangingBranch(null)}
+          onSuccess={() => {
+            toast.success(`${changingBranch.name}님 소속이 변경됐습니다.`)
+            void load()
+          }}
         />
       )}
     </div>

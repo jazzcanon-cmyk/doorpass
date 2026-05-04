@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from("branches")
-      .select("id, name, region")
+      .select("id, name, region, type")
       .order("region", { ascending: true })
       .order("name", { ascending: true })
 

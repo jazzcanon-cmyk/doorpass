@@ -51,7 +51,8 @@ export async function GET(request: Request) {
       branches (
         id,
         name,
-        region
+        region,
+        type
       )
     `)
     .order("created_at", { ascending: false })

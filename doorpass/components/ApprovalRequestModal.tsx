@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { MapPin, Building2, Loader2, Clock } from "lucide-react"
+import { MapPin, Building2, Briefcase, Truck, User, Loader2, Clock } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -12,13 +12,22 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
+type MemberType = "headquarters" | "branch" | "public"
+
 interface Branch {
   id: string
   name: string
   region: string
+  type?: string | null
 }
 
 type ApprovalStatus = "loading" | "none" | "pending" | "approved"
+
+const MEMBER_TYPES: { key: MemberType; label: string; desc: string; icon: React.ReactNode }[] = [
+  { key: "headquarters", label: "지사직원", desc: "울산지사 소속", icon: <Briefcase className="h-5 w-5" /> },
+  { key: "branch", label: "대리점기사", desc: "대리점 소속 기사", icon: <Truck className="h-5 w-5" /> },
+  { key: "public", label: "일반인", desc: "일반 회원", icon: <User className="h-5 w-5" /> },
+]
 
 export function ApprovalRequestModal({
   open,
@@ -28,6 +37,7 @@ export function ApprovalRequestModal({
   onOpenChange: (open: boolean) => void
 }) {
   const [branches, setBranches] = useState<Branch[]>([])
+  const [memberType, setMemberType] = useState<MemberType | null>(null)
   const [selected, setSelected] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>("none")
@@ -36,6 +46,7 @@ export function ApprovalRequestModal({
 
   useEffect(() => {
     if (!open) {
+      setMemberType(null)
       setSelected("")
       setTermsChecked(false)
       setPurposeChecked(false)
@@ -48,10 +59,7 @@ export function ApprovalRequestModal({
       .then((r) => r.json())
       .then((d: { status?: string }) => {
         const s = d.status ?? "none"
-        if (s === "approved") {
-          onOpenChange(false)
-          return
-        }
+        if (s === "approved") { onOpenChange(false); return }
         setApprovalStatus(s === "pending" ? "pending" : "none")
       })
       .catch(() => setApprovalStatus("none"))
@@ -62,15 +70,30 @@ export function ApprovalRequestModal({
       .catch(() => setBranches([]))
   }, [open, onOpenChange])
 
+  const branchOnly = useMemo(
+    () => branches.filter((b) => !b.type || b.type === "branch"),
+    [branches]
+  )
+
   const branchesByRegion = useMemo(() => {
-    return branches.reduce<Record<string, Branch[]>>((acc, b) => {
+    return branchOnly.reduce<Record<string, Branch[]>>((acc, b) => {
       if (!acc[b.region]) acc[b.region] = []
       acc[b.region].push(b)
       return acc
     }, {})
-  }, [branches])
+  }, [branchOnly])
 
-  const canSubmit = !!selected && termsChecked && purposeChecked
+  const getTargetBranchId = () => {
+    if (memberType === "headquarters") return "ulsan-hq"
+    if (memberType === "public") return "public-general"
+    return selected
+  }
+
+  const canSubmit =
+    !!memberType &&
+    termsChecked &&
+    purposeChecked &&
+    (memberType !== "branch" || !!selected)
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -79,12 +102,15 @@ export function ApprovalRequestModal({
       const res = await fetch("/api/users/request-approval", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ branchId: selected }),
+        body: JSON.stringify({ branchId: getTargetBranchId() }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "요청 실패")
+      if (!res.ok) throw new Error((data as { error?: string }).error || "요청 실패")
 
-      if (data.status === "approved" || String(data.message ?? "").includes("이미 승인")) {
+      if (
+        (data as { status?: string }).status === "approved" ||
+        String((data as { message?: string }).message ?? "").includes("이미 승인")
+      ) {
         toast.success("이미 승인된 계정입니다.")
         onOpenChange(false)
         return
@@ -101,13 +127,13 @@ export function ApprovalRequestModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] w-full max-w-md overflow-y-auto border-white/10 bg-slate-900 text-white sm:max-w-md">
+      <DialogContent className="max-h-[90vh] w-full max-w-md overflow-y-auto border-white/10 bg-slate-900 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white text-base">
             비밀번호를 보려면 승인이 필요해요
           </DialogTitle>
           <p className="text-left text-sm text-white/60">
-            소속 대리점을 선택하고 약관에 동의하면 관리자에게 승인 요청이 전달됩니다.
+            소속을 선택하고 약관에 동의하면 관리자에게 승인 요청이 전달됩니다.
           </p>
         </DialogHeader>
 
@@ -129,111 +155,118 @@ export function ApprovalRequestModal({
 
         {approvalStatus === "none" && (
           <>
-            {/* 대리점 선택 */}
-            <div className="max-h-[35vh] space-y-4 overflow-y-auto pr-1">
-              {Object.entries(branchesByRegion).map(([region, list]) => (
-                <div key={region}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-semibold text-white">{region}</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {list.map((branch) => (
-                      <button
-                        key={branch.id}
-                        type="button"
-                        onClick={() => setSelected(branch.id)}
-                        className={`rounded-lg border-2 p-3 text-left transition-colors ${
-                          selected === branch.id
-                            ? "border-blue-500 bg-blue-500/20"
-                            : "border-white/10 bg-white/5 hover:border-white/30"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Building2
-                            className={`h-4 w-4 shrink-0 ${selected === branch.id ? "text-blue-400" : "text-white/40"}`}
-                          />
-                          <span className="text-sm font-medium text-white">{branch.name}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {/* 소속 유형 선택 */}
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">소속 유형</p>
+              <div className="grid grid-cols-3 gap-2">
+                {MEMBER_TYPES.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => { setMemberType(t.key); setSelected("") }}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                      memberType === t.key
+                        ? "border-blue-500 bg-blue-500/20"
+                        : "border-white/10 bg-white/5 hover:border-white/30"
+                    }`}
+                  >
+                    <span className={memberType === t.key ? "text-blue-400" : "text-white/50"}>
+                      {t.icon}
+                    </span>
+                    <span className="text-xs font-semibold text-white">{t.label}</span>
+                    <span className="text-[10px] text-white/40 text-center leading-tight">{t.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* 지사직원 안내 */}
+            {memberType === "headquarters" && (
+              <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                <div>
+                  <p className="text-white font-semibold text-sm">울산지사 소속으로 신청됩니다</p>
+                  <p className="text-white/50 text-xs">관리자 승인 후 이용 가능</p>
+                </div>
+              </div>
+            )}
+
+            {/* 일반인 안내 */}
+            {memberType === "public" && (
+              <div className="p-3 rounded-xl border border-purple-500/30 bg-purple-500/10 flex items-center gap-2">
+                <User className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                <div>
+                  <p className="text-white font-semibold text-sm">일반회원으로 신청됩니다</p>
+                  <p className="text-white/50 text-xs">관리자 승인 후 이용 가능</p>
+                </div>
+              </div>
+            )}
+
+            {/* 대리점기사: 대리점 선택 */}
+            {memberType === "branch" && (
+              <div className="max-h-[30vh] overflow-y-auto space-y-3 pr-1">
+                {Object.entries(branchesByRegion).map(([region, list]) => (
+                  <div key={region}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                      <span className="text-xs font-semibold text-white">{region}</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {list.map((branch) => (
+                        <button
+                          key={branch.id}
+                          type="button"
+                          onClick={() => setSelected(branch.id)}
+                          className={`rounded-lg border-2 p-3 text-left transition-colors ${
+                            selected === branch.id
+                              ? "border-blue-500 bg-blue-500/20"
+                              : "border-white/10 bg-white/5 hover:border-white/30"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building2
+                              className={`h-4 w-4 shrink-0 ${selected === branch.id ? "text-blue-400" : "text-white/40"}`}
+                            />
+                            <span className="text-sm font-medium text-white">{branch.name}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* 약관 동의 */}
-            <div className="space-y-2 border-t border-white/10 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/40">이용약관 동의</p>
-              <div
-                onClick={() => setTermsChecked((v) => !v)}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "10px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  background: termsChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)",
-                  border: termsChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)",
-                  userSelect: "none",
-                }}
-              >
+            {memberType && (
+              <div className="space-y-2 border-t border-white/10 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">이용약관 동의</p>
                 <div
-                  style={{
-                    width: "18px", height: "18px", minWidth: "18px", borderRadius: "5px", marginTop: "1px",
-                    background: termsChecked ? "#3b82f6" : "transparent",
-                    border: termsChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
+                  onClick={() => setTermsChecked((v) => !v)}
+                  style={{ display:"flex", alignItems:"flex-start", gap:"10px", padding:"10px", borderRadius:"8px", cursor:"pointer", background: termsChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)", border: termsChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)", userSelect:"none" }}
                 >
-                  {termsChecked && <span style={{ color: "white", fontSize: "11px", fontWeight: 900 }}>✓</span>}
+                  <div style={{ width:"18px", height:"18px", minWidth:"18px", borderRadius:"5px", marginTop:"1px", background: termsChecked ? "#3b82f6" : "transparent", border: termsChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {termsChecked && <span style={{ color:"white", fontSize:"11px", fontWeight:900 }}>✓</span>}
+                  </div>
+                  <span style={{ color:"rgba(255,255,255,0.8)", fontSize:"13px", lineHeight:"1.5" }}>
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color:"#60a5fa", textDecoration:"underline" }}>이용약관</a>에 동의합니다.{" "}
+                    <span style={{ color:"#f87171", fontWeight:600 }}>(필수)</span>
+                  </span>
                 </div>
-                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "13px", lineHeight: "1.5" }}>
-                  <a
-                    href="/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ color: "#60a5fa", textDecoration: "underline" }}
-                  >
-                    이용약관
-                  </a>
-                  에 동의합니다.{" "}
-                  <span style={{ color: "#f87171", fontWeight: 600 }}>(필수)</span>
-                </span>
-              </div>
-
-              <div
-                onClick={() => setPurposeChecked((v) => !v)}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "10px",
-                  padding: "10px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  background: purposeChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)",
-                  border: purposeChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)",
-                  userSelect: "none",
-                }}
-              >
                 <div
-                  style={{
-                    width: "18px", height: "18px", minWidth: "18px", borderRadius: "5px", marginTop: "1px",
-                    background: purposeChecked ? "#3b82f6" : "transparent",
-                    border: purposeChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
+                  onClick={() => setPurposeChecked((v) => !v)}
+                  style={{ display:"flex", alignItems:"flex-start", gap:"10px", padding:"10px", borderRadius:"8px", cursor:"pointer", background: purposeChecked ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.03)", border: purposeChecked ? "1px solid #3b82f6" : "1px solid rgba(255,255,255,0.08)", userSelect:"none" }}
                 >
-                  {purposeChecked && <span style={{ color: "white", fontSize: "11px", fontWeight: 900 }}>✓</span>}
+                  <div style={{ width:"18px", height:"18px", minWidth:"18px", borderRadius:"5px", marginTop:"1px", background: purposeChecked ? "#3b82f6" : "transparent", border: purposeChecked ? "2px solid #3b82f6" : "2px solid rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {purposeChecked && <span style={{ color:"white", fontSize:"11px", fontWeight:900 }}>✓</span>}
+                  </div>
+                  <span style={{ color:"rgba(255,255,255,0.8)", fontSize:"13px", lineHeight:"1.5" }}>
+                    비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
+                    <span style={{ color:"#f87171", fontWeight:600 }}>(필수)</span>
+                  </span>
                 </div>
-                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "13px", lineHeight: "1.5" }}>
-                  비밀번호 정보를 배송 업무 목적 외에 사용하지 않겠습니다.{" "}
-                  <span style={{ color: "#f87171", fontWeight: 600 }}>(필수)</span>
-                </span>
               </div>
-            </div>
+            )}
           </>
         )}
 

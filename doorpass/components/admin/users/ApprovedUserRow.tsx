@@ -1,5 +1,5 @@
 "use client"
-import { Crown, User, ShieldCheck, ShieldOff, Ban, Trash2 } from "lucide-react"
+import { Crown, User, ShieldCheck, ShieldOff, Ban, Trash2, Building2 } from "lucide-react"
 import type { ApprovedUser, ApprovedRowMode } from "@/types/admin-users"
 
 interface ApprovedUserRowProps {
@@ -9,6 +9,7 @@ interface ApprovedUserRowProps {
   onReject: () => void
   onRole: () => void
   onDelete: () => void
+  onChangeBranch?: () => void
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -25,9 +26,25 @@ const ROLE_BADGE: Record<string, string> = {
   driver: "bg-blue-500/20 text-blue-400",
 }
 
-export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete }: ApprovedUserRowProps) {
+const BRANCH_TYPE_LABEL: Record<string, string> = {
+  headquarters: "지사",
+  branch: "대리점",
+  public: "일반",
+}
+
+const BRANCH_TYPE_BADGE: Record<string, string> = {
+  headquarters: "bg-sky-500/20 text-sky-300",
+  branch: "bg-teal-500/20 text-teal-300",
+  public: "bg-purple-500/20 text-purple-300",
+}
+
+export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete, onChangeBranch }: ApprovedUserRowProps) {
   const badgeCls = ROLE_BADGE[u.role] ?? ROLE_BADGE.driver
   const label = ROLE_LABEL[u.role] ?? "일반"
+  const branchType = u.branches?.type ?? null
+  const branchLabel = branchType ? BRANCH_TYPE_LABEL[branchType] : null
+  const branchBadge = branchType ? (BRANCH_TYPE_BADGE[branchType] ?? BRANCH_TYPE_BADGE.branch) : ""
+
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all ${
@@ -65,9 +82,20 @@ export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/30">미연결</span>
           )}
         </div>
-        <div className="flex gap-3 mt-0.5 flex-wrap">
+        <div className="flex gap-3 mt-0.5 flex-wrap items-center">
           {u.phone && <span className="text-xs text-white/40">{u.phone}</span>}
           {u.email && <span className="text-xs text-white/30 truncate max-w-[200px]">{u.email}</span>}
+          {u.branches && (
+            <span className="flex items-center gap-1 text-xs text-white/40">
+              <Building2 className="h-3 w-3" />
+              {u.branches.name}
+              {branchLabel && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ml-0.5 ${branchBadge}`}>
+                  {branchLabel}
+                </span>
+              )}
+            </span>
+          )}
         </div>
       </div>
 
@@ -99,12 +127,22 @@ export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete
             <ShieldOff className="h-3 w-3" /> 차단
           </button>
         )}
+        {onChangeBranch && u.role !== "admin" && (
+          <button
+            type="button"
+            onClick={onChangeBranch}
+            className="p-1.5 rounded-lg text-white/30 hover:text-blue-400 hover:bg-blue-500/10 border border-white/10"
+            title="소속 변경"
+          >
+            <Building2 className="h-3.5 w-3.5" />
+          </button>
+        )}
         {u.role !== "admin" && (
           <button
             type="button"
             onClick={onRole}
             className="p-1.5 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 border border-white/10"
-            title="관리자 ↔ 일반"
+            title="역할 변경"
           >
             <Crown className="h-3.5 w-3.5" />
           </button>
