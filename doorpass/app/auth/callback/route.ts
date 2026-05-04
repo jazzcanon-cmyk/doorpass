@@ -88,15 +88,18 @@ export async function GET(request: Request) {
         .eq("id", approved.id)
         .then(({ error }) => {
           if (error) console.error("[auth/callback] 이름 동기화 실패:", error.message)
-        })
-        .catch((err) => console.error("[auth/callback] 이름 동기화 오류:", err))
+        }, (err) => console.error("[auth/callback] 이름 동기화 오류:", err))
     }
   }
 
-  sendTelegramMessage(
-    `👤 사용자 로그인\n이메일: ${data.user.email || "알 수 없음"}\n방식: ${String(data.user.app_metadata?.provider || "unknown")}`,
-    "new_signup_notification"
-  ).catch(console.error)
+  try {
+    await sendTelegramMessage(
+      `👤 사용자 로그인\n이메일: ${data.user.email || "알 수 없음"}\n방식: ${String(data.user.app_metadata?.provider || "unknown")}`,
+      "new_signup_notification"
+    )
+  } catch (err) {
+    console.error("[auth/callback] 텔레그램 알림 오류:", err)
+  }
   if (data.user.email) {
     try {
       await supabaseAdmin.from("login_history").insert({ user_email: data.user.email })
