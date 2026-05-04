@@ -14,6 +14,18 @@ function safeNextPath(next: string | null): string {
   return next
 }
 
+/** 카카오/구글 user_metadata에서 실제 이름 추출. fallback: 이메일 @ 앞부분 */
+function extractDisplayName(user: User): string {
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+  const name =
+    (meta?.full_name as string | undefined)?.trim() ||
+    (meta?.name as string | undefined)?.trim() ||
+    (meta?.user_name as string | undefined)?.trim() ||
+    (meta?.preferred_username as string | undefined)?.trim()
+  if (name) return name
+  return user.email ? user.email.split("@")[0] : ""
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
@@ -64,6 +76,21 @@ export async function GET(request: Request) {
   if (approved && approved.is_active === false) {
     await supabase.auth.signOut()
     return NextResponse.redirect(new URL("/login?error=blocked", origin))
+  }
+
+  // 승인된 사용자의 이름을 카카오/구글 프로필로 동기화 (fire-and-forget)
+  if (approved?.id) {
+    const displayName = extractDisplayName(data.user as User)
+    if (displayName) {
+      supabaseAdmin
+        .from("approved_users")
+        .update({ name: displayName })
+        .eq("id", approved.id)
+        .then(({ error }) => {
+          if (error) console.error("[auth/callback] 이름 동기화 실패:", error.message)
+        })
+        .catch((err) => console.error("[auth/callback] 이름 동기화 오류:", err))
+    }
   }
 
   sendTelegramMessage(

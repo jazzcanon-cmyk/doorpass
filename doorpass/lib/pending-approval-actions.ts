@@ -57,6 +57,7 @@ export async function executePendingApprovalById(
           branch_id: assignedBranchId,
           first_login_at: new Date().toISOString(),
           role: assignedRole,
+          ...(row.user_name ? { name: row.user_name } : {}),
         })
         .eq("id", existing.id)
       if (updateError) throw updateError
