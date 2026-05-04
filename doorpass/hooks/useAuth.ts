@@ -31,6 +31,36 @@ export function useAuth() {
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
 
+      // 추천인 링크 토큰 처리: autoApproved 시 즉시 권한 갱신
+      const referralToken = sessionStorage.getItem("referral_token")
+      if (referralToken) {
+        void fetch("/api/users/referral/use", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: referralToken }),
+        })
+          .then((r) => r.json())
+          .then((data: { autoApproved?: boolean }) => {
+            sessionStorage.removeItem("referral_token")
+            if (cancelled || !data.autoApproved) return
+            void fetch("/api/users/me", { cache: "no-store" })
+              .then((r) => r.json())
+              .then((meData: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
+                if (cancelled) return
+                setCurrentUser((prev) =>
+                  prev ? {
+                    ...prev,
+                    canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
+                    branchId: meData?.branchId ?? null,
+                    total_points: meData?.total_points ?? 0,
+                  } : null
+                )
+              })
+              .catch(() => {})
+          })
+          .catch(() => sessionStorage.removeItem("referral_token"))
+      }
+
       void fetch("/api/users/me", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
         .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
