@@ -15,6 +15,56 @@ const PHOTO_TYPES = [
 
 type PhotoType = (typeof PHOTO_TYPES)[number]["value"]
 
+const TARGET_MAX_BYTES = 5 * 1024 * 1024
+const MAX_DIM = 1920
+const QUALITY_STEPS = [0.85, 0.7, 0.5] as const
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error("이미지를 읽을 수 없습니다."))
+    img.src = src
+  })
+}
+
+async function compressToJpeg(input: File): Promise<File> {
+  const objectUrl = URL.createObjectURL(input)
+  try {
+    const img = await loadImage(objectUrl)
+    let { width, height } = img
+    if (width > MAX_DIM || height > MAX_DIM) {
+      const ratio = Math.min(MAX_DIM / width, MAX_DIM / height)
+      width = Math.round(width * ratio)
+      height = Math.round(height * ratio)
+    }
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Canvas 2D 컨텍스트를 만들 수 없습니다.")
+    ctx.drawImage(img, 0, 0, width, height)
+
+    let lastBlob: Blob | null = null
+    for (const q of QUALITY_STEPS) {
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), "image/jpeg", q)
+      })
+      if (!blob) throw new Error("이미지 인코딩에 실패했습니다.")
+      lastBlob = blob
+      if (blob.size <= TARGET_MAX_BYTES) break
+    }
+    if (!lastBlob) throw new Error("압축 결과가 비어 있습니다.")
+    if (lastBlob.size > TARGET_MAX_BYTES) {
+      throw new Error("압축 후에도 5MB를 초과합니다. 더 작은 사진을 사용해주세요.")
+    }
+    const baseName = input.name.replace(/\.[^.]+$/, "") || "photo"
+    return new File([lastBlob], `${baseName}.jpg`, { type: "image/jpeg" })
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
 interface UploadResult {
   photo: { id: number; photo_url: string }
   point: { success: boolean; points?: number; newTotal?: number; reason?: string }
@@ -33,6 +83,7 @@ export function BuildingPhotoModal({ buildingId, open, onOpenChange, onUploaded 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
@@ -45,24 +96,35 @@ export function BuildingPhotoModal({ buildingId, open, onOpenChange, onUploaded 
     setPreviewUrl(null)
     setProgress(0)
     setUploading(false)
+    setCompressing(false)
   }
 
   const handleClose = () => {
-    if (uploading) return
+    if (uploading || compressing) return
     reset()
     onOpenChange(false)
   }
 
-  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
+    // 동일 파일 재선택을 허용하도록 input 값을 비운다
+    e.target.value = ""
     if (!f) return
-    if (f.size > 5 * 1024 * 1024) {
-      toast.error("파일 크기는 5MB 이하여야 합니다.")
-      return
-    }
+
     if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setFile(f)
-    setPreviewUrl(URL.createObjectURL(f))
+    setFile(null)
+    setPreviewUrl(null)
+    setCompressing(true)
+
+    try {
+      const compressed = await compressToJpeg(f)
+      setFile(compressed)
+      setPreviewUrl(URL.createObjectURL(compressed))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "이미지 처리에 실패했습니다.")
+    } finally {
+      setCompressing(false)
+    }
   }
 
   const upload = async () => {
@@ -160,7 +222,12 @@ export function BuildingPhotoModal({ buildingId, open, onOpenChange, onUploaded 
 
           <div>
             <label className="text-xs text-muted-foreground block mb-2">사진</label>
-            {previewUrl ? (
+            {compressing ? (
+              <div className="h-40 rounded-lg border border-border bg-secondary flex flex-col items-center justify-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">이미지 처리 중...</span>
+              </div>
+            ) : previewUrl ? (
               <div className="relative">
                 <img
                   src={previewUrl}
@@ -236,7 +303,7 @@ export function BuildingPhotoModal({ buildingId, open, onOpenChange, onUploaded 
 
           <Button
             onClick={() => void upload()}
-            disabled={!file || uploading}
+            disabled={!file || uploading || compressing}
             className="w-full gap-2 bg-primary text-primary-foreground"
           >
             {uploading ? (
