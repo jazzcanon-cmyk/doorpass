@@ -19,7 +19,8 @@ export type ExecuteApprovalResult =
 export async function executePendingApprovalById(
   approvalId: number,
   action: "approve" | "reject",
-  reviewedBy: string
+  reviewedBy: string,
+  role?: "driver" | "editor"
 ): Promise<ExecuteApprovalResult> {
   const { data: approval, error: fetchErr } = await supabaseAdmin
     .from("pending_approvals")
@@ -37,6 +38,8 @@ export async function executePendingApprovalById(
   }
 
   if (action === "approve") {
+    const assignedRole = role ?? "driver"
+
     const { data: existing } = await supabaseAdmin
       .from("approved_users")
       .select("id, role")
@@ -49,8 +52,7 @@ export async function executePendingApprovalById(
         .update({
           branch_id: row.selected_branch_id,
           first_login_at: new Date().toISOString(),
-          // role이 null/빈값인 경우 driver로 설정 (재승인 시 비밀번호 안 보이는 문제 방지)
-          ...(!existing.role ? { role: "driver" } : {}),
+          role: assignedRole,
         })
         .eq("id", existing.id)
       if (updateError) throw updateError
@@ -58,7 +60,7 @@ export async function executePendingApprovalById(
       const { error: insertError } = await supabaseAdmin.from("approved_users").insert({
         email: row.user_email,
         name: row.user_name,
-        role: "driver",
+        role: assignedRole,
         branch_id: row.selected_branch_id,
         first_login_at: new Date().toISOString(),
       })

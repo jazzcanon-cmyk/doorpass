@@ -59,36 +59,24 @@ export function useAuth() {
           fetch("/api/users/login-count", { method: "POST" }).catch(() => {})
         }
 
-        // 첫 로그인부터 승인 프로세스 적용 (count >= 1)
-        if (count >= 1) {
-          if (status === "none") {
-            router.replace("/select-branch")
-            return
-          }
-          // approved_users에 있는 사용자는 pending_approvals 상태와 무관하게 통과
-          if (status === "pending" || status === "rejected") {
-            router.replace("/pending-approval")
-            return
-          }
-          // 승인 완료 → me API 재호출로 canRevealBuildingPassword 즉시 갱신
-          if (status === "approved") {
-            void fetch("/api/users/me", { cache: "no-store" })
-              .then((r) => r.json())
-              .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
-                if (cancelled) return
-                setCurrentUser((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
-                        branchId: data?.branchId ?? prev.branchId ?? null,
-                        total_points: data?.total_points ?? prev.total_points ?? 0,
-                      }
-                    : null
-                )
-              })
-              .catch(() => {})
-          }
+        // 승인 완료 → me API 재호출로 canRevealBuildingPassword 즉시 갱신
+        if (status === "approved") {
+          void fetch("/api/users/me", { cache: "no-store" })
+            .then((r) => r.json())
+            .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
+              if (cancelled) return
+              setCurrentUser((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
+                      branchId: data?.branchId ?? prev.branchId ?? null,
+                      total_points: data?.total_points ?? prev.total_points ?? 0,
+                    }
+                  : null
+              )
+            })
+            .catch(() => {})
         }
       }).catch(() => {})
 

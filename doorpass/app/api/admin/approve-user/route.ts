@@ -12,9 +12,11 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as {
       approvalId?: number
       action?: "approve" | "reject"
+      role?: "driver" | "editor"
     }
     const approvalId = Number(body.approvalId)
     const action = body.action
+    const role = body.role === "editor" ? "editor" : "driver"
 
     if (!Number.isFinite(approvalId) || (action !== "approve" && action !== "reject")) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
     }
 
-    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown")
+    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown", role)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.httpStatus })
     }
