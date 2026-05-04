@@ -23,11 +23,9 @@ export async function POST(
     const { id: buildingId } = await params;
     const { password } = await request.json();
 
-    if (!password || password.trim() === '') {
-      return NextResponse.json({ error: '비밀번호를 입력해주세요.' }, { status: 400 });
-    }
-
-    const encrypted_password = encryptPassword(password);
+    const encrypted_password = (!password || password.trim() === '')
+      ? null
+      : encryptPassword(password);
     const supabase = await createSupabaseRouteHandlerClient();
 
     const { data: updatedBuilding, error: updateError } = await supabase

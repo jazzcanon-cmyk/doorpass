@@ -24,9 +24,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "buildingId는 필수입니다." }, { status: 400 })
     }
 
-    const updateData: Record<string, string> = {}
+    const updateData: Record<string, string | null> = {}
     if (name !== undefined) updateData.name = name
-    if (password !== undefined) updateData.password = encryptPassword(password)
+    if (password !== undefined) {
+      updateData.password = (!password || password.trim() === '') ? null : encryptPassword(password)
+    }
     if (memo !== undefined) updateData.memo = memo
 
     if (Object.keys(updateData).length === 0) {
