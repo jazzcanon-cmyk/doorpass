@@ -36,7 +36,7 @@ export default function AdminRoleRequestsPage() {
       const res = await fetch(`/api/admin/role-requests?status=${status}`)
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? "목록을 불러오지 못했습니다.")
+        toast.error("목록을 불러오지 못했습니다.")
         setRequests([])
         return
       }
@@ -59,7 +59,7 @@ export default function AdminRoleRequestsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? "처리 실패")
+        toast.error("처리 실패")
         return
       }
       toast.success(action === "approve" ? "승인되었습니다." : "거부되었습니다.")

@@ -122,7 +122,7 @@ export default function BranchDetailPage() {
       })
     } catch (error) {
       console.error("조회 실패:", error)
-      alert(error instanceof Error ? error.message : "조회 실패")
+      alert("조회 실패")
       router.push("/admin/branches")
     } finally {
       setIsLoading(false)
@@ -177,7 +177,7 @@ export default function BranchDetailPage() {
       setIsAssignModalOpen(false)
       await fetchBranchDetail()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "부관리자 지정에 실패했습니다.")
+      toast.error("부관리자 지정에 실패했습니다.")
     } finally {
       setIsAssigning(null)
     }
@@ -199,7 +199,7 @@ export default function BranchDetailPage() {
       await fetchBranchDetail()
     } catch (error) {
       console.error("수정 오류:", error)
-      alert(error instanceof Error ? error.message : "수정 중 오류가 발생했습니다.")
+      alert("수정 중 오류가 발생했습니다.")
     }
   }
 

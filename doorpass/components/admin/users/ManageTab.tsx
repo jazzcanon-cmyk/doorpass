@@ -35,7 +35,7 @@ export function ManageTab() {
       const { users: list } = await adminApi<{ users: ApprovedUser[] }>("/api/admin/users")
       setUsers(list ?? [])
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.")
+      toast.error("목록을 불러오지 못했습니다.")
     } finally {
       setLoading(false)
     }
@@ -66,7 +66,7 @@ export function ManageTab() {
       setEmail("")
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "추가 실패")
+      toast.error("추가 실패")
     } finally {
       setAdding(false)
     }
@@ -78,7 +78,7 @@ export function ManageTab() {
       toast.success(`${n}님을 승인했습니다.`)
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "오류")
+      toast.error("오류")
     }
   }
 
@@ -88,7 +88,7 @@ export function ManageTab() {
       toast.success(`${n}님을 거부(비활성)했습니다.`)
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "오류")
+      toast.error("오류")
     }
   }
 
@@ -113,7 +113,7 @@ export function ManageTab() {
       closeAssign()
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "권한 변경 실패")
+      toast.error("권한 변경 실패")
       setSavingRole(false)
     }
   }
@@ -125,7 +125,7 @@ export function ManageTab() {
       toast.success(`${n}님이 삭제되었습니다.`)
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "삭제 실패")
+      toast.error("삭제 실패")
     }
   }
 

@@ -86,7 +86,7 @@ export function BuildingEditDialog({
       setElevatorStatus(elev)
       setMemoText(remaining.trim())
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "건물 정보를 불러오지 못했습니다")
+      toast.error("건물 정보를 불러오지 못했습니다")
       onOpenChange(false)
     } finally {
       setLoadingDetail(false)
@@ -128,7 +128,7 @@ export function BuildingEditDialog({
       onSaved({ id: buildingId, name })
       onOpenChange(false)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "저장에 실패했습니다")
+      toast.error("저장에 실패했습니다")
     } finally {
       setSaving(false)
     }
@@ -146,7 +146,7 @@ export function BuildingEditDialog({
       onDeleted(buildingId)
       onOpenChange(false)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "삭제에 실패했습니다")
+      toast.error("삭제에 실패했습니다")
     } finally {
       setDeleting(false)
     }

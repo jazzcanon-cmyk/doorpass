@@ -64,7 +64,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
       onCreated()
       onClose()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "등록 실패")
+      toast.error("등록 실패")
     } finally {
       setSubmitting(false)
     }

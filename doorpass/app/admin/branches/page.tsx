@@ -71,7 +71,7 @@ export default function BranchesPage() {
       await fetchBranches()
     } catch (error) {
       console.error("삭제 오류:", error)
-      alert(error instanceof Error ? error.message : "삭제 중 오류가 발생했습니다.")
+      alert("삭제 중 오류가 발생했습니다.")
     }
   }
 

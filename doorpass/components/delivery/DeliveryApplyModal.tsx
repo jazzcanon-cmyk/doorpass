@@ -64,7 +64,7 @@ export function DeliveryApplyModal({ open, requestId, onClose, onApplied }: Prop
       onApplied()
       onClose()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "신청 실패")
+      toast.error("신청 실패")
     } finally {
       setSubmitting(false)
     }

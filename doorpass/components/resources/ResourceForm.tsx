@@ -92,7 +92,7 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
         }),
       })
       const d = await r.json()
-      if (!r.ok) { toast.error(d.error || "등록 실패"); return }
+      if (!r.ok) { toast.error("등록 실패"); return }
       toast.success("자료가 등록됐습니다.")
       await onSubmitted()
       onCancel()

@@ -25,7 +25,7 @@ export function PostList({ listKey, debouncedQuery, clearSearch }: PostListProps
     setLoading(true)
     fetch("/api/posts")
       .then((r) => r.json())
-      .then((d) => { if (d.error) setError(d.error); else setPosts(d.posts || []); setLoading(false) })
+      .then((d) => { if (d.error) setError("게시글을 불러오지 못했습니다."); else setPosts(d.posts || []); setLoading(false) })
       .catch(() => { setError("게시글 불러오기 실패"); setLoading(false) })
   }, [listKey])
 

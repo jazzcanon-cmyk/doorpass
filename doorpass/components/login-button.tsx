@@ -23,7 +23,7 @@ export function LoginButton({ provider, redirectTo }: LoginButtonProps) {
       },
     })
     if (error) {
-      toast.error("로그인 중 오류가 발생했습니다: " + error.message)
+      toast.error("로그인 중 오류가 발생했습니다. 다시 시도해주세요.")
       setLoading(false)
     }
   }

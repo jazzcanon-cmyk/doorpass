@@ -34,7 +34,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       .then((r) => r.json())
       .then((d) => {
         if (d.error) {
-          toast.error(d.error)
+          toast.error("정보를 불러오지 못했습니다.")
           onClose()
           return
         }
@@ -64,7 +64,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       setRequest(r2.request)
       setApplications(r2.applications ?? [])
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "처리 실패")
+      toast.error("처리 실패")
     } finally {
       setActingId(null)
     }
@@ -75,7 +75,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
     const res = await fetch(`/api/delivery/${requestId}`, { method: "DELETE" })
     const data = await res.json()
     if (!res.ok) {
-      toast.error(data?.error || "삭제 실패")
+      toast.error("삭제 실패")
       return
     }
     toast.success("삭제됨")

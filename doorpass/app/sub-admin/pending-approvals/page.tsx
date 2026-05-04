@@ -66,7 +66,7 @@ export default function SubAdminPendingApprovalsPage() {
       setRoleModal(null)
       await fetchApprovals()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "처리 중 오류가 발생했습니다")
+      alert("처리 중 오류가 발생했습니다")
     } finally {
       setProcessing(false)
     }
@@ -84,7 +84,7 @@ export default function SubAdminPendingApprovalsPage() {
       if (!res.ok) throw new Error(data.error || "처리 실패")
       await fetchApprovals()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "처리 중 오류가 발생했습니다")
+      alert("처리 중 오류가 발생했습니다")
     }
   }
 

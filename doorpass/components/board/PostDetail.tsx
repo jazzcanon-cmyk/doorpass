@@ -31,7 +31,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
     if (!postId || isNaN(postId)) { setError("잘못된 ID"); setLoading(false); return }
     fetch("/api/posts/" + postId)
       .then((r) => r.json())
-      .then((d) => { if (d.error) setError(d.error); else { setPost(d.post); if (d.post) trackPostView(postId, d.post.title) } setLoading(false) })
+      .then((d) => { if (d.error) setError("게시글을 불러오지 못했습니다."); else { setPost(d.post); if (d.post) trackPostView(postId, d.post.title) } setLoading(false) })
       .catch(() => { setError("불러오기 실패"); setLoading(false) })
   }, [postId])
 
@@ -81,7 +81,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
         setPost((prev) => prev ? { ...prev, comments: [...prev.comments, data.comment] } : prev)
         setComment("")
       } else {
-        toast.error(data.error || "댓글 작성에 실패했습니다.")
+        toast.error("댓글 작성에 실패했습니다.")
       }
     } catch { toast.error("댓글 작성에 실패했습니다.") }
     setSubmitting(false)
@@ -93,7 +93,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
     try {
       const res = await fetch("/api/posts/" + postId, { method: "DELETE" })
       if (res.ok) { afterDelete() }
-      else { const d = await res.json(); toast.error(d.error || "삭제 실패"); setDeleting(false); setConfirmDelete(false) }
+      else { toast.error("삭제 실패"); setDeleting(false); setConfirmDelete(false) }
     } catch { toast.error("삭제 실패"); setDeleting(false); setConfirmDelete(false) }
   }
 

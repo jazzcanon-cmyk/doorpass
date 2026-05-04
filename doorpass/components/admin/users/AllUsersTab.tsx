@@ -45,7 +45,7 @@ export function AllUsersTab() {
       const { users: list } = await adminApi<{ users: AuthUser[] }>("/api/admin/auth-users")
       setUsers(list ?? [])
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.")
+      toast.error("목록을 불러오지 못했습니다.")
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,7 @@ export function AllUsersTab() {
       closeBlock()
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "차단 실패")
+      toast.error("차단 실패")
     } finally {
       setBlocking(false)
     }
@@ -125,7 +125,7 @@ export function AllUsersTab() {
       closeAssign()
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "역할 변경 실패")
+      toast.error("역할 변경 실패")
       setSavingRole(false)
     }
   }
@@ -140,7 +140,7 @@ export function AllUsersTab() {
       toast.success(`${u.name ?? u.email ?? "사용자"}님 차단이 해제되었습니다.`)
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "차단 해제 실패")
+      toast.error("차단 해제 실패")
     }
   }
 
@@ -168,7 +168,7 @@ export function AllUsersTab() {
       toast.success((u.name ?? u.email ?? '회원') + '이 초기화되었습니다.')
       void load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '초기화 실패')
+      toast.error('초기화 실패')
     }
   }
 

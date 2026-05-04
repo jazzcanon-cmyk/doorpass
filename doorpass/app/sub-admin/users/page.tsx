@@ -60,7 +60,7 @@ export default function SubAdminUsersPage() {
       await fetchUsers()
     } catch (error) {
       console.error("역할 변경 오류:", error)
-      alert(`❌ 역할 변경 실패\n\n${error instanceof Error ? error.message : "오류가 발생했습니다."}`)
+      alert("❌ 역할 변경 실패\n\n오류가 발생했습니다.")
     }
   }
 
@@ -81,7 +81,7 @@ export default function SubAdminUsersPage() {
       await fetchUsers()
     } catch (error) {
       console.error("차단 오류:", error)
-      alert(`❌ 차단 실패\n\n${error instanceof Error ? error.message : "오류가 발생했습니다."}`)
+      alert("❌ 차단 실패\n\n오류가 발생했습니다.")
     }
   }
 

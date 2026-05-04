@@ -53,7 +53,7 @@ export function PostWrite({ defaultAuthor }: { defaultAuthor?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, author: author || "익명", image_url }),
       })
-      if (r.ok) { afterWrite() } else { const d = await r.json(); toast.error(d.error || "게시글 등록에 실패했습니다."); setSubmitting(false) }
+      if (r.ok) { afterWrite() } else { toast.error("게시글 등록에 실패했습니다."); setSubmitting(false) }
     } catch { toast.error("게시글 등록에 실패했습니다."); setSubmitting(false) }
   }
 

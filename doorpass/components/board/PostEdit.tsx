@@ -21,7 +21,7 @@ export function PostEdit({ post }: { post: PostDetail }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       })
-      if (r.ok) { afterEdit() } else { const d = await r.json(); toast.error(d.error || "수정 실패"); setSubmitting(false) }
+      if (r.ok) { afterEdit() } else { toast.error("수정 실패"); setSubmitting(false) }
     } catch { toast.error("수정 실패"); setSubmitting(false) }
   }
 

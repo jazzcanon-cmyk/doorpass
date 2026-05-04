@@ -11,7 +11,7 @@ export function useAnalyticsStats() {
     fetch("/api/analytics/stats")
       .then(r => r.json())
       .then(d => {
-        if (d.error) { setError(d.error); return }
+        if (d.error) { setError("데이터를 불러오지 못했습니다."); return }
         setStats(d)
       })
       .catch(() => setError("데이터를 불러오지 못했습니다."))

@@ -234,7 +234,7 @@ export function BuildingCard({
         })
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "저장 실패")
+      toast.error("저장 실패")
     } finally {
       setSaving(false)
     }
@@ -251,7 +251,7 @@ export function BuildingCard({
       setShowPopup(false)
       onUpdate?.(currentBuilding.id, { _deleted: true } as Partial<Building>)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "삭제에 실패했습니다.")
+      toast.error("삭제에 실패했습니다.")
     } finally {
       setIsDeleting(false)
     }
@@ -842,7 +842,7 @@ export function BuildingCard({
                   setLightboxPhotoId(null)
                   void fetchPhotos()
                 } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "신고 실패")
+                  toast.error("신고 실패")
                 }
               }}
               className="absolute bottom-4 right-4 bg-red-500/20 border border-red-500/40 text-red-300 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 hover:bg-red-500/30"

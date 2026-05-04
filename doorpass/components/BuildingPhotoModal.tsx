@@ -170,7 +170,7 @@ export function BuildingPhotoModal({ buildingId, open, onOpenChange, onUploaded 
       reset()
       onOpenChange(false)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "업로드 실패")
+      toast.error("업로드 실패")
     } finally {
       setUploading(false)
     }

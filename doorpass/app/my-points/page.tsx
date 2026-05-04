@@ -88,7 +88,7 @@ export default function MyPointsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error((data as { error?: string }).error ?? '링크 생성 실패')
+        toast.error('링크 생성 실패')
         return
       }
       url = data.url as string
@@ -132,7 +132,7 @@ export default function MyPointsPage() {
       const res2 = await fetch('/api/users/points')
       setData(await res2.json() as PointData)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '교환 실패')
+      toast.error('교환 실패')
     } finally {
       setExchanging(false)
     }

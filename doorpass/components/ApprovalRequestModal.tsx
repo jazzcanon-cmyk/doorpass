@@ -111,7 +111,7 @@ export function ApprovalRequestModal({
       toast.success("승인 요청이 접수됐습니다. 승인 후 비밀번호를 볼 수 있어요.")
       setApprovalStatus("pending")
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "요청에 실패했습니다.")
+      toast.error("요청에 실패했습니다.")
     } finally {
       setSubmitting(false)
     }

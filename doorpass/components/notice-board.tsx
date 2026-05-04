@@ -43,7 +43,7 @@ export function NoticeBoard() {
     try {
       const r = await fetch("/api/notices")
       const d = await r.json()
-      if (d.error) { setError(d.error); return }
+      if (d.error) { setError("공지사항을 불러오지 못했습니다."); return }
       setNotices(d.notices ?? [])
     } catch {
       setError("공지사항을 불러오지 못했습니다.")
@@ -68,7 +68,7 @@ export function NoticeBoard() {
         body: JSON.stringify({ title, content, author: author || "관리자", is_important: isImportant }),
       })
       const d = await r.json()
-      if (!r.ok) { toast.error(d.error || "등록 실패"); return }
+      if (!r.ok) { toast.error("등록 실패"); return }
       toast.success("공지사항이 등록됐습니다.")
       resetForm()
       await fetchNotices()

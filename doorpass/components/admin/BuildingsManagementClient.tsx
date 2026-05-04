@@ -50,7 +50,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
       setBuildings(Array.isArray(data.buildings) ? data.buildings : [])
       setTotal(typeof data.total === "number" ? data.total : 0)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다")
+      setError("오류가 발생했습니다")
       setBuildings([])
       setTotal(0)
     } finally {

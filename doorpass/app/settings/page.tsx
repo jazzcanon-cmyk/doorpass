@@ -58,7 +58,7 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? "요청 실패")
+        toast.error("요청 실패")
         return
       }
       toast.success("권한 요청이 전송되었습니다. 관리자 승인 후 알려드립니다.")

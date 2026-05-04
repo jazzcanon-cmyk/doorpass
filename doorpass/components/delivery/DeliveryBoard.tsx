@@ -56,7 +56,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
       const res = await fetch(`/api/delivery?${params.toString()}`)
       const data = await res.json()
       if (data.error) {
-        toast.error(data.error)
+        toast.error("목록을 불러오지 못했습니다.")
         return
       }
       const list: DeliveryRequest[] = data.requests ?? []

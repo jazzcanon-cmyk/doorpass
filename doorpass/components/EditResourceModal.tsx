@@ -131,7 +131,7 @@ export function EditResourceModal({ isOpen, onClose, resource, onSuccess }: Edit
 
       const d = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(d.error || "수정 실패")
+        toast.error("수정 실패")
         return
       }
 
@@ -139,7 +139,7 @@ export function EditResourceModal({ isOpen, onClose, resource, onSuccess }: Edit
       await onSuccess()
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "수정 중 오류")
+      toast.error("수정 중 오류")
     } finally {
       setSaving(false)
     }

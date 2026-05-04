@@ -12,7 +12,7 @@ export function useCalendarMemos() {
     try {
       const res = await fetch("/api/calendar")
       const data = await res.json()
-      if (!res.ok) { setFetchError(data.error ?? "메모를 불러오지 못했습니다."); return }
+      if (!res.ok) { setFetchError("메모를 불러오지 못했습니다."); return }
       setMemos(data.memos ?? [])
     } catch {
       setFetchError("네트워크 오류로 메모를 불러오지 못했습니다.")

@@ -191,7 +191,7 @@ export function NewBuildingModal({
       resetAndClose()
       onSuccess()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "건물 등록에 실패했습니다.")
+      toast.error("건물 등록에 실패했습니다.")
     } finally {
       setIsSubmitting(false)
     }

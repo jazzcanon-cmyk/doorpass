@@ -40,7 +40,7 @@ export default function NewBranchPage() {
       router.push("/admin/branches")
     } catch (error) {
       console.error("추가 오류:", error)
-      alert(error instanceof Error ? error.message : "추가 중 오류가 발생했습니다.")
+      alert("추가 중 오류가 발생했습니다.")
     } finally {
       setIsLoading(false)
     }

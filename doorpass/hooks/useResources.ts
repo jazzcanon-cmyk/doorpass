@@ -13,7 +13,7 @@ export function useResources() {
     try {
       const r = await fetch("/api/resources")
       const d = await r.json()
-      if (d.error) { setError(d.error); return }
+      if (d.error) { setError("자료를 불러오지 못했습니다."); return }
       setResources(d.resources ?? [])
     } catch {
       setError("자료를 불러오지 못했습니다.")

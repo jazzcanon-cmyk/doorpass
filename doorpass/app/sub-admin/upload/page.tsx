@@ -158,7 +158,7 @@ export default function SubAdminUploadPage() {
 
       toast.success(`총 ${buildings.length}개 건물이 등록되었습니다.`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "업로드 실패")
+      toast.error("업로드 실패")
     } finally {
       setUploading(false)
       setProgress({ current: 0, total: 0 })
