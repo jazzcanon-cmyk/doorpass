@@ -5,6 +5,7 @@ export type ActivityType =
   | "search"
   | "page_view"
   | "password_decrypt"
+  | "password_update"
   | "login"
   | "logout"
 
