@@ -4,7 +4,7 @@ import { saveLocation, loadCachedLocation, getLocationAge } from "@/lib/app-stat
 
 export function useLocation() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [locationAge, setLocationAge] = useState<number | null>(null)
 
