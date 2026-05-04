@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Users, Building2, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
+import { Users, Building2, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw, Link2 } from 'lucide-react'
 
 interface DashboardStats {
   userCount: number
@@ -19,6 +19,16 @@ interface Approval {
   branches?: { name?: string; region?: string } | null
 }
 
+interface ReferralRecord {
+  id: number
+  memo: string | null
+  referrer_email: string
+  referred_email: string | null
+  status: string
+  expires_at: string
+  created_at: string
+}
+
 export default function SubAdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({ userCount: 0, buildingCount: 0, pendingApprovals: 0, recentUploads: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -27,6 +37,9 @@ export default function SubAdminDashboardPage() {
   const [approvalsLoading, setApprovalsLoading] = useState(false)
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [showReferralHistory, setShowReferralHistory] = useState(false)
+  const [referralHistory, setReferralHistory] = useState<ReferralRecord[]>([])
+  const [referralLoading, setReferralLoading] = useState(false)
 
   const fetchStats = useCallback(async () => {
     try {
@@ -62,12 +75,39 @@ export default function SubAdminDashboardPage() {
     return () => clearInterval(interval)
   }, [fetchStats])
 
+  const fetchReferralHistory = useCallback(async () => {
+    setReferralLoading(true)
+    try {
+      const res = await fetch('/api/users/referral/history')
+      const data = await res.json().catch(() => ({}))
+      setReferralHistory(data.history ?? [])
+    } catch (e) {
+      console.error('추천 기록 조회 실패:', e)
+    } finally {
+      setReferralLoading(false)
+    }
+  }, [])
+
   const handleApprovalToggle = async () => {
     const next = !showApprovals
     setShowApprovals(next)
     if (next && approvals.length === 0) {
       await fetchApprovals()
     }
+  }
+
+  const handleReferralToggle = async () => {
+    const next = !showReferralHistory
+    setShowReferralHistory(next)
+    if (next && referralHistory.length === 0) {
+      await fetchReferralHistory()
+    }
+  }
+
+  const getReferralStatusLabel = (record: ReferralRecord) => {
+    if (record.status === 'used') return { label: '✅ 사용됨', color: 'text-green-400' }
+    if (new Date(record.expires_at) < new Date()) return { label: '⏰ 만료됨', color: 'text-gray-400' }
+    return { label: '⏳ 대기중', color: 'text-yellow-400' }
   }
 
   const handleApprove = async (approvalId: number, action: 'approve' | 'reject') => {
@@ -241,6 +281,78 @@ export default function SubAdminDashboardPage() {
           )}
         </div>
       )}
+
+      {/* 추천 링크 기록 */}
+      <div className='mb-6 border rounded-xl overflow-hidden'>
+        <button
+          onClick={() => void handleReferralToggle()}
+          className='w-full bg-card px-4 py-3 flex items-center justify-between hover:bg-muted/30 transition-colors'
+        >
+          <div className='flex items-center gap-2'>
+            <Link2 className='h-4 w-4 text-blue-400' />
+            <span className='font-semibold text-sm'>추천 링크 발송 기록</span>
+            {referralHistory.length > 0 && (
+              <span className='text-xs bg-blue-500/20 text-blue-400 rounded-full px-2 py-0.5'>{referralHistory.length}</span>
+            )}
+          </div>
+          {showReferralHistory ? <ChevronUp className='h-3 w-3 text-muted-foreground' /> : <ChevronDown className='h-3 w-3 text-muted-foreground' />}
+        </button>
+
+        {showReferralHistory && (
+          <>
+            <div className='flex justify-end px-4 py-2 border-t bg-muted/10'>
+              <button
+                onClick={() => void fetchReferralHistory()}
+                className='text-xs text-muted-foreground hover:text-foreground flex items-center gap-1'
+              >
+                <RefreshCw className='h-3 w-3' /> 새로고침
+              </button>
+            </div>
+            {referralLoading ? (
+              <div className='p-8 text-center text-muted-foreground text-sm'>
+                <RefreshCw className='h-5 w-5 animate-spin mx-auto mb-2' />
+                로딩 중...
+              </div>
+            ) : referralHistory.length === 0 ? (
+              <div className='p-8 text-center text-muted-foreground text-sm'>발송 기록이 없습니다</div>
+            ) : (
+              <div className='divide-y'>
+                {referralHistory.map((record) => {
+                  const { label, color } = getReferralStatusLabel(record)
+                  return (
+                    <div key={record.id} className='px-4 py-3 hover:bg-muted/20 text-sm'>
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center gap-2 mb-1'>
+                            <span className={`text-xs font-bold shrink-0 ${color}`}>{label}</span>
+                            {record.memo && (
+                              <span className='text-xs bg-muted rounded px-1.5 py-0.5 truncate max-w-[160px]'>{record.memo}</span>
+                            )}
+                          </div>
+                          <p className='text-xs text-muted-foreground truncate'>
+                            발신: {record.referrer_email}
+                          </p>
+                          <p className='text-xs text-muted-foreground truncate'>
+                            수신: {record.referred_email ?? '미사용'}
+                          </p>
+                        </div>
+                        <div className='text-right shrink-0'>
+                          <p className='text-xs text-muted-foreground'>
+                            {new Date(record.created_at).toLocaleDateString('ko-KR')}
+                          </p>
+                          <p className='text-xs text-muted-foreground/60'>
+                            만료 {new Date(record.expires_at).toLocaleDateString('ko-KR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* 빠른 실행 */}
       <div className='bg-card border rounded-xl p-4'>

@@ -45,8 +45,7 @@ export default function MyPointsPage() {
   const [inviting, setInviting] = useState(false)
   const [remainingInvites, setRemainingInvites] = useState(3)
   const [rank, setRank] = useState<RankData | null>(null)
-  const [cachedInviteUrl, setCachedInviteUrl] = useState<string | null>(null)
-  const [isPreloading, setIsPreloading] = useState(false)
+  const [inviteMemo, setInviteMemo] = useState('')
 
   useEffect(() => {
     document.title = '🏆 내 포인트 | DoorPass'
@@ -74,59 +73,32 @@ export default function MyPointsPage() {
       .catch(() => {})
   }, [])
 
-  // 페이지 로드 시 초대 링크 미리 발급 (사용자 제스처 손실 방지)
-  useEffect(() => {
-    const preloadInviteUrl = async () => {
-      if (isPreloading || cachedInviteUrl) return
-      setIsPreloading(true)
-      try {
-        const res = await fetch('/api/users/referral/generate', { method: 'POST' })
-        const data = await res.json()
-        if (res.ok && data.url) setCachedInviteUrl(data.url as string)
-      } catch {}
-      finally {
-        setIsPreloading(false)
-      }
-    }
-    void preloadInviteUrl()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const handleInvite = async () => {
     if (remainingInvites === 0) {
       toast.error('오늘 초대 한도 완료 (3회)')
       return
     }
-    let url = cachedInviteUrl
-    if (!url) {
-      setInviting(true)
-      try {
-        const res = await fetch('/api/users/referral/generate', { method: 'POST' })
-        const data = await res.json()
-        if (!res.ok) {
-          toast.error((data as { error?: string }).error ?? '링크 생성 실패')
-          return
-        }
-        url = data.url as string
-      } catch {
-        toast.error('링크 생성 실패')
+    setInviting(true)
+    let url: string
+    try {
+      const res = await fetch('/api/users/referral/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memo: inviteMemo.trim() || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? '링크 생성 실패')
         return
-      } finally {
-        setInviting(false)
       }
+      url = data.url as string
+    } catch {
+      toast.error('링크 생성 실패')
+      return
+    } finally {
+      setInviting(false)
     }
-    setCachedInviteUrl(null)
     setRemainingInvites((prev) => Math.max(0, prev - 1))
-    if (remainingInvites > 1) {
-      setTimeout(() => {
-        fetch('/api/users/referral/generate', { method: 'POST' })
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.url) setCachedInviteUrl(d.url as string)
-          })
-          .catch(() => {})
-      }, 1000)
-    }
     try {
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({
@@ -338,6 +310,25 @@ export default function MyPointsPage() {
             오늘 {3 - remainingInvites}/3회
           </div>
         </div>
+        <input
+          type='text'
+          value={inviteMemo}
+          onChange={(e) => setInviteMemo(e.target.value.slice(0, 50))}
+          placeholder='예: 신정대리점 김기사 (선택사항)'
+          maxLength={50}
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'white',
+            fontSize: '13px',
+            marginBottom: '10px',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
         <button
           onClick={() => void handleInvite()}
           disabled={inviting || remainingInvites === 0}

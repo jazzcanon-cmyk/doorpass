@@ -1,0 +1,2 @@
+ALTER TABLE referral_tokens
+ADD COLUMN IF NOT EXISTS memo TEXT;

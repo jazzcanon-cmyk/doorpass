@@ -3,11 +3,13 @@ import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
 
-export async function POST() {
+export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
   const email = user!.email!
+  const body = await request.json().catch(() => ({})) as { memo?: string }
+  const memo = typeof body.memo === 'string' ? body.memo.slice(0, 50).trim() || null : null
 
   const { data: approved } = await supabaseAdmin
     .from('approved_users')
@@ -44,6 +46,7 @@ export async function POST() {
     referrer_email: email,
     status: 'pending',
     expires_at: expiresAt.toISOString(),
+    memo,
   })
 
   const referralUrl = 'https://doorpass.kr/join?ref=' + token
