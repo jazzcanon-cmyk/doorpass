@@ -246,13 +246,19 @@ export function BuildingEditDialog({
                     setElevatorStatus((prev) => (prev === "yes" ? "" : "yes"))
                   }
                   disabled={busy}
-                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                  className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border text-sm font-medium transition ${
                     elevatorStatus === "yes"
-                      ? "bg-green-500/20 border-green-400 text-green-700 dark:text-green-300"
-                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "border-blue-500/50 bg-blue-600/20 text-blue-300"
+                      : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
                   }`}
                 >
-                  엘리베이터 있음
+                  <span className="flex items-center justify-center w-[44px] h-[44px] rounded-xl bg-blue-600">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 9 L12 5 L16 9" />
+                      <path d="M8 15 L12 19 L16 15" />
+                    </svg>
+                  </span>
+                  엘리베이터
                 </button>
                 <button
                   type="button"
@@ -260,13 +266,18 @@ export function BuildingEditDialog({
                     setElevatorStatus((prev) => (prev === "no" ? "" : "no"))
                   }
                   disabled={busy}
-                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                  className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border text-sm font-medium transition ${
                     elevatorStatus === "no"
-                      ? "bg-green-500/20 border-green-400 text-green-700 dark:text-green-300"
-                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
+                      : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
                   }`}
                 >
-                  엘리베이터 없음
+                  <span className="flex items-center justify-center w-[44px] h-[44px] rounded-xl bg-amber-500">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 20 L4 16 L9 16 L9 12 L14 12 L14 8 L19 8 L19 4 L22 4" />
+                    </svg>
+                  </span>
+                  계단만
                 </button>
               </div>
               <Textarea
