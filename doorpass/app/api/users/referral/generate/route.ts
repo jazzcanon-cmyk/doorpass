@@ -19,17 +19,21 @@ export async function POST() {
     return NextResponse.json({ error: '승인된 회원만 추천 링크를 생성할 수 있습니다.' }, { status: 403 })
   }
 
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  const isManager = approved.role === 'admin' || approved.role === 'sub_admin'
 
-  const { count } = await supabaseAdmin
-    .from('referral_tokens')
-    .select('id', { count: 'exact' })
-    .eq('referrer_email', email)
-    .gte('created_at', todayStart.toISOString())
+  if (!isManager) {
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
 
-  if ((count ?? 0) >= 3) {
-    return NextResponse.json({ error: '오늘 발급 가능한 링크를 모두 사용했습니다. (하루 최대 3개)' }, { status: 429 })
+    const { count } = await supabaseAdmin
+      .from('referral_tokens')
+      .select('id', { count: 'exact' })
+      .eq('referrer_email', email)
+      .gte('created_at', todayStart.toISOString())
+
+    if ((count ?? 0) >= 3) {
+      return NextResponse.json({ error: '오늘 발급 가능한 링크를 모두 사용했습니다. (하루 최대 3개)' }, { status: 429 })
+    }
   }
 
   const token = crypto.randomBytes(16).toString('hex')
