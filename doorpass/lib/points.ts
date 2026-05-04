@@ -15,6 +15,14 @@ export type PointAction = keyof typeof POINT_RULES
 
 const DAILY_LIMIT = 5000
 
+type RpcResult = {
+  success: boolean
+  reason?: string
+  points?: number
+  newTotal?: number
+  prevTotal?: number
+}
+
 export async function addPoints({
   email,
   action,
@@ -29,40 +37,27 @@ export async function addPoints({
   try {
     const points = POINT_RULES[action]
 
-    const today = new Date().toISOString().slice(0, 10)
-    const { data: todayLogs } = await supabaseAdmin
-      .from('point_logs')
-      .select('points')
-      .eq('email', email)
-      .gte('created_at', today + 'T00:00:00Z')
-      .lte('created_at', today + 'T23:59:59Z')
-
-    const todayTotal = (todayLogs ?? []).reduce((sum, l) => sum + l.points, 0)
-    if (todayTotal >= DAILY_LIMIT) return { success: false, reason: 'daily_limit' }
-
-    await supabaseAdmin.from('point_logs').insert({
-      email,
-      action,
-      points,
-      building_id: buildingId ?? null,
-      building_name: buildingName ?? null,
+    const { data, error } = await supabaseAdmin.rpc('add_user_points', {
+      p_email: email,
+      p_action: action,
+      p_points: points,
+      p_building_id: buildingId ?? null,
+      p_building_name: buildingName ?? null,
+      p_daily_limit: DAILY_LIMIT,
     })
 
-    const { data: existing } = await supabaseAdmin
-      .from('user_points')
-      .select('total_points')
-      .eq('email', email)
-      .single()
+    if (error) {
+      console.error('[points] rpc error:', error)
+      return { success: false, reason: 'error' }
+    }
 
-    const newTotal = (existing?.total_points ?? 0) + points
+    const result = (data ?? {}) as RpcResult
+    if (!result.success) {
+      return { success: false, reason: result.reason ?? 'unknown' }
+    }
 
-    await supabaseAdmin.from('user_points').upsert({
-      email,
-      total_points: newTotal,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'email' })
-
-    const prevTotal = existing?.total_points ?? 0
+    const newTotal = result.newTotal ?? 0
+    const prevTotal = result.prevTotal ?? 0
     if (prevTotal < 10000 && newTotal >= 10000) {
       const { sendTelegramMessage } = await import('@/lib/telegram')
       sendTelegramMessage(
