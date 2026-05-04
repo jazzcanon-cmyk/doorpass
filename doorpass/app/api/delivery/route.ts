@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram"
 
 const VOLUMES = ["v50", "v100", "v200", "v300", "v400", "v500"] as const
 const PAY_TYPES = ["per_item", "per_day", "negotiable"] as const
+const PAGE_SIZE = 20
 
 export async function GET(request: Request) {
   const { user, unauthorized } = await requireAuth()
@@ -16,49 +17,69 @@ export async function GET(request: Request) {
   const date = searchParams.get("date")
   const mine = searchParams.get("mine") === "1"
   const applied = searchParams.get("applied") === "1"
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
 
   try {
-    let q = supabaseAdmin.from("delivery_requests").select("*")
+    // applied=1 이면 사용자가 신청한 request_id 집합으로 먼저 좁힌다
+    const { data: myApps } = await supabaseAdmin
+      .from("delivery_applications")
+      .select("request_id, status")
+      .eq("applicant_email", user!.email!)
+    const myAppMap = new Map<string | number, string>()
+    const appliedIds: (number | string)[] = []
+    ;(myApps ?? []).forEach((a) => {
+      const r = a as { request_id: number | string; status: string }
+      myAppMap.set(r.request_id, r.status)
+      appliedIds.push(r.request_id)
+    })
+
+    if (applied && appliedIds.length === 0) {
+      return NextResponse.json({
+        requests: [],
+        totalCount: 0,
+        currentPage: page,
+        hasMore: false,
+      })
+    }
+
+    let q = supabaseAdmin
+      .from("delivery_requests")
+      .select("*", { count: "exact" })
 
     if (mine) q = q.eq("requester_email", user!.email!)
     if (status) q = q.eq("status", status)
     if (branchId) q = q.eq("branch_id", branchId)
     if (date) q = q.eq("request_date", date)
+    if (applied) q = q.in("id", appliedIds)
 
-    const { data: requests, error } = await q.order("created_at", { ascending: false }).limit(200)
+    const {
+      data: requests,
+      error,
+      count,
+    } = await q.order("created_at", { ascending: false }).range(from, to)
     if (error) throw error
 
     const list = (requests ?? []) as Array<Record<string, unknown>>
 
-    let appliedRequestIds = new Set<string | number>()
-    if (applied || list.length > 0) {
-      const { data: myApps } = await supabaseAdmin
-        .from("delivery_applications")
-        .select("request_id, status")
-        .eq("applicant_email", user!.email!)
-      const myAppMap = new Map<string | number, string>()
-      ;(myApps ?? []).forEach((a) => {
-        const r = a as { request_id: number | string; status: string }
-        myAppMap.set(r.request_id, r.status)
-        appliedRequestIds.add(r.request_id)
-      })
-
-      for (const r of list) {
-        const id = r.id as number | string
-        ;(r as Record<string, unknown>).my_application_status = myAppMap.get(id) ?? null
-      }
-    }
-
-    if (applied) {
-      const filtered = list.filter((r) => appliedRequestIds.has(r.id as number | string))
-      await attachCounts(filtered)
-      await attachBranchNames(filtered)
-      return NextResponse.json({ requests: filtered })
+    for (const r of list) {
+      const id = r.id as number | string
+      r.my_application_status = myAppMap.get(id) ?? null
     }
 
     await attachCounts(list)
     await attachBranchNames(list)
-    return NextResponse.json({ requests: list })
+
+    const totalCount = count ?? 0
+    const hasMore = from + list.length < totalCount
+
+    return NextResponse.json({
+      requests: list,
+      totalCount,
+      currentPage: page,
+      hasMore,
+    })
   } catch (error) {
     console.error("[Delivery GET] 오류:", error)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })

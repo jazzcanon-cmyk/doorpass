@@ -28,8 +28,15 @@ function escapeIlikePattern(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")
 }
 
+// 비승인 사용자에게 노출되는 좌표 정밀도(소수점 2자리, ~1.1km)
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
 function toBuilding(b: BuildingRow, revealPassword: boolean) {
   const accessType = b.access_type ?? "password"
+  const outLat = revealPassword ? b.lat : round2(b.lat)
+  const outLng = revealPassword ? b.lng : round2(b.lng)
 
   // 자유출입은 항상 공개 (미승인자도 표시)
   if (accessType === "free") {
@@ -38,8 +45,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: "자유출입",
-      lat: b.lat,
-      lng: b.lng,
+      lat: outLat,
+      lng: outLng,
       memo: revealPassword ? b.memo ?? "" : "",
       access_type: accessType,
     }
@@ -52,8 +59,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: "메모 참조",
-      lat: b.lat,
-      lng: b.lng,
+      lat: outLat,
+      lng: outLng,
       memo: revealPassword ? b.memo ?? "" : "",
       access_type: accessType,
     }
@@ -66,8 +73,8 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
       name: b.name ?? b.address?.split(" ").slice(-1)[0] ?? "",
       address: b.address ?? "",
       password: MASKED_BUILDING_PASSWORD,
-      lat: b.lat,
-      lng: b.lng,
+      lat: outLat,
+      lng: outLng,
       memo: "",
       access_type: accessType,
     }
