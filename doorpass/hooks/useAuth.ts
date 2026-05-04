@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase-client"
 import type { CurrentUser } from "@/types/building"
 
@@ -13,6 +14,7 @@ export function useAuth() {
   useEffect(() => {
     let cancelled = false
     let welcomeTimer: ReturnType<typeof setTimeout> | null = null
+    let approvalPoller: ReturnType<typeof setInterval> | null = null
     const controller = new AbortController()
 
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -107,6 +109,36 @@ export function useAuth() {
               )
             })
             .catch(() => {})
+        } else {
+          // 미승인 상태 → 30초마다 승인 여부 폴링
+          approvalPoller = setInterval(() => {
+            if (cancelled) {
+              if (approvalPoller) clearInterval(approvalPoller)
+              return
+            }
+            void fetch("/api/users/approval-status")
+              .then((r) => r.json())
+              .then((data: { status?: string; canRevealBuildingPassword?: boolean }) => {
+                if (cancelled || data.status !== "approved") return
+                if (approvalPoller) { clearInterval(approvalPoller); approvalPoller = null }
+                void fetch("/api/users/me", { cache: "no-store" })
+                  .then((r) => r.json())
+                  .then((meData: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
+                    if (cancelled) return
+                    setCurrentUser((prev) =>
+                      prev ? {
+                        ...prev,
+                        canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
+                        branchId: meData?.branchId ?? prev.branchId ?? null,
+                        total_points: meData?.total_points ?? prev.total_points ?? 0,
+                      } : null
+                    )
+                    toast.success("🎉 승인됐어요! 이제 비밀번호를 확인할 수 있어요!")
+                  })
+                  .catch(() => {})
+              })
+              .catch(() => {})
+          }, 30_000)
         }
       }).catch(() => {})
 
@@ -125,6 +157,7 @@ export function useAuth() {
       cancelled = true
       controller.abort()
       if (welcomeTimer) clearTimeout(welcomeTimer)
+      if (approvalPoller) clearInterval(approvalPoller)
     }
   }, [router])
 

@@ -32,7 +32,7 @@ export async function GET() {
         .maybeSingle()
       approvedUser = data
     }
-    if (approvedUser) return NextResponse.json({ status: "approved" })
+    if (approvedUser) return NextResponse.json({ status: "approved", canRevealBuildingPassword: true })
 
     // pending_approvals 조회 (email, userId 순회)
     let pendingApproval: { status: string; selected_branch_id: string } | null = null
@@ -51,7 +51,7 @@ export async function GET() {
       }
     }
 
-    if (!pendingApproval) return NextResponse.json({ status: "none" })
+    if (!pendingApproval) return NextResponse.json({ status: "none", canRevealBuildingPassword: false })
 
     const { data: branch } = await supabaseAdmin
       .from("branches")
@@ -62,6 +62,7 @@ export async function GET() {
     return NextResponse.json({
       status: pendingApproval.status,
       branchName: branch?.name ?? "",
+      canRevealBuildingPassword: false,
     })
   } catch (error) {
     console.error("[Approval Status] 오류:", error)

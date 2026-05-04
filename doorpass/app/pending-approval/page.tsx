@@ -29,7 +29,7 @@ export default function PendingApprovalPage() {
     }
 
     void checkStatus()
-    const interval = setInterval(checkStatus, 5000)
+    const interval = setInterval(checkStatus, 10000)
     return () => clearInterval(interval)
   }, [router])
 
