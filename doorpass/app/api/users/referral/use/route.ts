@@ -80,7 +80,7 @@ export async function POST(request: Request) {
   Promise.allSettled([
     fetch(`${baseUrl}/api/push/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' },
       body: JSON.stringify({
         userEmail: referrerEmail,
         title: '🎉 추천하신 분이 가입했어요!',
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     }),
     fetch(`${baseUrl}/api/push/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' },
       body: JSON.stringify({
         userEmail: email,
         title: '✅ 추천인을 통해 자동 승인됐어요!',

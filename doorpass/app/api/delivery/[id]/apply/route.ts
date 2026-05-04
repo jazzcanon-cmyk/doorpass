@@ -73,7 +73,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     // 요청자에게 푸시 알림
     fetch(new URL("/api/push/send", request.url).toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "" },
       body: JSON.stringify({
         userEmail: reqRow.requester_email,
         title: "대체배송 신청이 들어왔어요!",

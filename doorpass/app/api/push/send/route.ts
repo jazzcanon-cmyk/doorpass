@@ -22,6 +22,11 @@ interface SubscriptionRow {
 }
 
 export async function POST(request: Request) {
+  const secret = request.headers.get("x-internal-secret")
+  if (!secret || secret !== process.env.INTERNAL_API_SECRET) {
+    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 })
+  }
+
   let body: { userEmail?: string; title?: string; body?: string; url?: string }
   try {
     body = await request.json()

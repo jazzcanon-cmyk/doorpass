@@ -9,13 +9,8 @@ const IMPORTANT_KEYWORDS = ["배송지연", "클레임", "긴급", "사고", "�
 
 export async function POST(request: Request) {
   try {
-    try {
-      const { unauthorized } = await requireAuth()
-      if (unauthorized) {
-        console.warn("[Analytics] 미인증 요청 무시")
-        return NextResponse.json({ ok: true })
-      }
-    } catch {}
+    const { unauthorized } = await requireAuth()
+    if (unauthorized) return unauthorized
 
     const { type, data } = await request.json()
     if (!type) return NextResponse.json({ error: "type required" }, { status: 400 })
