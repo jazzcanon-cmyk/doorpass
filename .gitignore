@@ -39,3 +39,7 @@ supabase/.temp/
 
 # local test script artifacts
 test-telegram.js
+
+# sensitive data
+*.csv
+restore_batch*.sql
