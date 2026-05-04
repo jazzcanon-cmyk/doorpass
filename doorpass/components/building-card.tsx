@@ -524,42 +524,64 @@ export function BuildingCard({
               <div className="flex items-start gap-2 py-2 border-b border-border/40 last:border-0">
                 <span className="text-xs text-muted-foreground w-16 flex-shrink-0 pt-2">메모</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap">
-                    <button
-                      type="button"
-                      disabled={!canEdit || saving || isElevatorLocked}
-                      onClick={() => {
-                        const next = elevatorStatus === "yes" ? "" : "yes"
-                        setElevatorStatus(next)
-                        void saveField("memo", composeMemo(next, memoText))
-                      }}
-                      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
-                        elevatorStatus === "yes"
-                          ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
-                          : `bg-secondary border-border text-muted-foreground${isElevatorLocked ? " opacity-30" : ""}`
-                      } ${(!canEdit || isElevatorLocked) ? "cursor-not-allowed" : "hover:bg-secondary/80"}`}
-                    >
-                      <span style={{ fontSize: "20px", lineHeight: 1 }}>🛗</span>
-                      <span className="text-xs font-medium">엘리베이터</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!canEdit || saving || isElevatorLocked}
-                      onClick={() => {
-                        const next = elevatorStatus === "no" ? "" : "no"
-                        setElevatorStatus(next)
-                        void saveField("memo", composeMemo(next, memoText))
-                      }}
-                      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg border mr-2 transition-all ${
-                        elevatorStatus === "no"
-                          ? "bg-orange-500/20 border-orange-400 text-orange-300"
-                          : `bg-secondary border-border text-muted-foreground${isElevatorLocked ? " opacity-30" : ""}`
-                      } ${(!canEdit || isElevatorLocked) ? "cursor-not-allowed" : "hover:bg-secondary/80"}`}
-                    >
-                      <span style={{ fontSize: "20px", lineHeight: 1 }}>🪜</span>
-                      <span className="text-xs font-medium">계단만</span>
-                    </button>
-                  </div>
+                  {(!canEdit || isElevatorLocked) ? (
+                    // 표시 전용: 활성 상태일 때만 해당 뱃지 노출
+                    (elevatorStatus === "yes" || elevatorStatus === "no") ? (
+                      <div className="flex flex-wrap gap-2">
+                        {elevatorStatus === "yes" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="5" y="2" width="14" height="20" rx="2" />
+                              <path d="M9 9l3-3 3 3M9 15l3 3 3-3" />
+                            </svg>
+                            엘리베이터
+                          </span>
+                        )}
+                        {elevatorStatus === "no" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M3 21h4v-4h4v-4h4v-4h4V3" />
+                            </svg>
+                            계단만
+                          </span>
+                        )}
+                      </div>
+                    ) : null
+                  ) : (
+                    // 편집 가능 + 미설정 상태: 두 뱃지를 선택 버튼으로 노출
+                    // (isElevatorLocked === false 이므로 elevatorStatus === "")
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => {
+                          setElevatorStatus("yes")
+                          void saveField("memo", composeMemo("yes", memoText))
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border bg-secondary border-border text-muted-foreground text-xs font-medium hover:bg-secondary/80 transition-all"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="5" y="2" width="14" height="20" rx="2" />
+                          <path d="M9 9l3-3 3 3M9 15l3 3 3-3" />
+                        </svg>
+                        엘리베이터
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => {
+                          setElevatorStatus("no")
+                          void saveField("memo", composeMemo("no", memoText))
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border bg-secondary border-border text-muted-foreground text-xs font-medium hover:bg-secondary/80 transition-all"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 21h4v-4h4v-4h4v-4h4V3" />
+                        </svg>
+                        계단만
+                      </button>
+                    </div>
+                  )}
 
                   <div className="mt-2">
                     {isEditingMemo ? (
