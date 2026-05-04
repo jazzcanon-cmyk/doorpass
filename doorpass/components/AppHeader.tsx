@@ -2,15 +2,9 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { AppLogo } from "@/components/AppLogo"
 import type { CurrentUser, TabType } from "@/types/building"
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => void
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
-}
 
 interface AppHeaderProps {
   currentUser: CurrentUser | null
@@ -30,8 +24,6 @@ const TABS: { key: TabType; label: string; icon: React.ReactNode }[] = [
 
 export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefresh, onLogout }: AppHeaderProps) {
   const [animate, setAnimate] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isInstalled, setIsInstalled] = useState(false)
   const total_points = currentUser?.total_points
 
   useEffect(() => {
@@ -40,46 +32,6 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
     const t = setTimeout(() => setAnimate(false), 600)
     return () => clearTimeout(t)
   }, [total_points])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true)
-      return
-    }
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-    }
-    window.addEventListener("beforeinstallprompt", handler)
-    return () => window.removeEventListener("beforeinstallprompt", handler)
-  }, [])
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      try {
-        // 딜레이 없이 즉시 prompt() 호출 (사용자 제스처 컨텍스트 유지)
-        deferredPrompt.prompt()
-        const { outcome } = await deferredPrompt.userChoice
-        if (outcome === "accepted") {
-          setIsInstalled(true)
-          setDeferredPrompt(null)
-          toast.success("🎉 DoorPass가 홈화면에 설치됐어요!")
-        } else {
-          toast.info("나중에 언제든 설치할 수 있어요 😊")
-        }
-      } catch (e) {
-        console.error("[install]", e)
-        toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요", { duration: 5000 })
-      }
-    } else {
-      if (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) {
-        toast.success("이미 설치된 앱이에요! 😊")
-      } else {
-        toast.info("크롬 메뉴(⋮) → 홈화면에 추가 를 선택해주세요", { duration: 5000 })
-      }
-    }
-  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-slate-950/80 backdrop-blur-xl">
@@ -100,32 +52,6 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {!isInstalled && (
-              <button
-                onClick={() => void handleInstall()}
-                title="홈화면에 앱 설치하기"
-                style={{
-                  background: deferredPrompt
-                    ? "linear-gradient(135deg, #10b981, #059669)"
-                    : "rgba(255,255,255,0.1)",
-                  border: deferredPrompt ? "none" : "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "20px",
-                  padding: "5px 10px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "white",
-                  whiteSpace: "nowrap",
-                  boxShadow: deferredPrompt ? "0 2px 8px rgba(16,185,129,0.4)" : "none",
-                  transition: "all 0.2s",
-                }}
-              >
-                📲 <span>{deferredPrompt ? "앱 설치" : "설치 안내"}</span>
-              </button>
-            )}
             {activeTab !== "board" && activeTab !== "delivery" && (
               <Button
                 variant="ghost"

@@ -10,6 +10,7 @@ import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"
@@ -159,6 +160,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
       {authStatus === "ok" && <PushNotificationBanner />}
+      {authStatus === "ok" && <PWAInstallPrompt />}
 
       <WelcomeDialog
         open={showWelcome}

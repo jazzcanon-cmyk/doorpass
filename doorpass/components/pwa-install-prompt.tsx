@@ -23,6 +23,17 @@ function detectDevice(): DeviceType {
 }
 
 const DISMISS_KEY = "pwa-install-dismissed"
+const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000 // 3일
+
+function isDismissed(): boolean {
+  try {
+    const stored = localStorage.getItem(DISMISS_KEY)
+    if (!stored) return false
+    return Date.now() - Number(stored) < DISMISS_TTL_MS
+  } catch {
+    return false
+  }
+}
 
 // ─── iOS 단계별 안내 모달 ─────────────────────────────────────────────────────
 
@@ -118,9 +129,9 @@ export function PWAInstallPrompt() {
     const detected = detectDevice()
     setDevice(detected)
 
-    // 이미 설치됐거나 이미 닫은 경우 종료
+    // 이미 설치됐거나 3일 이내 닫은 경우 종료
     if (detected === "installed") return
-    if (localStorage.getItem(DISMISS_KEY)) return
+    if (isDismissed()) return
 
     let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -168,7 +179,7 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = useCallback(() => {
     setShowBanner(false)
-    localStorage.setItem(DISMISS_KEY, "1")
+    localStorage.setItem(DISMISS_KEY, String(Date.now()))
   }, [])
 
   if (device === "installed" || !showBanner) return null
