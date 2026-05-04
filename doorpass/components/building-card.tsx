@@ -1,16 +1,27 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
-import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2 } from "lucide-react"
+import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2, Camera, Flag } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIsAdmin } from "@/hooks/useIsAdmin"
 import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
 import { PointPopup } from "@/components/PointPopup"
+import { BuildingPhotoModal } from "@/components/BuildingPhotoModal"
 import { shortenAddress } from "@/lib/utils"
+
+interface BuildingPhoto {
+  id: number
+  building_id: number
+  uploader_email: string
+  photo_url: string
+  photo_type: string
+  caption: string | null
+  created_at: string
+}
 
 interface Building {
   id: string
@@ -119,10 +130,29 @@ export function BuildingCard({
   const [memoDraft, setMemoDraft] = useState("")
   const [isEditingMemo, setIsEditingMemo] = useState(false)
   const [pointPopup, setPointPopup] = useState<{ points: number; action: string; total: number } | null>(null)
+  const [photos, setPhotos] = useState<BuildingPhoto[]>([])
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [lightboxPhotoId, setLightboxPhotoId] = useState<number | null>(null)
+
+  const fetchPhotos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/buildings/${currentBuilding.id}/photos`)
+      if (!res.ok) return
+      const data = (await res.json()) as { photos: BuildingPhoto[] }
+      setPhotos(data.photos ?? [])
+    } catch {
+      // ignore
+    }
+  }, [currentBuilding.id])
 
   useEffect(() => {
     setCurrentBuilding(building)
   }, [building])
+
+  useEffect(() => {
+    if (showPopup) void fetchPhotos()
+  }, [showPopup, fetchPhotos])
 
   useEffect(() => {
     if (autoOpen) setShowPopup(true)
@@ -621,6 +651,41 @@ export function BuildingCard({
               )}
             </div>
 
+            {/* 건물 사진 */}
+            <div className="px-4 pt-2 pb-1 border-t border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">현장 사진</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPhotoModal(true)}
+                  className="h-7 gap-1 text-xs text-blue-400 hover:text-blue-300"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  사진 추가
+                </Button>
+              </div>
+              {photos.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic pb-1">아직 사진이 없습니다.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {photos.slice(0, 3).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setLightboxUrl(p.photo_url)
+                        setLightboxPhotoId(p.id)
+                      }}
+                      className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border hover:border-primary/60 transition-colors"
+                    >
+                      <img src={p.photo_url} alt="건물 사진" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 길찾기 버튼 */}
             <div className="px-4 py-2">
               <Button
@@ -683,6 +748,81 @@ export function BuildingCard({
       )}
 
       <ApprovalRequestModal open={showApprovalModal} onOpenChange={setShowApprovalModal} />
+
+      <BuildingPhotoModal
+        buildingId={currentBuilding.id}
+        open={showPhotoModal}
+        onOpenChange={setShowPhotoModal}
+        onUploaded={(result) => {
+          void fetchPhotos()
+          if (result.point?.success && result.point.points && result.point.newTotal != null) {
+            setPointPopup({
+              points: result.point.points,
+              action: "사진 업로드",
+              total: result.point.newTotal,
+            })
+          }
+        }}
+      />
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => {
+            setLightboxUrl(null)
+            setLightboxPhotoId(null)
+          }}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightboxUrl(null)
+              setLightboxPhotoId(null)
+            }}
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="건물 사진"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {lightboxPhotoId != null && (
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation()
+                if (!window.confirm("이 사진을 신고하시겠습니까?")) return
+                try {
+                  const res = await fetch(
+                    `/api/buildings/${currentBuilding.id}/photos/${lightboxPhotoId}/report`,
+                    { method: "POST" }
+                  )
+                  const data = await res.json().catch(() => ({}))
+                  if (!res.ok) throw new Error(data.error || "신고 실패")
+                  toast.success(
+                    data.hidden
+                      ? "신고가 접수되어 사진이 숨김 처리되었습니다."
+                      : "신고가 접수되었습니다."
+                  )
+                  setLightboxUrl(null)
+                  setLightboxPhotoId(null)
+                  void fetchPhotos()
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "신고 실패")
+                }
+              }}
+              className="absolute bottom-4 right-4 bg-red-500/20 border border-red-500/40 text-red-300 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 hover:bg-red-500/30"
+            >
+              <Flag className="h-3.5 w-3.5" />
+              신고
+            </button>
+          )}
+        </div>
+      )}
     </>
   )
 }
