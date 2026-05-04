@@ -25,7 +25,25 @@ DEFAULT_NAME = None
 DEFAULT_PASSWORD = None
 DEFAULT_ACCESS_TYPE = "password"
 DEFAULT_REGION = "울산"
-DEFAULT_BRANCH_ID = "sinjeong"
+
+
+# 주소에서 행정구를 추출해 (district_id, branch_id) 를 결정한다.
+# branch_id 매핑: 동구/중구/울주군은 일단 "ulsanbranch"로 묶어두고,
+# 추후 해당 구 전용 대리점 생성 시 branch_id만 갱신한다.
+# district_id는 행정구 그대로 — "ulsanbranch"의 district는 별도로 "namgu"로 본다.
+def get_district_and_branch(address: str) -> tuple[str | None, str]:
+    addr = address or ""
+    if "남구" in addr:
+        return "namgu", "sinjeong"
+    if "북구" in addr:
+        return "bukgu", "maegok"
+    if "동구" in addr:
+        return "donggu", "ulsanbranch"
+    if "중구" in addr:
+        return "junggu", "ulsanbranch"
+    if "울주군" in addr:
+        return "ulju", "ulsanbranch"
+    return None, "ulsanbranch"
 
 
 def load_env() -> tuple[str, str]:
@@ -140,6 +158,7 @@ def process_batch(
             ).eq("id", rid).execute()
             updated_count += 1
         else:
+            district_id, branch_id = get_district_and_branch(addr)
             to_insert.append(
                 {
                     "name": DEFAULT_NAME,
@@ -149,7 +168,8 @@ def process_batch(
                     "lng": row["lng"],
                     "access_type": DEFAULT_ACCESS_TYPE,
                     "region": DEFAULT_REGION,
-                    "branch_id": DEFAULT_BRANCH_ID,
+                    "branch_id": branch_id,
+                    "district_id": district_id,
                 }
             )
 
