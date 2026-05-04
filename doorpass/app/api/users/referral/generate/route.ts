@@ -8,14 +8,30 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized
 
   const email = user!.email!
+  const meta = user!.user_metadata as Record<string, unknown> | undefined
+  const providerId = meta?.provider_id as string | undefined
+
   const body = await request.json().catch(() => ({})) as { memo?: string }
   const memo = typeof body.memo === 'string' ? body.memo.slice(0, 50).trim() || null : null
 
-  const { data: approved } = await supabaseAdmin
-    .from('approved_users')
-    .select('id, role')
-    .eq('email', email)
-    .single()
+  // email 우선 조회, 없으면 kakao_id fallback (lib/auth.ts lookupManagerRole과 동일 패턴)
+  let approved: { role: string | null } | null = null
+  if (email) {
+    const { data } = await supabaseAdmin
+      .from('approved_users')
+      .select('id, role')
+      .eq('email', email)
+      .maybeSingle()
+    approved = data
+  }
+  if (!approved && providerId) {
+    const { data } = await supabaseAdmin
+      .from('approved_users')
+      .select('id, role')
+      .eq('kakao_id', providerId)
+      .maybeSingle()
+    approved = data
+  }
 
   if (!approved) {
     return NextResponse.json({ error: '승인된 회원만 추천 링크를 생성할 수 있습니다.' }, { status: 403 })
