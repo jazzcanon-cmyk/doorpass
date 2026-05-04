@@ -70,7 +70,11 @@ export default function SelectBranchPage() {
           userName: userName || "",
         }),
       })
-      if (!res.ok) throw new Error("승인 요청 실패")
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || "승인 요청 중 오류가 발생했습니다.")
+        return
+      }
       router.push("/pending-approval")
     } catch (error) {
       console.error("오류:", error)
