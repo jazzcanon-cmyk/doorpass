@@ -15,11 +15,23 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   const body = (await request.json().catch(() => ({}))) as { branch_id?: string | null }
   const branch_id = body.branch_id ?? null
 
-  const { error } = await supabaseAdmin
+  console.log("[branch PATCH] userId:", numericId, "branch_id:", branch_id)
+
+  const { data: updated, error } = await supabaseAdmin
     .from("approved_users")
     .update({ branch_id })
     .eq("id", numericId)
+    .select("id, branch_id")
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  console.log("[branch PATCH] 결과 — updated:", updated, "error:", error)
+
+  if (error) {
+    console.error("[branch PATCH] DB 오류:", error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  if (!updated || updated.length === 0) {
+    console.error("[branch PATCH] 업데이트된 행 없음 — userId:", numericId)
+    return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 })
+  }
   return NextResponse.json({ ok: true })
 }

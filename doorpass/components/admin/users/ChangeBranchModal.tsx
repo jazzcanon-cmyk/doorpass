@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 import { Loader2, Building2 } from "lucide-react"
 import { adminApi } from "@/lib/admin-api"
 import type { ApprovedUser } from "@/types/admin-users"
@@ -55,14 +56,18 @@ export function ChangeBranchModal({ user, onClose, onSuccess }: ChangeBranchModa
   const save = async () => {
     if (!selected) return
     setSaving(true)
+    console.log("[ChangeBranch] 저장 시도 — userId:", user.id, "branch_id:", selected)
     try {
       await adminApi(`/api/admin/users/${user.id}/branch`, {
         method: "PATCH",
         body: JSON.stringify({ branch_id: selected }),
       })
+      console.log("[ChangeBranch] 저장 성공")
       onSuccess()
       onClose()
-    } catch {
+    } catch (err) {
+      console.error("[ChangeBranch] 저장 실패:", err)
+      toast.error("소속 변경에 실패했습니다.")
       setSaving(false)
     }
   }
