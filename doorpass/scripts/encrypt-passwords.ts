@@ -16,12 +16,17 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { config as loadDotenv } from 'dotenv'
 import { resolve } from 'node:path'
 import { encryptPassword } from '../lib/encryption'
 
-loadDotenv({ path: resolve(process.cwd(), '.env.local') })
-loadDotenv({ path: resolve(process.cwd(), '.env') })
+// Node 21.7+ 내장 env 로더. 파일 없으면 무시.
+for (const file of ['.env.local', '.env']) {
+  try {
+    process.loadEnvFile(resolve(process.cwd(), file))
+  } catch {
+    // 파일 없음 — 무시
+  }
+}
 
 const BATCH_SIZE = 100
 

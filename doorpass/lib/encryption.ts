@@ -8,8 +8,8 @@ import crypto from 'crypto';
 
 function getKey(): Buffer {
   const ENCRYPTION_KEY = process.env.ENCRYPTION_SECRET_KEY;
-  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
-    throw new Error('❌ ENCRYPTION_SECRET_KEY가 설정되지 않았거나 너무 짧습니다. .env.local을 확인하세요.');
+  if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 64) {
+    throw new Error('❌ ENCRYPTION_SECRET_KEY가 설정되지 않았거나 너무 짧습니다. (64 hex 문자 = 32 byte 필요) .env.local을 확인하세요.');
   }
   return Buffer.from(ENCRYPTION_KEY, 'hex').slice(0, 32);
 }
