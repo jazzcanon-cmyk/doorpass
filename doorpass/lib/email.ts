@@ -42,8 +42,8 @@ export async function sendApprovalRequestEmail(params: {
   }
 
   const base = appBaseUrl()
-  const approveUrl = `${base}/api/approve?token=${encodeURIComponent(token)}&action=approve`
-  const rejectUrl = `${base}/api/approve?token=${encodeURIComponent(token)}&action=reject`
+  const approveUrl = `${base}/api/approve?token=${encodeURIComponent(token)}`
+  const rejectUrl = `${base}/api/reject?token=${encodeURIComponent(token)}`
 
   const subject = `[DoorPass] 새 회원 승인 요청 — ${branchName}`
   const html = `

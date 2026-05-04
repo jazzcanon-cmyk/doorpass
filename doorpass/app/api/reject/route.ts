@@ -15,7 +15,7 @@ function resultRedirect(request: Request, status: string): NextResponse {
   return NextResponse.redirect(base, { status: 303 })
 }
 
-/** 이메일 링크용 승인 처리 (GET, 로그인 불필요). */
+/** 이메일 링크용 거절 처리 (GET, 로그인 불필요). */
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const token = url.searchParams.get("token") ?? ""
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     if (!row) return resultRedirect(request, "invalid")
     if (row.status !== "pending") return resultRedirect(request, "already")
 
-    const result = await executePendingApprovalById(Number(row.id), "approve", "email-link")
+    const result = await executePendingApprovalById(Number(row.id), "reject", "email-link")
 
     if (!result.ok) {
       if (result.httpStatus === 400) return resultRedirect(request, "already")
@@ -44,15 +44,15 @@ export async function GET(request: Request) {
 
     const { approval } = result
 
-    sendApprovalResultEmail({ toEmail: approval.user_email, approved: true }).catch(console.error)
+    sendApprovalResultEmail({ toEmail: approval.user_email, approved: false }).catch(console.error)
 
     sendTelegramMessage(
-      `✅ 회원 승인 완료 (이메일 링크)\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name ?? "-"}\n📅 처리: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+      `❌ 회원 승인 거부 (이메일 링크)\n📧 이메일: ${approval.user_email}\n👤 이름: ${approval.user_name ?? "-"}`
     ).catch(console.error)
 
-    return resultRedirect(request, "approved")
+    return resultRedirect(request, "rejected")
   } catch (e) {
-    console.error("[GET /api/approve]", e)
+    console.error("[GET /api/reject]", e)
     return resultRedirect(request, "error")
   }
 }

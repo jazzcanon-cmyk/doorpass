@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendApprovalRequestEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +52,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. pending_approvals insert
+    // 1. pending_approvals insert (이메일 링크용 UUID 토큰 생성)
+    const token = randomUUID()
     const { error: insertError } = await supabaseAdmin
       .from('pending_approvals')
       .insert({
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
         profile_image_url: profileImage,
         selected_branch_id: branchId,
         status: 'pending',
+        token,
       })
 
     if (insertError) {
@@ -109,6 +113,16 @@ export async function POST(request: NextRequest) {
         }),
       }).catch(console.error)
     }
+
+    // 5-pre. 이메일 승인 요청 (resend) — best effort
+    sendApprovalRequestEmail({
+      toEmails: notifyTargets,
+      branchName: branchDisplayName,
+      requesterName: kakaoName || userName || userEmail || '신규 회원',
+      requesterEmail: userEmail || userId,
+      requestedAtLabel: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+      token,
+    }).catch(console.error)
 
     // 5. 텔레그램 알림
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN
