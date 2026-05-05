@@ -6,6 +6,7 @@ import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/li
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
 import { addPoints } from "@/lib/points"
+import { convertJibunToRoadAddress } from "@/lib/address-convert"
 
 interface BuildingRow {
   id: number
@@ -171,18 +172,40 @@ export async function GET(request: Request) {
         .limit(100)
 
       if (error) throw new Error(error.message)
-      const rows = (data ?? []) as BuildingRow[]
+      let rows = (data ?? []) as BuildingRow[]
+      let convertedFrom: string | null = null
+
+      // 결과 0건이면 카카오 API로 지번→도로명 변환 후 재검색
+      if (rows.length === 0) {
+        const road = await convertJibunToRoadAddress(searchTerm)
+        if (road && road !== searchTerm) {
+          const escRoad = escapeIlikePattern(road).replace(/"/g, "")
+          const quotedRoad = `"%${escRoad}%"`
+          const { data: roadData, error: roadErr } = await supabase
+            .from("buildings")
+            .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
+            .or(`name.ilike.${quotedRoad},address.ilike.${quotedRoad}`)
+            .order("address", { ascending: true })
+            .limit(100)
+          if (!roadErr && roadData && roadData.length > 0) {
+            rows = roadData as BuildingRow[]
+            convertedFrom = searchTerm
+          }
+        }
+      }
+
       if (user?.email) {
         logActivity(
           user.email,
           "search",
-          { keyword: searchTerm, count: rows.length },
+          { keyword: searchTerm, count: rows.length, convertedFrom },
           getIp(request)
         )
       }
       return NextResponse.json({
         buildings: rows.map((row) => toBuilding(row, revealPasswords)),
         total: rows.length,
+        convertedFrom,
       })
     } catch (error) {
       console.error("Error searching buildings:", error)
