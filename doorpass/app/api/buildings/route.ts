@@ -177,8 +177,13 @@ export async function GET(request: Request) {
 
       // 결과 0건이면 카카오 API로 지번→도로명 변환 후 재검색
       if (rows.length === 0) {
+        console.log(`[buildings/search] 1차 결과 0건 — 카카오 fallback 시도: "${searchTerm}"`)
         const road = await convertJibunToRoadAddress(searchTerm)
-        if (road && road !== searchTerm) {
+        if (!road) {
+          console.log(`[buildings/search] 카카오 변환 실패/없음 — fallback 종료`)
+        } else if (road === searchTerm) {
+          console.log(`[buildings/search] 변환 결과가 검색어와 동일 — 재검색 스킵`)
+        } else {
           const escRoad = escapeIlikePattern(road).replace(/"/g, "")
           const quotedRoad = `"%${escRoad}%"`
           const { data: roadData, error: roadErr } = await supabase
@@ -187,6 +192,13 @@ export async function GET(request: Request) {
             .or(`name.ilike.${quotedRoad},address.ilike.${quotedRoad}`)
             .order("address", { ascending: true })
             .limit(100)
+          if (roadErr) {
+            console.warn(`[buildings/search] 재검색 DB 오류: ${roadErr.message}`)
+          } else {
+            console.log(
+              `[buildings/search] 재검색 — 도로명="${road}", hit=${roadData?.length ?? 0}`
+            )
+          }
           if (!roadErr && roadData && roadData.length > 0) {
             rows = roadData as BuildingRow[]
             convertedFrom = searchTerm

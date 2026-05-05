@@ -14,14 +14,16 @@ const KAKAO_LOCAL_URL = "https://dapi.kakao.com/v2/local/search/address.json"
 const TIMEOUT_MS = 3000
 
 type KakaoDocument = {
-  address_name: string
-  address_type: "REGION" | "ROAD" | "REGION_ADDR" | "ROAD_ADDR"
-  road_address: { address_name: string } | null
-  address: { address_name: string } | null
+  address_name?: string
+  address_type?: "REGION" | "ROAD" | "REGION_ADDR" | "ROAD_ADDR"
+  // 카카오 응답에서 road_address는 매칭이 없으면 빈 객체({}), 있으면 채워진 객체로 옴
+  road_address?: { address_name?: string } | null
+  address?: { address_name?: string } | null
 }
 
 type KakaoResponse = {
-  documents: KakaoDocument[]
+  documents?: KakaoDocument[]
+  meta?: { total_count?: number }
 }
 
 /**
@@ -31,7 +33,10 @@ type KakaoResponse = {
  */
 export async function convertJibunToRoadAddress(query: string): Promise<string | null> {
   const apiKey = process.env.KAKAO_REST_API_KEY
-  if (!apiKey) return null
+  if (!apiKey) {
+    console.warn("[address-convert] KAKAO_REST_API_KEY 미설정 — 변환 스킵")
+    return null
+  }
 
   const trimmed = query.trim()
   if (!trimmed) return null
@@ -41,21 +46,35 @@ export async function convertJibunToRoadAddress(query: string): Promise<string |
 
   try {
     const url = `${KAKAO_LOCAL_URL}?query=${encodeURIComponent(trimmed)}`
+    console.log(`[address-convert] 카카오 API 호출: query="${trimmed}"`)
     const res = await fetch(url, {
       headers: { Authorization: `KakaoAK ${apiKey}` },
       signal: controller.signal,
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.warn(`[address-convert] 카카오 API HTTP ${res.status}: ${await res.text().catch(() => "")}`)
+      return null
+    }
 
     const data = (await res.json()) as KakaoResponse
-    const doc = data.documents?.[0]
-    if (!doc) return null
+    const docs = data.documents ?? []
+    console.log(
+      `[address-convert] 응답 — documents=${docs.length}, total=${data.meta?.total_count ?? "?"}`
+    )
 
-    const roadName = doc.road_address?.address_name?.trim()
-    if (roadName) return roadName
+    // documents[0]만 보면 road_address가 빈 객체일 수 있음 → 전체 순회
+    for (const doc of docs) {
+      const roadName = doc.road_address?.address_name?.trim()
+      if (roadName) {
+        console.log(`[address-convert] 매칭: "${trimmed}" → "${roadName}"`)
+        return roadName
+      }
+    }
 
+    console.log(`[address-convert] 도로명 매칭 없음: "${trimmed}"`)
     return null
-  } catch {
+  } catch (err) {
+    console.warn("[address-convert] 호출 실패", err)
     return null
   } finally {
     clearTimeout(timer)
