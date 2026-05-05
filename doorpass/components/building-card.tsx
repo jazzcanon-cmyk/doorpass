@@ -225,13 +225,14 @@ export function BuildingCard({
     return (prefix + text).trim()
   }
 
-  const isPasswordLocked = !!(
+  const isManager = role === "admin" || role === "sub_admin"
+  const isPasswordLocked = !isManager && !!(
     currentBuilding.password &&
     currentBuilding.password.trim() !== "" &&
     currentBuilding.password !== "미입력"
   )
-  const isElevatorLocked = elevatorStatus !== ""
-  const isMemoLocked = memoText.trim() !== ""
+  const isElevatorLocked = !isManager && elevatorStatus !== ""
+  const isMemoLocked = !isManager && memoText.trim() !== ""
 
   const ACTION_LABEL: Record<string, string> = {
     building_name: "건물명 입력",
