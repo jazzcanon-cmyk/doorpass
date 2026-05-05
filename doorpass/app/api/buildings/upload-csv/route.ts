@@ -113,12 +113,11 @@ export async function POST(request: Request) {
     const pwd = b.password != null ? String(b.password).trim() : ""
     const accessType = normalizeAccessType(b.access_type)
 
-    // free/etc는 비밀번호 자리에 라벨 평문, password는 입력값 암호화
-    const storedPassword =
-      accessType === "free"
-        ? "자유출입"
-        : accessType === "etc"
-        ? "기타(메모참조)"
+    // 라벨은 access_type으로 표현 → password 컬럼은 null
+    // password 타입 입력값은 암호화하여 password_encrypted에만 저장
+    const encryptedPassword =
+      accessType === "free" || accessType === "etc"
+        ? null
         : pwd
         ? encryptPassword(pwd)
         : null
@@ -126,7 +125,8 @@ export async function POST(request: Request) {
     rows.push({
       name,
       address,
-      password: storedPassword,
+      password: null,
+      password_encrypted: encryptedPassword,
       memo: b.memo != null && String(b.memo).trim() ? String(b.memo).trim() : null,
       lat,
       lng,

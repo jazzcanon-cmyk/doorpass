@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { addPoints, type PointAction } from '@/lib/points'
+import { encryptPassword } from '@/lib/encryption'
 
 const ALLOWED_FIELDS = ['name', 'password', 'memo', 'access_type', 'has_elevator'] as const
 
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabaseAdmin
       .from('buildings')
-      .select('name, password, memo, has_elevator')
+      .select('name, password, password_encrypted, memo, has_elevator')
       .eq('id', buildingId)
       .maybeSingle()
 
@@ -47,9 +48,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '건물을 찾을 수 없습니다.' }, { status: 404 })
     }
 
+    const updatePayload: Record<string, unknown> =
+      field === 'password'
+        ? !value || value.trim() === ''
+          ? { password: null, password_encrypted: null }
+          : { password: null, password_encrypted: encryptPassword(value) }
+        : { [field]: value }
+
     const { error: updateError } = await supabaseAdmin
       .from('buildings')
-      .update({ [field]: value })
+      .update(updatePayload)
       .eq('id', buildingId)
 
     if (updateError) {
@@ -66,7 +74,10 @@ export async function POST(request: Request) {
       const isNew = value && value.trim() !== ''
       if (wasEmpty && isNew) action = 'building_name'
     } else if (field === 'password') {
-      const wasEmpty = !existing.password || existing.password.trim() === '' || existing.password === '미입력'
+      const hadAny =
+        (typeof existing.password === 'string' && existing.password.trim() !== '' && existing.password !== '미입력') ||
+        (typeof existing.password_encrypted === 'string' && existing.password_encrypted.trim() !== '')
+      const wasEmpty = !hadAny
       const isNew = value && value.trim() !== ''
       if (wasEmpty && isNew) {
         action = value === '자유출입' ? 'building_free_access' : 'building_password'

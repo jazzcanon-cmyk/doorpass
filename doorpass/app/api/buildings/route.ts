@@ -379,12 +379,11 @@ export async function POST(request: Request) {
 
     const normalizedAddress = normalizeAddress(address.trim())
 
-    // 자유출입/기타는 비밀번호 없음 — 라벨 평문 저장
-    const storedPassword =
-      access_type === "free"
-        ? "자유출입"
-        : access_type === "etc"
-        ? "기타(메모참조)"
+    // 자유출입/기타: 라벨은 access_type으로 표현 → password 컬럼은 null
+    // password 타입: 입력값 암호화 → password_encrypted에만 저장
+    const encryptedPassword =
+      access_type === "free" || access_type === "etc"
+        ? null
         : (password && password.trim())
         ? encryptPassword(password)
         : null
@@ -394,7 +393,8 @@ export async function POST(request: Request) {
       .insert({
         name: name?.trim() || null,
         address: normalizedAddress,
-        password: storedPassword,
+        password: null,
+        password_encrypted: encryptedPassword,
         lat: lat ?? 0,
         lng: lng ?? 0,
         memo: memo?.trim() || null,

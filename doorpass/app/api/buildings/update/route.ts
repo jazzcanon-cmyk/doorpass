@@ -27,7 +27,9 @@ export async function POST(request: Request) {
     const updateData: Record<string, string | null> = {}
     if (name !== undefined) updateData.name = name
     if (password !== undefined) {
-      updateData.password = (!password || password.trim() === '') ? null : encryptPassword(password)
+      const isEmpty = !password || password.trim() === ''
+      updateData.password = null
+      updateData.password_encrypted = isEmpty ? null : encryptPassword(password)
     }
     if (memo !== undefined) updateData.memo = memo
 

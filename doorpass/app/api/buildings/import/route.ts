@@ -125,7 +125,12 @@ export async function POST(request: Request) {
         // update
         const { error } = await supabase
           .from("buildings")
-          .update({ name: buildingName, password: password ? encryptPassword(password) : null, memo })
+          .update({
+            name: buildingName,
+            password: null,
+            password_encrypted: password ? encryptPassword(password) : null,
+            memo,
+          })
           .eq("id", existingId)
         if (error) {
           stats.failed++
@@ -154,7 +159,8 @@ export async function POST(request: Request) {
       const { error } = await supabase.from("buildings").insert({
         name: buildingName,
         address,
-        password: password ? encryptPassword(password) : null,
+        password: null,
+        password_encrypted: password ? encryptPassword(password) : null,
         lat: coords.lat,
         lng: coords.lng,
         memo,

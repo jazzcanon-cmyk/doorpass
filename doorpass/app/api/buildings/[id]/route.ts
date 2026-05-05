@@ -12,6 +12,7 @@ type BuildingRow = {
   name: string | null
   address: string | null
   password: string | null
+  password_encrypted: string | null
   memo: string | null
   region: string | null
   created_at: string
@@ -53,7 +54,7 @@ async function assertBuildingAccess(
 
   const { data: row, error } = await supabaseAdmin
     .from("buildings")
-    .select("id, name, address, password, memo, region, created_at, branch_id")
+    .select("id, name, address, password, password_encrypted, memo, region, created_at, branch_id")
     .eq("id", buildingId)
     .maybeSingle()
 
@@ -87,7 +88,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
     id: row.id,
     name: row.name ?? row.address?.split(" ").slice(-1)[0] ?? "",
     address: row.address ?? "",
-    password: plaintextPassword(row.password),
+    password: plaintextPassword(row.password_encrypted ?? row.password),
     memo: row.memo ?? "",
     region: row.region,
     created_at: row.created_at,
@@ -128,8 +129,13 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   if (memo !== undefined) updateData.memo = memo === null ? null : String(memo)
   if (password !== undefined) {
     const p = password
-    if (p === null || p === "") updateData.password = null
-    else updateData.password = encryptPassword(String(p))
+    if (p === null || p === "") {
+      updateData.password = null
+      updateData.password_encrypted = null
+    } else {
+      updateData.password = null
+      updateData.password_encrypted = encryptPassword(String(p))
+    }
   }
 
   if (Object.keys(updateData).length === 0) {
@@ -151,7 +157,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     ).catch(console.error)
 
     if (user?.email && ["editor", "sub_admin", "admin"].includes(userRole ?? "")) {
-      const existingPassword = plaintextPassword(existingBuilding.password)
+      const existingPassword = plaintextPassword(existingBuilding.password_encrypted ?? existingBuilding.password)
       const tasks: Promise<unknown>[] = []
       if (name !== undefined && name !== existingBuilding.name) {
         tasks.push(addPoints({ email: user.email, action: "building_name", buildingId: Number(id), buildingName: name }))
