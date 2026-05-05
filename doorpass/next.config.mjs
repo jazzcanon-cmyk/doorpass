@@ -10,7 +10,13 @@ const nextConfig = {
     root: resolve(__dirname, '..'),
   },
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'xqvisvevzajxxmpzelmw.supabase.co',
+        pathname: '/storage/**',
+      },
+    ],
   },
 }
 
