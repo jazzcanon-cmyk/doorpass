@@ -31,6 +31,7 @@ export default function Home() {
     nearbyRadius,
     searchResults,
     searchQuery,
+    searchNote,
     lastUpdated,
     error: buildingsError,
     fetchBuildings,
@@ -217,6 +218,7 @@ export default function Home() {
           searchQuery={searchQuery}
           searchResults={searchResults}
           allBuildings={allBuildings}
+          searchNote={searchNote}
           canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
           onSearch={handleSearchWithGA}
           onBuildingUpdate={handleBuildingUpdate}

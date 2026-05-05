@@ -24,6 +24,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
   const [nearbyRadius, setNearbyRadius] = useState<number>(50)
   const [searchResults, setSearchResults] = useState<Building[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchNote, setSearchNote] = useState<string | undefined>()
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const viewportFetchingRef = useRef(false)
@@ -115,6 +116,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
     const trimmed = searchQuery.trim()
     if (trimmed === "") {
       setSearchResults([])
+      setSearchNote(undefined)
       return
     }
     const ctrl = new AbortController()
@@ -129,6 +131,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
         const data = await response.json()
         const buildings: Building[] = data.buildings ?? []
         setSearchResults(buildings)
+        setSearchNote(data.searchNote as string | undefined)
         if (trimmed.length >= 2) {
           trackSearch(trimmed, buildings.length, currentUserRef.current?.email)
           trackUserActivity(
@@ -140,6 +143,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
       } catch (err) {
         if ((err as Error).name === "AbortError") return
         setSearchResults([])
+        setSearchNote(undefined)
       }
     }, 300)
     return () => {
@@ -171,6 +175,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
     nearbyRadius,
     searchResults,
     searchQuery,
+    searchNote,
     lastUpdated,
     error,
     fetchBuildings,

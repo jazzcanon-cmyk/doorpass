@@ -9,6 +9,7 @@ interface SearchTabProps {
   searchQuery: string
   searchResults: Building[]
   allBuildings: Building[]
+  searchNote?: string
   canRevealBuildingPassword: boolean
   onSearch: (query: string) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
@@ -30,6 +31,7 @@ type SpeechRecognitionLike = {
 export function SearchTab({
   searchQuery,
   searchResults,
+  searchNote,
   canRevealBuildingPassword,
   onSearch,
   onBuildingUpdate,
@@ -146,6 +148,11 @@ export function SearchTab({
           </div>
         ) : (
           <div className="space-y-3">
+            {searchNote && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2 text-xs text-blue-300/80">
+                {searchNote}
+              </div>
+            )}
             <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
               검색 결과 {searchResults.length}건
             </p>

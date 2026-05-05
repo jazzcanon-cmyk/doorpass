@@ -162,25 +162,34 @@ export async function GET(request: Request) {
       if (!searchTerm) {
         return NextResponse.json({ buildings: [], total: 0 })
       }
-      const esc = escapeIlikePattern(searchTerm).replace(/"/g, "")
-      const quoted = `"%${esc}%"`
-      const { data, error } = await supabase
+
+      const makeQuoted = (term: string) => `"%${escapeIlikePattern(term).replace(/"/g, "")}%"`
+
+      // Step 1: 정확한 ilike 검색
+      const { data: step1Data, error: step1Error } = await supabase
         .from("buildings")
         .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
-        .or(`name.ilike.${quoted},address.ilike.${quoted}`)
+        .or(`name.ilike.${makeQuoted(searchTerm)},address.ilike.${makeQuoted(searchTerm)}`)
         .order("address", { ascending: true })
         .limit(100)
 
-      if (error) throw new Error(error.message)
-      let rows = (data ?? []) as BuildingRow[]
-      let convertedFrom: string | null = null
+      if (step1Error) throw new Error(step1Error.message)
+      let rows = (step1Data ?? []) as BuildingRow[]
+      let searchNote: string | undefined
 
-      // 결과 0건이면 카카오 변환 + 다단계 fallback ilike 검색
+      // Step 2: 공백 제거 정규화 검색 (0건일 때)
       if (rows.length === 0) {
-        console.log(`[buildings/search] 1차 결과 0건 — fallback 시도: "${searchTerm}"`)
+        const { data: normData } = await supabase.rpc("search_buildings_normalized", {
+          search_text: searchTerm,
+        })
+        if (normData && (normData as BuildingRow[]).length > 0) {
+          rows = normData as BuildingRow[]
+        }
+      }
+
+      // Step 3+4: 카카오 주소 변환 + 다단계 fallback 검색 (여전히 0건일 때)
+      if (rows.length === 0) {
         const lookup = await lookupAddress(searchTerm)
-        // 우선순위 후보: 도로명 코어 → 도로명만 → 동 이름 → 도로명 풀버전
-        // (코어/이름이 가장 안정적, 풀버전은 "울산광역시" vs "울산" 차이로 실패하기 쉬움)
         const candidates = [
           lookup.roadCore,
           lookup.roadName,
@@ -190,28 +199,17 @@ export async function GET(request: Request) {
           .filter((v): v is string => !!v && v.trim() !== "" && v !== searchTerm)
           .filter((v, i, arr) => arr.indexOf(v) === i)
 
-        if (candidates.length === 0) {
-          console.log(`[buildings/search] 후보 없음 — fallback 종료`)
-        }
-
         for (const cand of candidates) {
-          const escCand = escapeIlikePattern(cand).replace(/"/g, "")
-          const quotedCand = `"%${escCand}%"`
           const { data: hit, error: hitErr } = await supabase
             .from("buildings")
             .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
-            .or(`name.ilike.${quotedCand},address.ilike.${quotedCand}`)
+            .or(`name.ilike.${makeQuoted(cand)},address.ilike.${makeQuoted(cand)}`)
             .order("address", { ascending: true })
             .limit(100)
-          if (hitErr) {
-            console.warn(`[buildings/search] 후보 "${cand}" DB 오류: ${hitErr.message}`)
-            continue
-          }
-          console.log(`[buildings/search] 후보 "${cand}" → hit=${hit?.length ?? 0}`)
+          if (hitErr) continue
           if (hit && hit.length > 0) {
             rows = hit as BuildingRow[]
-            convertedFrom = searchTerm
-            console.log(`[buildings/search] 매칭 성공 — strategy="${cand}"`)
+            if (lookup.roadFull) searchNote = `'${searchTerm}' → '${lookup.roadFull}' 로 검색됨`
             break
           }
         }
@@ -221,14 +219,14 @@ export async function GET(request: Request) {
         logActivity(
           user.email,
           "search",
-          { keyword: searchTerm, count: rows.length, convertedFrom },
+          { keyword: searchTerm, count: rows.length, searchNote },
           getIp(request)
         )
       }
       return NextResponse.json({
         buildings: rows.map((row) => toBuilding(row, revealPasswords)),
         total: rows.length,
-        convertedFrom,
+        searchNote,
       })
     } catch (error) {
       console.error("Error searching buildings:", error)
