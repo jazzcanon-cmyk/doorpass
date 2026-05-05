@@ -8,16 +8,14 @@ if (!supabaseUrl) {
 }
 
 if (!serviceRoleKey) {
-  console.warn(
-    "⚠️ SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다. " +
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY로 폴백합니다. " +
-    "프로덕션에서는 반드시 SERVICE_ROLE_KEY를 설정하세요."
+  throw new Error(
+    "❌ SUPABASE_SERVICE_ROLE_KEY 환경변수가 설정되지 않았습니다. Vercel 환경변수를 확인하세요."
   )
 }
 
 export const supabaseAdmin = createClient(
   supabaseUrl,
-  serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  serviceRoleKey,
   {
     auth: {
       persistSession: false,
