@@ -417,7 +417,7 @@ export function BuildingCard({
                     <p className="text-[11px] text-muted-foreground/50 mt-0.5">번지 주소 확인 중...</p>
                   )}
                   {!jibunLoading && jibunAddress && (
-                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">({jibunAddress})</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">({jibunAddress})</p>
                   )}
                 </div>
               </div>
