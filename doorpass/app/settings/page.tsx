@@ -17,6 +17,7 @@ interface RoleRequest {
 export default function SettingsPage() {
   const [role, setRole] = useState<string>("driver")
   const [pending, setPending] = useState<RoleRequest | null>(null)
+  const [rejected, setRejected] = useState<RoleRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -34,8 +35,12 @@ export default function SettingsPage() {
       }
       if (reqRes.ok) {
         const { requests } = await reqRes.json()
-        const found = (requests as RoleRequest[]).find((r) => r.status === "pending") ?? null
-        setPending(found)
+        const all = requests as RoleRequest[]
+        setPending(all.find((r) => r.status === "pending") ?? null)
+        const latestRejected = all
+          .filter((r) => r.status === "rejected")
+          .sort((a, b) => new Date(b.reviewed_at ?? b.created_at).getTime() - new Date(a.reviewed_at ?? a.created_at).getTime())[0] ?? null
+        setRejected(latestRejected)
       }
     } finally {
       setLoading(false)
@@ -129,6 +134,31 @@ export default function SettingsPage() {
             <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200 flex items-center gap-2">
               <Clock className="h-4 w-4" />
               편집자 권한 요청이 대기 중입니다. 관리자 승인을 기다려주세요.
+            </div>
+          ) : rejected ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 flex items-start gap-2">
+                <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold mb-0.5">이전 권한 요청이 거절됐어요</p>
+                  <p className="text-xs text-red-300/70">사유를 추가해 다시 요청할 수 있어요.</p>
+                </div>
+              </div>
+              <div className="border-t border-white/10 pt-4">
+                <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-blue-400" /> 편집자 권한 다시 요청
+                </h3>
+                <textarea
+                  placeholder="권한이 필요한 사유를 입력해주세요 (10자 이상)"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-xl bg-white/[0.05] border border-white/10 p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 mb-3"
+                />
+                <Button onClick={submit} disabled={submitting} className="w-full">
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "다시 요청하기"}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="border-t border-white/10 pt-4">

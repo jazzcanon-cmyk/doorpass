@@ -102,6 +102,22 @@ export async function POST(request: Request, { params }: { params: Params }) {
       : `❌ 편집자 권한 거부\n👤 ${roleRequest.user_name} (${roleRequest.user_email})`
   sendTelegramMessage(message).catch(console.error)
 
+  if (action === "approve") {
+    const internalSecret = process.env.INTERNAL_API_SECRET
+    if (internalSecret) {
+      fetch(new URL("/api/push/send", request.url).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-internal-secret": internalSecret },
+        body: JSON.stringify({
+          userEmail: roleRequest.user_email,
+          title: "✅ 편집자 권한이 승인됐어요!",
+          body: "이제 건물 비밀번호와 정보를 수정할 수 있어요!",
+          url: "/",
+        }),
+      }).catch(console.error)
+    }
+  }
+
   return NextResponse.json({
     success: true,
     status: newStatus,

@@ -19,6 +19,15 @@ interface Approval {
   branches?: { name?: string; region?: string } | null
 }
 
+interface RoleRequest {
+  id: string
+  user_email: string
+  user_name: string
+  reason: string
+  status: string
+  created_at: string
+}
+
 interface ReferralRecord {
   id: number
   memo: string | null
@@ -37,6 +46,10 @@ export default function SubAdminDashboardPage() {
   const [approvalsLoading, setApprovalsLoading] = useState(false)
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [showRoleRequests, setShowRoleRequests] = useState(false)
+  const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([])
+  const [roleRequestsLoading, setRoleRequestsLoading] = useState(false)
+  const [processingRoleId, setProcessingRoleId] = useState<string | null>(null)
   const [showReferralHistory, setShowReferralHistory] = useState(false)
   const [referralHistory, setReferralHistory] = useState<ReferralRecord[]>([])
   const [referralLoading, setReferralLoading] = useState(false)
@@ -74,6 +87,46 @@ export default function SubAdminDashboardPage() {
     const interval = setInterval(() => void fetchStats(), 30000)
     return () => clearInterval(interval)
   }, [fetchStats])
+
+  const fetchRoleRequests = useCallback(async () => {
+    setRoleRequestsLoading(true)
+    try {
+      const res = await fetch('/api/admin/role-requests')
+      const data = await res.json().catch(() => ({}))
+      setRoleRequests((data.requests ?? []).filter((r: RoleRequest) => r.status === 'pending'))
+    } catch (e) {
+      console.error('편집자 권한 요청 조회 실패:', e)
+    } finally {
+      setRoleRequestsLoading(false)
+    }
+  }, [])
+
+  const handleRoleRequestToggle = async () => {
+    const next = !showRoleRequests
+    setShowRoleRequests(next)
+    if (next && roleRequests.length === 0) {
+      await fetchRoleRequests()
+    }
+  }
+
+  const handleRoleRequest = async (id: string, action: 'approve' | 'reject') => {
+    if (!confirm(action === 'approve' ? '편집자 권한을 승인하시겠습니까?' : '편집자 권한 요청을 거부하시겠습니까?')) return
+    setProcessingRoleId(id)
+    try {
+      const res = await fetch(`/api/admin/role-requests/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!res.ok) throw new Error('처리 실패')
+      setRoleRequests((prev) => prev.filter((r) => r.id !== id))
+      alert(action === 'approve' ? '✅ 편집자 권한 승인 완료!' : '❌ 거부 완료')
+    } catch {
+      alert('처리 중 오류가 발생했습니다')
+    } finally {
+      setProcessingRoleId(null)
+    }
+  }
 
   const fetchReferralHistory = useCallback(async () => {
     setReferralLoading(true)
@@ -281,6 +334,81 @@ export default function SubAdminDashboardPage() {
           )}
         </div>
       )}
+
+      {/* 편집자 권한 요청 목록 */}
+      <div className='mb-6 border rounded-xl overflow-hidden'>
+        <button
+          onClick={() => void handleRoleRequestToggle()}
+          className='w-full bg-card px-4 py-3 flex items-center justify-between hover:bg-muted/30 transition-colors'
+        >
+          <div className='flex items-center gap-2'>
+            <CheckCircle2 className='h-4 w-4 text-purple-400' />
+            <span className='font-semibold text-sm'>편집자 권한 요청</span>
+            {roleRequests.length > 0 && (
+              <span className='text-xs bg-purple-500 text-white rounded-full px-2 py-0.5 font-bold'>{roleRequests.length}</span>
+            )}
+          </div>
+          {showRoleRequests ? <ChevronUp className='h-3 w-3 text-muted-foreground' /> : <ChevronDown className='h-3 w-3 text-muted-foreground' />}
+        </button>
+
+        {showRoleRequests && (
+          <>
+            <div className='flex justify-end px-4 py-2 border-t bg-muted/10'>
+              <button
+                onClick={() => void fetchRoleRequests()}
+                className='text-xs text-muted-foreground hover:text-foreground flex items-center gap-1'
+              >
+                <RefreshCw className='h-3 w-3' /> 새로고침
+              </button>
+            </div>
+            {roleRequestsLoading ? (
+              <div className='p-8 text-center text-muted-foreground text-sm'>
+                <RefreshCw className='h-5 w-5 animate-spin mx-auto mb-2' />
+                로딩 중...
+              </div>
+            ) : roleRequests.length === 0 ? (
+              <div className='p-8 text-center text-muted-foreground text-sm'>
+                ✅ 대기 중인 편집자 권한 요청이 없습니다
+              </div>
+            ) : (
+              <div className='divide-y'>
+                {roleRequests.map((req) => (
+                  <div key={req.id} className='p-4 flex items-start justify-between gap-4 hover:bg-muted/30'>
+                    <div className='flex-1 min-w-0'>
+                      <p className='font-semibold text-sm truncate'>{req.user_name || '이름 미입력'}</p>
+                      <p className='text-xs text-muted-foreground truncate'>{req.user_email}</p>
+                      {req.reason && (
+                        <p className='text-xs text-muted-foreground/80 mt-1 line-clamp-2'>사유: {req.reason}</p>
+                      )}
+                      <p className='text-xs text-muted-foreground mt-0.5'>
+                        {new Date(req.created_at).toLocaleString('ko-KR')}
+                      </p>
+                    </div>
+                    <div className='flex gap-2 shrink-0'>
+                      <button
+                        onClick={() => void handleRoleRequest(req.id, 'approve')}
+                        disabled={processingRoleId === req.id}
+                        className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
+                      >
+                        <CheckCircle2 className='h-3.5 w-3.5' />
+                        승인
+                      </button>
+                      <button
+                        onClick={() => void handleRoleRequest(req.id, 'reject')}
+                        disabled={processingRoleId === req.id}
+                        className='flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
+                      >
+                        <XCircle className='h-3.5 w-3.5' />
+                        거부
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* 추천 링크 기록 */}
       <div className='mb-6 border rounded-xl overflow-hidden'>
