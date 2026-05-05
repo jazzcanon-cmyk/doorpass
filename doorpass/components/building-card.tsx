@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2, Camera, Flag } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -134,6 +134,10 @@ export function BuildingCard({
   const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [lightboxPhotoId, setLightboxPhotoId] = useState<number | null>(null)
+  const [showMap, setShowMap] = useState(false)
+  const [jibunAddress, setJibunAddress] = useState<string | null>(null)
+  const [jibunLoading, setJibunLoading] = useState(false)
+  const jibunCacheRef = useRef<Map<string, string | null>>(new Map())
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -153,6 +157,48 @@ export function BuildingCard({
   useEffect(() => {
     if (showPopup) void fetchPhotos()
   }, [showPopup, fetchPhotos])
+
+  useEffect(() => {
+    if (!showPopup) return
+    const buildingId = currentBuilding.id
+    const addr = currentBuilding.address
+    if (jibunCacheRef.current.has(buildingId)) {
+      setJibunAddress(jibunCacheRef.current.get(buildingId) ?? null)
+      setJibunLoading(false)
+      return
+    }
+    setJibunLoading(true)
+    setJibunAddress(null)
+    let cancelled = false
+    void (async () => {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+        if (!apiKey) return
+        const res = await fetch(
+          `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}&analyze_type=exact`,
+          { headers: { Authorization: `KakaoAK ${apiKey}` } }
+        )
+        if (!res.ok || cancelled) return
+        const data = await res.json() as { documents?: Array<{ address?: { address_name?: string } }> }
+        const raw = data.documents?.[0]?.address?.address_name ?? null
+        let result: string | null = null
+        if (raw) {
+          const tokens = raw.split(" ")
+          const dongIdx = tokens.findIndex((t) => /[가-힣]+동$/.test(t))
+          result = dongIdx >= 0 ? tokens.slice(dongIdx).join(" ") : raw
+        }
+        if (!cancelled) {
+          jibunCacheRef.current.set(buildingId, result)
+          setJibunAddress(result)
+        }
+      } catch {
+        if (!cancelled) jibunCacheRef.current.set(buildingId, null)
+      } finally {
+        if (!cancelled) setJibunLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [showPopup, currentBuilding.id, currentBuilding.address])
 
   useEffect(() => {
     if (autoOpen) setShowPopup(true)
@@ -355,7 +401,7 @@ export function BuildingCard({
           onClick={() => setShowPopup(false)}
         >
           <div
-            className="w-full max-w-lg bg-card rounded-2xl overflow-hidden shadow-2xl border border-border"
+            className="w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 팝업 헤더 */}
@@ -370,9 +416,17 @@ export function BuildingCard({
             {/* 정보 섹션 */}
             <div className="px-4 pt-3 pb-1">
               {/* 주소 (수정 불가) */}
-              <div className="flex items-center gap-2 py-2 border-b border-border/40">
-                <span className="text-xs text-muted-foreground w-16 flex-shrink-0">주소</span>
-                <span className="text-sm text-foreground flex-1">{shortenAddress(currentBuilding.address)}</span>
+              <div className="flex items-start gap-2 py-2 border-b border-border/40">
+                <span className="text-xs text-muted-foreground w-16 flex-shrink-0 pt-0.5">주소</span>
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">{shortenAddress(currentBuilding.address)}</p>
+                  {jibunLoading && (
+                    <p className="text-[11px] text-muted-foreground/50 mt-0.5">번지 주소 확인 중...</p>
+                  )}
+                  {!jibunLoading && jibunAddress && (
+                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">({jibunAddress})</p>
+                  )}
+                </div>
               </div>
 
               {/* 수정 가능 필드들 */}
@@ -667,15 +721,15 @@ export function BuildingCard({
                 </div>
               </div>
               {!canEdit && (
-                <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 flex items-center gap-2 text-xs text-white/50">
-                  <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 flex items-center gap-2 text-[11px] text-white/40">
+                  <Lock className="h-3 w-3 flex-shrink-0" />
                   <span className="flex-1">건물 정보 수정은 편집자만 가능합니다.</span>
                   <Link href="/settings" className="text-blue-400 hover:underline whitespace-nowrap">권한 요청</Link>
                 </div>
               )}
               {canEdit && (isPasswordLocked || isElevatorLocked || isMemoLocked) && (
-                <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 flex items-center gap-2 text-xs text-white/50">
-                  <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 flex items-center gap-2 text-[11px] text-white/40">
+                  <Lock className="h-3 w-3 flex-shrink-0" />
                   <span>입력된 정보는 부관리자에게 문의하여 수정 가능합니다</span>
                 </div>
               )}
@@ -698,7 +752,7 @@ export function BuildingCard({
               {photos.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic pb-1">아직 사진이 없습니다.</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex gap-2">
                   {photos.slice(0, 3).map((p) => (
                     <button
                       key={p.id}
@@ -707,7 +761,7 @@ export function BuildingCard({
                         setLightboxUrl(p.photo_url)
                         setLightboxPhotoId(p.id)
                       }}
-                      className="aspect-square rounded-lg overflow-hidden bg-secondary border border-border hover:border-primary/60 transition-colors"
+                      className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-secondary border border-border hover:border-primary/60 transition-colors"
                     >
                       <img src={p.photo_url} alt="건물 사진" className="w-full h-full object-cover" />
                     </button>
@@ -716,39 +770,51 @@ export function BuildingCard({
               )}
             </div>
 
-            {/* 길찾기 버튼 */}
-            <div className="px-4 py-2">
+            {/* 길찾기 + 지도 보기 버튼 */}
+            <div className="px-4 py-2 flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={openNavigation}
-                className="w-full gap-2 text-primary border-primary/50 hover:bg-primary/10"
+                className="flex-1 gap-2 text-primary border-primary/50 hover:bg-primary/10"
               >
                 <Navigation className="h-4 w-4" />
                 길찾기
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMap((v) => !v)}
+                className="flex-1 gap-2 text-muted-foreground border-border hover:bg-secondary/60"
+              >
+                <MapPin className="h-4 w-4" />
+                {showMap ? "지도 닫기" : "지도 보기"}
+              </Button>
             </div>
 
-            {/* 지도 */}
-            <div className="w-full h-48 bg-secondary">
-              <iframe
-                src={mapUrl}
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={false}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={currentBuilding.name}
-              />
-            </div>
+            {/* 지도 (토글) */}
+            {showMap && (
+              <div className="w-full h-[200px] bg-secondary">
+                <iframe
+                  src={mapUrl}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen={false}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={currentBuilding.name}
+                />
+              </div>
+            )}
 
-            {/* 관리자 삭제 버튼 */}
-            {(role === "admin" || role === "sub_admin") && (
-              <div className="px-4 pt-3 pb-1 border-t border-border">
+            {/* 건물 삭제 + 닫기 버튼 */}
+            <div className="px-4 py-3 border-t border-border flex gap-2">
+              {(role === "admin" || role === "sub_admin") && (
                 <Button
                   variant="destructive"
-                  className="w-full gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50"
+                  size="sm"
+                  className="flex-1 gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50"
                   onClick={() => void handleDelete()}
                   disabled={isDeleting}
                 >
@@ -757,16 +823,13 @@ export function BuildingCard({
                   ) : (
                     <Trash2 className="h-4 w-4" />
                   )}
-                  {isDeleting ? "삭제 중..." : "이 건물 삭제"}
+                  {isDeleting ? "삭제 중..." : "건물 삭제"}
                 </Button>
-              </div>
-            )}
-
-            {/* 하단 닫기 버튼 */}
-            <div className="px-4 py-3 border-t border-border">
+              )}
               <Button
                 variant="secondary"
-                className="w-full gap-2"
+                size="sm"
+                className="flex-1 gap-2"
                 onClick={() => setShowPopup(false)}
               >
                 <X className="h-4 w-4" />
