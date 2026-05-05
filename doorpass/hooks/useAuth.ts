@@ -47,7 +47,9 @@ export function useAuth() {
       setAuthStatus("ok")
 
       // 추천인 링크 토큰 처리: autoApproved 시 즉시 권한 갱신
-      const referralToken = sessionStorage.getItem("referral_token")
+      // sessionStorage 우선, 없으면 localStorage 폴백 (인앱→외부브라우저 전환 대비)
+      const referralToken =
+        sessionStorage.getItem("referral_token") ?? localStorage.getItem("referral_token")
       if (referralToken) {
         void fetch("/api/users/referral/use", {
           method: "POST",
@@ -56,7 +58,8 @@ export function useAuth() {
         })
           .then((r) => r.json())
           .then((data: { autoApproved?: boolean }) => {
-            sessionStorage.removeItem("referral_token")
+            try { sessionStorage.removeItem("referral_token") } catch {}
+            try { localStorage.removeItem("referral_token") } catch {}
             if (cancelled || !data.autoApproved) return
             void fetch("/api/users/me", { cache: "no-store" })
               .then((r) => r.json())
@@ -75,7 +78,10 @@ export function useAuth() {
               })
               .catch(() => {})
           })
-          .catch(() => sessionStorage.removeItem("referral_token"))
+          .catch(() => {
+            try { sessionStorage.removeItem("referral_token") } catch {}
+            try { localStorage.removeItem("referral_token") } catch {}
+          })
       }
 
       // API 호출 2: 통합 me API (loginCount, approvalStatus, welcomeShown 포함)
