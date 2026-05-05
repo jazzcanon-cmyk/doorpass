@@ -29,6 +29,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
   const [error, setError] = useState<string | null>(null)
   const viewportFetchingRef = useRef(false)
   const currentUserRef = useRef(currentUser)
+  const cacheBustRef = useRef(false) // 건물 수정 후 다음 검색에서 캐시 우회
   useEffect(() => {
     currentUserRef.current = currentUser
   }, [currentUser])
@@ -114,6 +115,10 @@ export function useBuildings(currentUser: CurrentUser | null) {
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ search: trimmed })
+        if (cacheBustRef.current) {
+          params.set("_t", String(Date.now()))
+          cacheBustRef.current = false
+        }
         const response = await fetch(`/api/buildings?${params}`, { signal: ctrl.signal })
         if (!response.ok) {
           setSearchResults([])
@@ -144,6 +149,7 @@ export function useBuildings(currentUser: CurrentUser | null) {
   }, [searchQuery])
 
   const handleUpdate = useCallback((id: string, updated: Partial<Building>) => {
+    cacheBustRef.current = true // 수정 후 다음 검색은 캐시 우회
     if ((updated as Record<string, unknown>)._deleted) {
       const del = (list: Building[]) => list.filter((b) => b.id !== id)
       setAllBuildings(del)

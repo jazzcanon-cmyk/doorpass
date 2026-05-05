@@ -14,7 +14,10 @@ export async function GET() {
       .order("name", { ascending: true })
 
     if (error) throw error
-    return NextResponse.json({ branches: data ?? [] })
+    return NextResponse.json(
+      { branches: data ?? [] },
+      { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600", "Vary": "Cookie" } }
+    )
   } catch (error) {
     console.error("[Branches API] 오류:", error)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })

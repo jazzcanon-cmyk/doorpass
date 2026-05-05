@@ -25,6 +25,12 @@ const supabase = supabaseAdmin
 const MANAGEMENT_PAGE_SIZE = 100
 const MASKED_BUILDING_PASSWORD = "●●●●"
 
+// 공개 건물 데이터 캐시 (인증 상태별 분리 캐시)
+const BUILDING_CACHE_HEADERS = {
+  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  "Vary": "Cookie",
+}
+
 function escapeIlikePattern(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")
 }
@@ -125,7 +131,7 @@ export async function GET(request: Request) {
       const lat = parseFloat(latParam)
       const lng = parseFloat(lngParam)
       if (!isFinite(lat) || !isFinite(lng)) {
-        return NextResponse.json({ buildings: [], usedRadius: 0 })
+        return NextResponse.json({ buildings: [], usedRadius: 0 }, { headers: BUILDING_CACHE_HEADERS })
       }
       const { revealPasswords } = await getBuildingsListAuth()
 
@@ -158,10 +164,10 @@ export async function GET(request: Request) {
         }
       }
 
-      return NextResponse.json({
-        buildings: buildings.map((row) => toBuilding(row, revealPasswords)),
-        usedRadius,
-      })
+      return NextResponse.json(
+        { buildings: buildings.map((row) => toBuilding(row, revealPasswords)), usedRadius },
+        { headers: BUILDING_CACHE_HEADERS }
+      )
     } catch (error) {
       console.error("Error fetching nearby buildings:", error)
       return NextResponse.json(
@@ -177,7 +183,7 @@ export async function GET(request: Request) {
       const { user, revealPasswords } = await getBuildingsListAuth()
       const searchTerm = (searchParams.get("search") ?? "").trim()
       if (!searchTerm) {
-        return NextResponse.json({ buildings: [], total: 0 })
+        return NextResponse.json({ buildings: [], total: 0 }, { headers: BUILDING_CACHE_HEADERS })
       }
 
       const makeQuoted = (term: string) => `"%${escapeIlikePattern(term).replace(/"/g, "")}%"`
@@ -240,11 +246,10 @@ export async function GET(request: Request) {
           getIp(request)
         )
       }
-      return NextResponse.json({
-        buildings: rows.map((row) => toBuilding(row, revealPasswords)),
-        total: rows.length,
-        searchNote,
-      })
+      return NextResponse.json(
+        { buildings: rows.map((row) => toBuilding(row, revealPasswords)), total: rows.length, searchNote },
+        { headers: BUILDING_CACHE_HEADERS }
+      )
     } catch (error) {
       console.error("Error searching buildings:", error)
       return NextResponse.json(

@@ -17,7 +17,10 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
     if (error) throw new Error(error.message)
     logActivity(user!.email!, "notice_view", { count: data?.length ?? 0 }, getIp(request))
-    return NextResponse.json({ notices: data ?? [] })
+    return NextResponse.json(
+      { notices: data ?? [] },
+      { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300", "Vary": "Cookie" } }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "공지사항을 불러오지 못했습니다."
     return NextResponse.json({ error: message }, { status: 500 })
