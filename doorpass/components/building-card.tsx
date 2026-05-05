@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2, Camera, Flag } from "lucide-react"
@@ -755,7 +756,7 @@ export function BuildingCard({
                       }}
                       className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-secondary border border-border hover:border-primary/60 transition-colors"
                     >
-                      <img src={p.photo_url} alt="건물 사진" className="w-full h-full object-cover" />
+                      <Image src={p.photo_url} alt="건물 사진" width={80} height={80} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
