@@ -161,7 +161,9 @@ export function BuildingCard({
   useEffect(() => {
     if (!showPopup) return
     const buildingId = currentBuilding.id
-    const addr = currentBuilding.address
+    const lat = currentBuilding.lat
+    const lng = currentBuilding.lng
+    if (!lat || !lng) return
     if (jibunCacheRef.current.has(buildingId)) {
       setJibunAddress(jibunCacheRef.current.get(buildingId) ?? null)
       setJibunLoading(false)
@@ -175,17 +177,32 @@ export function BuildingCard({
         const apiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
         if (!apiKey) return
         const res = await fetch(
-          `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}&analyze_type=exact`,
+          `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`,
           { headers: { Authorization: `KakaoAK ${apiKey}` } }
         )
         if (!res.ok || cancelled) return
-        const data = await res.json() as { documents?: Array<{ address?: { address_name?: string } }> }
-        const raw = data.documents?.[0]?.address?.address_name ?? null
+        const data = await res.json() as {
+          documents?: Array<{
+            address?: {
+              address_name?: string
+              region_3depth_name?: string
+              main_address_no?: string
+              sub_address_no?: string
+            }
+          }>
+        }
+        const addr = data.documents?.[0]?.address
         let result: string | null = null
-        if (raw) {
-          const tokens = raw.split(" ")
-          const dongIdx = tokens.findIndex((t) => /[가-힣]+동$/.test(t))
-          result = dongIdx >= 0 ? tokens.slice(dongIdx).join(" ") : raw
+        if (addr) {
+          const dong = addr.region_3depth_name ?? ""
+          const main = addr.main_address_no ?? ""
+          const sub = addr.sub_address_no ?? ""
+          if (dong && main) {
+            result = sub ? `${dong} ${main}-${sub}` : `${dong} ${main}`
+          } else if (addr.address_name) {
+            const tokens = addr.address_name.split(" ")
+            result = tokens.length > 2 ? tokens.slice(2).join(" ") : addr.address_name
+          }
         }
         if (!cancelled) {
           jibunCacheRef.current.set(buildingId, result)
@@ -198,7 +215,7 @@ export function BuildingCard({
       }
     })()
     return () => { cancelled = true }
-  }, [showPopup, currentBuilding.id, currentBuilding.address])
+  }, [showPopup, currentBuilding.id, currentBuilding.lat, currentBuilding.lng])
 
   useEffect(() => {
     if (autoOpen) setShowPopup(true)
