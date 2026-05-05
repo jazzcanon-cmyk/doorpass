@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, canEditBuilding } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
 import { encryptPassword } from '@/lib/encryption';
 import { trackActivity } from '@/lib/activity-tracker';
@@ -20,12 +21,26 @@ export async function POST(
       );
     }
 
+    const { data: approvedUser } = await supabaseAdmin
+      .from('approved_users')
+      .select('role')
+      .eq('email', user!.email!)
+      .maybeSingle();
+    const role = approvedUser?.role;
+    const isManager = role === 'admin' || role === 'sub_admin';
+
     const { id: buildingId } = await params;
     const { password } = await request.json();
 
-    const encrypted_password = (!password || password.trim() === '')
-      ? null
-      : encryptPassword(password);
+    const isEmpty = !password || password.trim() === '';
+    if (!isManager && isEmpty) {
+      return NextResponse.json(
+        { error: '비밀번호 삭제는 관리자만 가능합니다.' },
+        { status: 403 }
+      );
+    }
+
+    const encrypted_password = isEmpty ? null : encryptPassword(password);
     const supabase = await createSupabaseRouteHandlerClient();
 
     const { data: updatedBuilding, error: updateError } = await supabase

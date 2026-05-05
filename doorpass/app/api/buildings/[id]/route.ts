@@ -116,6 +116,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     .eq("email", user!.email!)
     .single()
   const userRole = userInfo?.role
+  const isManager = userRole === "admin" || userRole === "sub_admin"
 
   const body = (await request.json().catch(() => ({}))) as {
     name?: string
@@ -123,6 +124,19 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     memo?: string | null
   }
   const { name, password, memo } = body
+
+  if (!isManager) {
+    const isEmpty = (v: unknown) => v === null || (typeof v === "string" && v.trim() === "")
+    if (typeof name === "string" && name.trim() === "") {
+      return NextResponse.json({ error: "건물명 삭제는 관리자만 가능합니다." }, { status: 403 })
+    }
+    if (password !== undefined && isEmpty(password)) {
+      return NextResponse.json({ error: "비밀번호 삭제는 관리자만 가능합니다." }, { status: 403 })
+    }
+    if (memo !== undefined && isEmpty(memo)) {
+      return NextResponse.json({ error: "메모 삭제는 관리자만 가능합니다." }, { status: 403 })
+    }
+  }
 
   const updateData: Record<string, string | null> = {}
   if (typeof name === "string") updateData.name = name

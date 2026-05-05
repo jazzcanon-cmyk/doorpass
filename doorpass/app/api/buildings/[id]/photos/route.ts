@@ -171,11 +171,14 @@ export async function DELETE(
     .select("role")
     .eq("email", user!.email!)
     .maybeSingle()
-  const isAdmin = (me as { role?: string } | null)?.role === "admin"
-  const isOwner = photo.uploader_email === user!.email!
+  const role = (me as { role?: string } | null)?.role
+  const isManager = role === "admin" || role === "sub_admin"
 
-  if (!isOwner && !isAdmin) {
-    return NextResponse.json({ error: "권한 없음" }, { status: 403 })
+  if (!isManager) {
+    return NextResponse.json(
+      { error: "사진 삭제는 관리자와 부관리자만 가능합니다." },
+      { status: 403 }
+    )
   }
 
   const { error: delErr } = await supabaseAdmin

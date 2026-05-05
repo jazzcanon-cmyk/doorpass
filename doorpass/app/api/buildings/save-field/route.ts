@@ -38,6 +38,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '수정 권한이 없습니다.' }, { status: 403 })
     }
 
+    const isManager = role === 'admin' || role === 'sub_admin'
+    const isDeletableField = field === 'name' || field === 'password' || field === 'memo'
+    const isEmptyValue = typeof value !== 'string' || value.trim() === ''
+    if (!isManager && isDeletableField && isEmptyValue) {
+      const fieldLabel =
+        field === 'password' ? '비밀번호' : field === 'memo' ? '메모' : '건물명'
+      return NextResponse.json(
+        { error: `${fieldLabel} 삭제는 관리자만 가능합니다.` },
+        { status: 403 }
+      )
+    }
+
     const { data: existing } = await supabaseAdmin
       .from('buildings')
       .select('name, password, password_encrypted, memo, has_elevator')
