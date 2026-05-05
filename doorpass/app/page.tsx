@@ -148,12 +148,16 @@ export default function Home() {
 
   useEffect(() => {
     if (authStatus !== "ok") return
-    void fetch("/api/activity/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actionType: "page_view", pageUrl: window.location.pathname }),
-      keepalive: true,
-    }).catch(() => {})
+    // 초기 로딩 완료 후 5초 뒤에 비핵심 활동 추적 (체감 속도 영향 없음)
+    const timer = setTimeout(() => {
+      void fetch("/api/activity/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionType: "page_view", pageUrl: window.location.pathname }),
+        keepalive: true,
+      }).catch(() => {})
+    }, 5000)
+    return () => clearTimeout(timer)
   }, [authStatus])
 
   if (authStatus === "loading") return <LoadingScreen />

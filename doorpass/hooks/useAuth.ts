@@ -5,6 +5,17 @@ import { toast } from "sonner"
 import { supabase } from "@/lib/supabase-client"
 import type { CurrentUser } from "@/types/building"
 
+type MeResponse = {
+  canRevealBuildingPassword?: boolean
+  branchId?: string | null
+  total_points?: number
+  loginCount?: number
+  approvalStatus?: string
+  welcomeShown?: boolean
+  name?: string
+  role?: string | null
+}
+
 export function useAuth() {
   const router = useRouter()
   const [authStatus, setAuthStatus] = useState<"loading" | "ok">("loading")
@@ -17,6 +28,7 @@ export function useAuth() {
     let approvalPoller: ReturnType<typeof setInterval> | null = null
     const controller = new AbortController()
 
+    // API 호출 1: Supabase 세션 확인
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled) return
       if (!user) {
@@ -47,15 +59,17 @@ export function useAuth() {
             if (cancelled || !data.autoApproved) return
             void fetch("/api/users/me", { cache: "no-store" })
               .then((r) => r.json())
-              .then((meData: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
+              .then((meData: MeResponse) => {
                 if (cancelled) return
                 setCurrentUser((prev) =>
-                  prev ? {
-                    ...prev,
-                    canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
-                    branchId: meData?.branchId ?? null,
-                    total_points: meData?.total_points ?? 0,
-                  } : null
+                  prev
+                    ? {
+                        ...prev,
+                        canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
+                        branchId: meData?.branchId ?? null,
+                        total_points: meData?.total_points ?? 0,
+                      }
+                    : null
                 )
               })
               .catch(() => {})
@@ -63,92 +77,62 @@ export function useAuth() {
           .catch(() => sessionStorage.removeItem("referral_token"))
       }
 
+      // API 호출 2: 통합 me API (loginCount, approvalStatus, welcomeShown 포함)
       void fetch("/api/users/me", { signal: controller.signal, cache: "no-store" })
         .then((r) => r.json())
-        .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
+        .then((data: MeResponse) => {
           if (cancelled) return
+
           setCurrentUser((prev) =>
-            prev ? {
-              ...prev,
-              canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
-              branchId: data?.branchId ?? null,
-              total_points: data?.total_points ?? 0,
-            } : null
+            prev
+              ? {
+                  ...prev,
+                  canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
+                  branchId: data?.branchId ?? null,
+                  total_points: data?.total_points ?? 0,
+                }
+              : null
           )
-        })
-        .catch(() => {})
 
-      Promise.all([
-        fetch("/api/users/login-count", { signal: controller.signal }).then((r) => r.json()).catch(() => ({ count: 0 })),
-        fetch("/api/users/approval-status", { signal: controller.signal }).then((r) => r.json()).catch(() => ({ status: "none" })),
-      ]).then(([loginCountData, approvalStatusData]) => {
-        if (cancelled) return
-        const count = Number(loginCountData?.count ?? 0)
-        const status = String(approvalStatusData?.status ?? "none")
+          const approvalStatus = data?.approvalStatus ?? "none"
 
-        // 오늘 첫 로그인일 때만 기록 추가 (중복 방지)
-        if (count === 0) {
-          fetch("/api/users/login-count", { method: "POST" }).catch(() => {})
-        }
+          if (approvalStatus !== "approved") {
+            // 미승인 → 60초마다 /api/users/me 폴링
+            approvalPoller = setInterval(() => {
+              if (cancelled) {
+                if (approvalPoller) clearInterval(approvalPoller)
+                return
+              }
+              void fetch("/api/users/me", { cache: "no-store" })
+                .then((r) => r.json())
+                .then((meData: MeResponse) => {
+                  if (cancelled || meData.approvalStatus !== "approved") return
+                  if (approvalPoller) {
+                    clearInterval(approvalPoller)
+                    approvalPoller = null
+                  }
+                  setCurrentUser((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
+                          branchId: meData?.branchId ?? prev.branchId ?? null,
+                          total_points: meData?.total_points ?? prev.total_points ?? 0,
+                        }
+                      : null
+                  )
+                  toast.success("🎉 승인됐어요! 이제 비밀번호를 확인할 수 있어요!")
+                })
+                .catch(() => {})
+            }, 60_000)
+          }
 
-        // 승인 완료 → me API 재호출로 canRevealBuildingPassword 즉시 갱신
-        if (status === "approved") {
-          void fetch("/api/users/me", { cache: "no-store" })
-            .then((r) => r.json())
-            .then((data: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
-              if (cancelled) return
-              setCurrentUser((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      canRevealBuildingPassword: Boolean(data?.canRevealBuildingPassword),
-                      branchId: data?.branchId ?? prev.branchId ?? null,
-                      total_points: data?.total_points ?? prev.total_points ?? 0,
-                    }
-                  : null
-              )
-            })
-            .catch(() => {})
-        } else {
-          // 미승인 상태 → 30초마다 승인 여부 폴링
-          approvalPoller = setInterval(() => {
-            if (cancelled) {
-              if (approvalPoller) clearInterval(approvalPoller)
-              return
-            }
-            void fetch("/api/users/approval-status")
-              .then((r) => r.json())
-              .then((data: { status?: string; canRevealBuildingPassword?: boolean }) => {
-                if (cancelled || data.status !== "approved") return
-                if (approvalPoller) { clearInterval(approvalPoller); approvalPoller = null }
-                void fetch("/api/users/me", { cache: "no-store" })
-                  .then((r) => r.json())
-                  .then((meData: { canRevealBuildingPassword?: boolean; branchId?: string | null; total_points?: number }) => {
-                    if (cancelled) return
-                    setCurrentUser((prev) =>
-                      prev ? {
-                        ...prev,
-                        canRevealBuildingPassword: Boolean(meData?.canRevealBuildingPassword),
-                        branchId: meData?.branchId ?? prev.branchId ?? null,
-                        total_points: meData?.total_points ?? prev.total_points ?? 0,
-                      } : null
-                    )
-                    toast.success("🎉 승인됐어요! 이제 비밀번호를 확인할 수 있어요!")
-                  })
-                  .catch(() => {})
-              })
-              .catch(() => {})
-          }, 30_000)
-        }
-      }).catch(() => {})
-
-      fetch("/api/users/welcome", { signal: controller.signal })
-        .then((r) => r.json())
-        .then(({ welcome_shown }) => {
-          if (cancelled || welcome_shown !== false) return
-          welcomeTimer = setTimeout(() => {
-            if (!cancelled) setShowWelcome(true)
-          }, 500)
+          // 환영 메시지: welcomeShown === false 일 때만 표시
+          if (data?.welcomeShown === false) {
+            welcomeTimer = setTimeout(() => {
+              if (!cancelled) setShowWelcome(true)
+            }, 500)
+          }
         })
         .catch(() => {})
     })
