@@ -163,10 +163,8 @@ export function BuildingCard({
     const buildingId = currentBuilding.id
     const lat = currentBuilding.lat
     const lng = currentBuilding.lng
-    console.log("[jibun] 상세 열림 — id:", buildingId, "lat:", lat, "lng:", lng)
-    if (lat == null || lng == null) { console.log("[jibun] lat/lng 없음, 종료"); return }
+    if (lat == null || lng == null) return
     if (jibunCacheRef.current.has(buildingId)) {
-      console.log("[jibun] 캐시 hit →", jibunCacheRef.current.get(buildingId))
       setJibunAddress(jibunCacheRef.current.get(buildingId) ?? null)
       setJibunLoading(false)
       return
@@ -176,45 +174,15 @@ export function BuildingCard({
     let cancelled = false
     void (async () => {
       try {
-        const apiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
-        console.log("[jibun] apiKey 존재:", !!apiKey)
-        if (!apiKey) return
-        const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`
-        console.log("[jibun] 요청:", url)
-        const res = await fetch(url, { headers: { Authorization: `KakaoAK ${apiKey}` } })
-        console.log("[jibun] 응답 status:", res.status)
+        const res = await fetch(`/api/address/jibun?lat=${lat}&lng=${lng}`)
         if (!res.ok || cancelled) return
-        const data = await res.json() as {
-          documents?: Array<{
-            address?: {
-              address_name?: string
-              region_3depth_name?: string
-              main_address_no?: string
-              sub_address_no?: string
-            }
-          }>
-        }
-        console.log("[jibun] documents:", JSON.stringify(data.documents))
-        const addr = data.documents?.[0]?.address
-        let result: string | null = null
-        if (addr) {
-          const dong = addr.region_3depth_name ?? ""
-          const main = addr.main_address_no ?? ""
-          const sub = addr.sub_address_no ?? ""
-          if (dong && main) {
-            result = sub ? `${dong} ${main}-${sub}` : `${dong} ${main}`
-          } else if (addr.address_name) {
-            const tokens = addr.address_name.split(" ")
-            result = tokens.length > 2 ? tokens.slice(2).join(" ") : addr.address_name
-          }
-        }
-        console.log("[jibun] 최종 결과:", result)
+        const data = await res.json() as { jibun?: string | null }
+        const result = data.jibun ?? null
         if (!cancelled) {
           jibunCacheRef.current.set(buildingId, result)
           setJibunAddress(result)
         }
-      } catch (e) {
-        console.error("[jibun] 오류:", e)
+      } catch {
         if (!cancelled) jibunCacheRef.current.set(buildingId, null)
       } finally {
         if (!cancelled) setJibunLoading(false)
