@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
+import {
+  checkRateLimit,
+  getClientIp,
+  getRateLimitTier,
+} from "@/lib/rate-limit"
 
 const PUBLIC_PATHS = [
   "/login",
@@ -30,6 +35,25 @@ function redirectToLogin(request: NextRequest, reason?: string) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (pathname.startsWith("/api/")) {
+    const ip = getClientIp(request)
+    const tier = getRateLimitTier(pathname)
+    const result = checkRateLimit(ip, tier)
+    if (!result.allowed) {
+      return NextResponse.json(
+        {
+          error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+          retryAfter: result.retryAfter,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(result.retryAfter) },
+        }
+      )
+    }
+    return NextResponse.next({ request })
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next({ request })
