@@ -190,6 +190,19 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
+  const { data: approvedUser } = await supabaseAdmin
+    .from("approved_users")
+    .select("role")
+    .eq("email", user!.email)
+    .maybeSingle()
+
+  if (!approvedUser || (approvedUser.role !== "admin" && approvedUser.role !== "sub_admin")) {
+    return NextResponse.json(
+      { error: "건물 삭제는 관리자와 부관리자만 가능합니다." },
+      { status: 403 }
+    )
+  }
+
   const { id: raw } = await params
   const id = Number(raw)
   if (!Number.isFinite(id)) {

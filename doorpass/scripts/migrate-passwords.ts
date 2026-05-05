@@ -78,8 +78,12 @@ if (!supabaseUrl || !serviceKey) {
   console.error("❌ NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 필요합니다.")
   process.exit(1)
 }
-if (!process.env.ENCRYPTION_SECRET_KEY) {
-  console.error("❌ ENCRYPTION_SECRET_KEY 환경변수가 필요합니다.")
+const encKey = process.env.ENCRYPTION_SECRET_KEY ?? ""
+if (encKey.length < 64) {
+  console.error(`❌ ENCRYPTION_SECRET_KEY 길이가 부족합니다. (현재 ${encKey.length}자, 64 hex 문자 = 32 byte 필요)`)
+  console.error("   .env.local에 hex 64자 이상 키를 설정하세요. 새 키 생성:")
+  console.error('     node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"')
+  console.error("   ⚠️ 운영 중인 키가 있다면 그 키와 동일한 값을 써야 기존 암호화 데이터를 복호화할 수 있습니다.")
   process.exit(1)
 }
 if (!backupTable) {
@@ -95,14 +99,34 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 // 2. 백업 테이블 존재·정합성 검증
 // ─────────────────────────────────────────────────────────────────────────────
 async function verifyBackup(): Promise<void> {
+  console.log(`🔎 사전 점검: Supabase URL = ${supabaseUrl}`)
+  console.log(`   service key 길이: ${serviceKey?.length ?? 0}`)
+
+  // 1) 원본 buildings 테이블 접근 확인 (연결/키 검증)
+  const probe = await supabase
+    .from("buildings")
+    .select("id", { count: "exact", head: true })
+  if (probe.error) {
+    console.error("❌ buildings 테이블 접근 실패 — 연결/키 문제일 가능성")
+    console.error("   raw error:", JSON.stringify(probe.error, null, 2))
+    process.exit(1)
+  }
+  console.log(`✅ buildings 접근 OK — 원본 행 수: ${probe.count ?? 0}`)
+  console.log("")
+
   console.log(`🔎 백업 테이블 검증: ${backupTable}`)
   const { count, error } = await supabase
     .from(backupTable!)
     .select("id", { count: "exact", head: true })
 
   if (error) {
-    console.error(`❌ 백업 테이블 조회 실패: ${error.message}`)
-    console.error("   — 백업 테이블이 존재하지 않거나 권한이 없습니다. STEP 0 SQL을 실행했는지 확인하세요.")
+    console.error(`❌ 백업 테이블 조회 실패`)
+    console.error(`   raw error: ${JSON.stringify(error, null, 2)}`)
+    console.error("   — 백업 테이블이 존재하지 않거나 PostgREST 캐시에 반영되지 않았을 수 있습니다.")
+    console.error("   — Supabase SQL Editor에서 아래 SQL을 실행해 캐시를 리로드해보세요:")
+    console.error("       NOTIFY pgrst, 'reload schema';")
+    console.error("   — 또는 다음 SQL로 테이블 존재 여부를 직접 확인하세요:")
+    console.error(`       SELECT to_regclass('public.${backupTable}');`)
     process.exit(1)
   }
 
