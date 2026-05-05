@@ -125,25 +125,42 @@ export async function GET(request: Request) {
       const lat = parseFloat(latParam)
       const lng = parseFloat(lngParam)
       if (!isFinite(lat) || !isFinite(lng)) {
-        return NextResponse.json({ buildings: [] })
+        return NextResponse.json({ buildings: [], usedRadius: 0 })
       }
       const { revealPasswords } = await getBuildingsListAuth()
-      // 약 ±0.005도(≈555m) bbox — 100m 클라이언트 필터를 넉넉히 커버
-      const latDelta = 0.005
-      const lngDelta = 0.006
-      const { data, error } = await supabase
-        .from("buildings")
-        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
-        .gte("lat", lat - latDelta)
-        .lte("lat", lat + latDelta)
-        .gte("lng", lng - lngDelta)
-        .lte("lng", lng + lngDelta)
-        .order("lat", { ascending: true })
-        .limit(2000)
 
-      if (error) throw new Error(error.message)
+      const requestedRadius = Math.max(50, Math.min(500, Number(searchParams.get("radius")) || 100))
+      // 결과 0건이면 200m → 500m 순으로 자동 확장
+      const expandSteps = [requestedRadius]
+      if (requestedRadius < 200) expandSteps.push(200)
+      if (requestedRadius < 500) expandSteps.push(500)
+
+      let buildings: BuildingRow[] = []
+      let usedRadius = requestedRadius
+
+      for (const r of expandSteps) {
+        const latDelta = r / 111000
+        const lngDelta = r / (111000 * Math.cos((lat * Math.PI) / 180))
+        const { data, error } = await supabase
+          .from("buildings")
+          .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
+          .gte("lat", lat - latDelta)
+          .lte("lat", lat + latDelta)
+          .gte("lng", lng - lngDelta)
+          .lte("lng", lng + lngDelta)
+          .order("lat", { ascending: true })
+          .limit(50)
+        if (error) throw new Error(error.message)
+        if (data && data.length > 0) {
+          buildings = data as BuildingRow[]
+          usedRadius = r
+          break
+        }
+      }
+
       return NextResponse.json({
-        buildings: (data ?? []).map((row) => toBuilding(row as BuildingRow, revealPasswords)),
+        buildings: buildings.map((row) => toBuilding(row, revealPasswords)),
+        usedRadius,
       })
     } catch (error) {
       console.error("Error fetching nearby buildings:", error)

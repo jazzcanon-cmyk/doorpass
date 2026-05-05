@@ -41,14 +41,14 @@ export function useBuildings(currentUser: CurrentUser | null) {
       // lat/lng가 있으면 서버 측에서 반경 필터링 (가벼움, 비로그인 허용)
       const url =
         lat !== undefined && lng !== undefined
-          ? `/api/buildings?lat=${lat}&lng=${lng}`
+          ? `/api/buildings?lat=${lat}&lng=${lng}&radius=${radius}`
           : "/api/buildings"
       const response = await fetch(url, { signal: ctrl.signal })
       if (!response.ok) throw new Error("Failed to fetch")
       const data = await response.json()
       const buildings: Building[] = data.buildings ?? []
       if (lat !== undefined && lng !== undefined) {
-        const RADIUS_STEPS = [50, 100, 200, 500]
+        // 서버에서 이미 반경 필터링됨 — 거리 계산은 정렬용으로만 사용
         const withDistance = buildings
           .map((b) => ({
             ...b,
@@ -56,18 +56,9 @@ export function useBuildings(currentUser: CurrentUser | null) {
           }))
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
 
-        let usedRadius = radius
-        let withinRadius: Building[] = []
-        for (const r of RADIUS_STEPS) {
-          if (r < radius) continue
-          withinRadius = withDistance.filter((b) => (b.distance ?? 0) <= r)
-          usedRadius = r
-          if (withinRadius.length > 0) break
-        }
-
-        setNearbyBuildings(withinRadius)
-        setNearbyRadius(usedRadius)
-        setAllBuildings(buildings)
+        setNearbyBuildings(withDistance)
+        setNearbyRadius(data.usedRadius ?? radius)
+        // allBuildings은 초기 전체 로드(lat/lng 없는 호출)에서 설정됨
       } else {
         setAllBuildings(buildings)
       }
