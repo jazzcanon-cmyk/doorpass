@@ -23,7 +23,14 @@ interface SubscriptionRow {
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-internal-secret")
-  if (!secret || secret !== process.env.INTERNAL_API_SECRET) {
+  const expectedSecret = process.env.INTERNAL_API_SECRET
+
+  if (!expectedSecret || expectedSecret.length < 16) {
+    console.error("[push/send] INTERNAL_API_SECRET이 설정되지 않았거나 너무 짧습니다.")
+    return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 })
+  }
+
+  if (!secret || secret !== expectedSecret) {
     return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 })
   }
 

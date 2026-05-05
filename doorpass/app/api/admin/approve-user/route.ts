@@ -83,16 +83,21 @@ export async function POST(request: Request) {
 
     // 신규 회원에게 승인 완료 PWA 푸시 알림
     if (action === "approve" && row.user_email) {
-      fetch(new URL("/api/push/send", request.url).toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "" },
-        body: JSON.stringify({
-          userEmail: row.user_email,
-          title: "✅ 승인이 완료됐어요!",
-          body: "이제 건물 비밀번호를 확인할 수 있어요. 앱을 다시 열어주세요!",
-          url: "/",
-        }),
-      }).catch(console.error)
+      const internalSecret = process.env.INTERNAL_API_SECRET
+      if (!internalSecret || internalSecret.length < 16) {
+        console.warn("[approve-user] INTERNAL_API_SECRET 미설정/짧음 - 푸시 알림 스킵")
+      } else {
+        fetch(new URL("/api/push/send", request.url).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-internal-secret": internalSecret },
+          body: JSON.stringify({
+            userEmail: row.user_email,
+            title: "✅ 승인이 완료됐어요!",
+            body: "이제 건물 비밀번호를 확인할 수 있어요. 앱을 다시 열어주세요!",
+            url: "/",
+          }),
+        }).catch(console.error)
+      }
     }
 
     if (action === "approve") {
