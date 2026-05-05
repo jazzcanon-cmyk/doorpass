@@ -163,8 +163,10 @@ export function BuildingCard({
     const buildingId = currentBuilding.id
     const lat = currentBuilding.lat
     const lng = currentBuilding.lng
-    if (!lat || !lng) return
+    console.log("[jibun] 상세 열림 — id:", buildingId, "lat:", lat, "lng:", lng)
+    if (lat == null || lng == null) { console.log("[jibun] lat/lng 없음, 종료"); return }
     if (jibunCacheRef.current.has(buildingId)) {
+      console.log("[jibun] 캐시 hit →", jibunCacheRef.current.get(buildingId))
       setJibunAddress(jibunCacheRef.current.get(buildingId) ?? null)
       setJibunLoading(false)
       return
@@ -175,11 +177,12 @@ export function BuildingCard({
     void (async () => {
       try {
         const apiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
+        console.log("[jibun] apiKey 존재:", !!apiKey)
         if (!apiKey) return
-        const res = await fetch(
-          `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`,
-          { headers: { Authorization: `KakaoAK ${apiKey}` } }
-        )
+        const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`
+        console.log("[jibun] 요청:", url)
+        const res = await fetch(url, { headers: { Authorization: `KakaoAK ${apiKey}` } })
+        console.log("[jibun] 응답 status:", res.status)
         if (!res.ok || cancelled) return
         const data = await res.json() as {
           documents?: Array<{
@@ -191,6 +194,7 @@ export function BuildingCard({
             }
           }>
         }
+        console.log("[jibun] documents:", JSON.stringify(data.documents))
         const addr = data.documents?.[0]?.address
         let result: string | null = null
         if (addr) {
@@ -204,11 +208,13 @@ export function BuildingCard({
             result = tokens.length > 2 ? tokens.slice(2).join(" ") : addr.address_name
           }
         }
+        console.log("[jibun] 최종 결과:", result)
         if (!cancelled) {
           jibunCacheRef.current.set(buildingId, result)
           setJibunAddress(result)
         }
-      } catch {
+      } catch (e) {
+        console.error("[jibun] 오류:", e)
         if (!cancelled) jibunCacheRef.current.set(buildingId, null)
       } finally {
         if (!cancelled) setJibunLoading(false)
