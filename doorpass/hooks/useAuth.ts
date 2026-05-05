@@ -26,6 +26,7 @@ export function useAuth() {
     let cancelled = false
     let welcomeTimer: ReturnType<typeof setTimeout> | null = null
     let approvalPoller: ReturnType<typeof setInterval> | null = null
+    let visibilityListener: (() => void) | null = null
     const controller = new AbortController()
 
     // API 호출 1: Supabase 세션 확인
@@ -97,12 +98,9 @@ export function useAuth() {
           const approvalStatus = data?.approvalStatus ?? "none"
 
           if (approvalStatus !== "approved") {
-            // 미승인 → 60초마다 /api/users/me 폴링
-            approvalPoller = setInterval(() => {
-              if (cancelled) {
-                if (approvalPoller) clearInterval(approvalPoller)
-                return
-              }
+            // 미승인 → 승인 확인 함수
+            const checkApproval = () => {
+              if (cancelled) return
               void fetch("/api/users/me", { cache: "no-store" })
                 .then((r) => r.json())
                 .then((meData: MeResponse) => {
@@ -111,6 +109,7 @@ export function useAuth() {
                     clearInterval(approvalPoller)
                     approvalPoller = null
                   }
+                  if (visibilityListener) document.removeEventListener("visibilitychange", visibilityListener)
                   setCurrentUser((prev) =>
                     prev
                       ? {
@@ -124,7 +123,16 @@ export function useAuth() {
                   toast.success("🎉 승인됐어요! 이제 비밀번호를 확인할 수 있어요!")
                 })
                 .catch(() => {})
-            }, 60_000)
+            }
+
+            // 탭이 다시 활성화될 때 즉시 확인 (승인 직후 탭 복귀 시 바로 반영)
+            visibilityListener = () => {
+              if (document.visibilityState === "visible") checkApproval()
+            }
+            document.addEventListener("visibilitychange", visibilityListener)
+
+            // 15초마다 폴링
+            approvalPoller = setInterval(checkApproval, 15_000)
           }
 
           // 환영 메시지: welcomeShown === false 일 때만 표시
@@ -142,6 +150,7 @@ export function useAuth() {
       controller.abort()
       if (welcomeTimer) clearTimeout(welcomeTimer)
       if (approvalPoller) clearInterval(approvalPoller)
+      if (visibilityListener) document.removeEventListener("visibilitychange", visibilityListener)
     }
   }, [router])
 
