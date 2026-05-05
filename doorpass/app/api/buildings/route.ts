@@ -6,7 +6,7 @@ import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/li
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
 import { addPoints } from "@/lib/points"
-import { convertJibunToRoadAddress } from "@/lib/address-convert"
+import { lookupAddress } from "@/lib/address-convert"
 
 interface BuildingRow {
   id: number
@@ -175,33 +175,44 @@ export async function GET(request: Request) {
       let rows = (data ?? []) as BuildingRow[]
       let convertedFrom: string | null = null
 
-      // 결과 0건이면 카카오 API로 지번→도로명 변환 후 재검색
+      // 결과 0건이면 카카오 변환 + 다단계 fallback ilike 검색
       if (rows.length === 0) {
-        console.log(`[buildings/search] 1차 결과 0건 — 카카오 fallback 시도: "${searchTerm}"`)
-        const road = await convertJibunToRoadAddress(searchTerm)
-        if (!road) {
-          console.log(`[buildings/search] 카카오 변환 실패/없음 — fallback 종료`)
-        } else if (road === searchTerm) {
-          console.log(`[buildings/search] 변환 결과가 검색어와 동일 — 재검색 스킵`)
-        } else {
-          const escRoad = escapeIlikePattern(road).replace(/"/g, "")
-          const quotedRoad = `"%${escRoad}%"`
-          const { data: roadData, error: roadErr } = await supabase
+        console.log(`[buildings/search] 1차 결과 0건 — fallback 시도: "${searchTerm}"`)
+        const lookup = await lookupAddress(searchTerm)
+        // 우선순위 후보: 도로명 코어 → 도로명만 → 동 이름 → 도로명 풀버전
+        // (코어/이름이 가장 안정적, 풀버전은 "울산광역시" vs "울산" 차이로 실패하기 쉬움)
+        const candidates = [
+          lookup.roadCore,
+          lookup.roadName,
+          lookup.dongName,
+          lookup.roadFull,
+        ]
+          .filter((v): v is string => !!v && v.trim() !== "" && v !== searchTerm)
+          .filter((v, i, arr) => arr.indexOf(v) === i)
+
+        if (candidates.length === 0) {
+          console.log(`[buildings/search] 후보 없음 — fallback 종료`)
+        }
+
+        for (const cand of candidates) {
+          const escCand = escapeIlikePattern(cand).replace(/"/g, "")
+          const quotedCand = `"%${escCand}%"`
+          const { data: hit, error: hitErr } = await supabase
             .from("buildings")
             .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
-            .or(`name.ilike.${quotedRoad},address.ilike.${quotedRoad}`)
+            .or(`name.ilike.${quotedCand},address.ilike.${quotedCand}`)
             .order("address", { ascending: true })
             .limit(100)
-          if (roadErr) {
-            console.warn(`[buildings/search] 재검색 DB 오류: ${roadErr.message}`)
-          } else {
-            console.log(
-              `[buildings/search] 재검색 — 도로명="${road}", hit=${roadData?.length ?? 0}`
-            )
+          if (hitErr) {
+            console.warn(`[buildings/search] 후보 "${cand}" DB 오류: ${hitErr.message}`)
+            continue
           }
-          if (!roadErr && roadData && roadData.length > 0) {
-            rows = roadData as BuildingRow[]
+          console.log(`[buildings/search] 후보 "${cand}" → hit=${hit?.length ?? 0}`)
+          if (hit && hit.length > 0) {
+            rows = hit as BuildingRow[]
             convertedFrom = searchTerm
+            console.log(`[buildings/search] 매칭 성공 — strategy="${cand}"`)
+            break
           }
         }
       }
