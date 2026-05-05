@@ -27,13 +27,20 @@ export async function GET(request: Request) {
   try {
     const { data: row, error: qErr } = await supabaseAdmin
       .from("pending_approvals")
-      .select("id, status")
+      .select("id, status, created_at")
       .eq("token", token)
       .maybeSingle()
 
     if (qErr) throw qErr
     if (!row) return resultRedirect(request, "invalid")
     if (row.status !== "pending") return resultRedirect(request, "already")
+
+    const createdAt = new Date(row.created_at)
+    const now = new Date()
+    const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
+    if (hoursDiff > 72) {
+      return resultRedirect(request, "expired")
+    }
 
     const result = await executePendingApprovalById(Number(row.id), "reject", "email-link")
 

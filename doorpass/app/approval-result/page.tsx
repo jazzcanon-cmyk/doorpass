@@ -1,6 +1,6 @@
 import Link from "next/link"
 
-type Status = "approved" | "rejected" | "already" | "invalid" | "error"
+type Status = "approved" | "rejected" | "already" | "invalid" | "expired" | "error"
 
 const MESSAGES: Record<Status, { title: string; body: string; tone: "ok" | "warn" | "err" }> = {
   approved: {
@@ -23,6 +23,11 @@ const MESSAGES: Record<Status, { title: string; body: string; tone: "ok" | "warn
     body: "링크가 잘못되었거나 만료되었습니다. 신청자가 다시 가입 신청을 해야 할 수 있습니다.",
     tone: "err",
   },
+  expired: {
+    title: "만료된 링크",
+    body: "승인 링크가 만료되었습니다. 관리자에게 문의하세요.",
+    tone: "err",
+  },
   error: {
     title: "처리 중 오류",
     body: "처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
@@ -42,6 +47,7 @@ function normalize(input: string | undefined): Status {
     case "rejected":
     case "already":
     case "invalid":
+    case "expired":
     case "error":
       return input
     default:
