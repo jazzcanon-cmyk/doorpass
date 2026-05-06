@@ -53,7 +53,7 @@ export async function POST(
     .maybeSingle()
   const ctx = (ctxData ?? null) as ExchangeContext | null
 
-  const adminEmail = user!.email ?? "unknown"
+  const adminEmail = user?.email ?? "unknown"
 
   const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
     "process_point_exchange",

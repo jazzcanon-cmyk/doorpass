@@ -21,7 +21,7 @@ export async function PUT(request: Request) {
     const { data: currentUser } = await supabaseAdmin
       .from("approved_users")
       .select("role, branch_id")
-      .eq("email", user!.email)
+      .eq("email", user?.email ?? "unknown")
       .maybeSingle()
 
     if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "sub_admin")) {
@@ -72,7 +72,7 @@ export async function PUT(request: Request) {
     }
 
     await sendTelegramMessage(
-      `🔄 회원 역할 변경\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n📊 변경: ${roleLabels[targetUser.role] || targetUser.role} → ${roleLabels[newRole] || newRole}\n👤 변경자: ${user!.email}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+      `🔄 회원 역할 변경\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n📊 변경: ${roleLabels[targetUser.role] || targetUser.role} → ${roleLabels[newRole] || newRole}\n👤 변경자: ${user?.email ?? "unknown"}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
     )
 
     return NextResponse.json({ success: true })

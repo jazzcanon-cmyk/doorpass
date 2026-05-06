@@ -88,7 +88,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
       .from("role_requests")
       .update({
         status: newStatus,
-        reviewed_by: user!.email,
+        reviewed_by: user?.email ?? "unknown",
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", id)

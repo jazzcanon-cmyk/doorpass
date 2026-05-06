@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const { data: me } = await supabaseAdmin
       .from('approved_users')
       .select('role')
-      .eq('email', user!.email!)
+      .eq('email', user?.email ?? "unknown")
       .single()
 
     if (!me || me.role !== 'admin') {

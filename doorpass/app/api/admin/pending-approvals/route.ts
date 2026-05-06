@@ -7,12 +7,12 @@ export async function GET() {
   if (unauthorized) return unauthorized
 
   try {
-    const email = user!.email
-    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const email = user?.email ?? "unknown"
+    const meta = user?.user_metadata as Record<string, unknown> | undefined
     const userId =
       ((meta?.provider_id as string | undefined) ??
         (meta?.sub as string | undefined) ??
-        user!.id) as string
+        (user?.id ?? "")) as string
 
     let currentUser: { branch_id: string | null } | null = null
     if (email) {

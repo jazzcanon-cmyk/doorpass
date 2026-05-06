@@ -26,12 +26,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
     }
 
-    const email = user!.email
-    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const email = user?.email ?? "unknown"
+    const meta = user?.user_metadata as Record<string, unknown> | undefined
     const userId =
       ((meta?.provider_id as string | undefined) ??
         (meta?.sub as string | undefined) ??
-        user!.id) as string
+        (user?.id ?? "")) as string
 
     let currentUser: { branch_id: string | null } | null = null
     if (email) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
     }
 
-    const result = await executePendingApprovalById(approvalId, action, user!.email ?? "unknown", assignedRole, branchIdOverride)
+    const result = await executePendingApprovalById(approvalId, action, user?.email ?? "unknown", assignedRole, branchIdOverride)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: result.httpStatus })
     }
@@ -77,8 +77,8 @@ export async function POST(request: Request) {
 
     await sendTelegramMessage(
       action === "approve"
-        ? `✅ 회원 승인 완료\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 승인자: ${user!.email}\n📅 승인일시: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
-        : `❌ 회원 승인 거부\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 처리자: ${user!.email}`
+        ? `✅ 회원 승인 완료\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 승인자: ${user?.email ?? "unknown"}\n📅 승인일시: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+        : `❌ 회원 승인 거부\n📧 이메일: ${row.user_email}\n👤 이름: ${row.user_name}\n👔 처리자: ${user?.email ?? "unknown"}`
     ).catch(console.error)
 
     // 신규 회원에게 승인 완료 PWA 푸시 알림

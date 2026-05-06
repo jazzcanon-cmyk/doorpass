@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           setting_key,
           setting_value,
           updated_at: new Date().toISOString(),
-          updated_by: user!.email ?? null,
+          updated_by: user?.email ?? null,
         },
         { onConflict: "setting_key" }
       )
