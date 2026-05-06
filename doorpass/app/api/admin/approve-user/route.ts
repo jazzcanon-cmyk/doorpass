@@ -3,6 +3,7 @@ import { requireManagerApi } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { executePendingApprovalById } from "@/lib/pending-approval-actions"
+import { sendAlimtalk } from "@/lib/solapi"
 
 export async function POST(request: Request) {
   const { user, role, unauthorized } = await requireManagerApi()
@@ -135,6 +136,24 @@ export async function POST(request: Request) {
       } catch (e) {
         console.error('[approve-user/referral]', (e as Error).message)
       }
+    }
+
+    if (action === "approve" && row.phone) {
+      let branchName = "대리점"
+      if (row.selected_branch_id) {
+        const { data: branch } = await supabaseAdmin
+          .from("branches")
+          .select("name")
+          .eq("id", row.selected_branch_id)
+          .maybeSingle()
+        if (branch) branchName = (branch as { name: string }).name
+      }
+      const roleLabels: Record<string, string> = { driver: "기사", editor: "편집자", sub_admin: "부관리자", admin: "관리자" }
+      sendAlimtalk(row.phone, "IEPVbU3DRb", {
+        "#{이름}": row.user_name ?? "회원",
+        "#{대리점명}": branchName,
+        "#{역할}": roleLabels[assignedRole] ?? assignedRole,
+      }).catch(console.error)
     }
 
     return NextResponse.json({ success: true })

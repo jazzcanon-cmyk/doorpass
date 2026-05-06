@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { sendAlimtalk } from "@/lib/solapi"
 
 const VOLUMES = ["v50", "v100", "v200", "v300", "v400", "v500"] as const
 const PAY_TYPES = ["per_item", "per_day", "negotiable"] as const
@@ -204,6 +205,24 @@ export async function POST(request: Request) {
     sendTelegramMessage(
       `🚚 [대체배송 등록]\n날짜: ${requestDate}\n물량: ${volume}\n단가: ${payType}${amount ? ` ${amount}원` : ""}\n등록자: ${requesterName}`
     ).catch(console.error)
+
+    if (resolvedBranchId) {
+      const { data: members } = await supabaseAdmin
+        .from("approved_users")
+        .select("name, phone")
+        .eq("branch_id", resolvedBranchId)
+        .not("phone", "is", null)
+        .neq("email", user!.email!)
+      for (const member of members ?? []) {
+        const m = member as { name: string; phone: string }
+        sendAlimtalk(m.phone, "RvYMgIY5P6", {
+          "#{이름}": m.name || "회원",
+          "#{요청자}": requesterName,
+          "#{주소}": area?.trim() || "-",
+          "#{내용}": memo?.trim() || volume,
+        }).catch(console.error)
+      }
+    }
 
     return NextResponse.json({ request: data })
   } catch (error) {

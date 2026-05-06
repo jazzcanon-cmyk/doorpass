@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { sendAlimtalk } from "@/lib/solapi"
 
 const ALLOWED_ROLES = new Set(["admin", "sub_admin", "editor", "driver"])
 
@@ -30,7 +31,7 @@ export async function PUT(request: Request) {
 
     const { data: targetUser } = await supabaseAdmin
       .from("approved_users")
-      .select("email, name, role, branch_id, branches(name)")
+      .select("email, name, role, branch_id, phone, branches(name)")
       .eq("email", userEmail)
       .maybeSingle()
 
@@ -74,6 +75,16 @@ export async function PUT(request: Request) {
     await sendTelegramMessage(
       `🔄 회원 역할 변경\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n📊 변경: ${roleLabels[targetUser.role] || targetUser.role} → ${roleLabels[newRole] || newRole}\n👤 변경자: ${user?.email ?? "unknown"}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
     )
+
+    if (newRole === "editor" || newRole === "sub_admin") {
+      const templateId = newRole === "editor" ? "yTAHO9kIH6" : "GSBxO0jg2H"
+      const branchName = (targetUser.branches as { name?: string } | null)?.name ?? "대리점"
+      const phone = (targetUser as { phone?: string | null }).phone
+      sendAlimtalk(phone, templateId, {
+        "#{이름}": targetUser.name || userEmail,
+        "#{대리점명}": branchName,
+      }).catch(console.error)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
