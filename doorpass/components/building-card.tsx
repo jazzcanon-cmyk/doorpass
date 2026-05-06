@@ -130,6 +130,7 @@ export function BuildingCard({
   const [passwordDraft, setPasswordDraft] = useState(currentBuilding.password || "")
   const [isEditingPassword, setIsEditingPassword] = useState(false)
   const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no">("")
+  const [isEditingElevator, setIsEditingElevator] = useState(false)
   const [memoText, setMemoText] = useState("")
   const [memoDraft, setMemoDraft] = useState("")
   const [isEditingMemo, setIsEditingMemo] = useState(false)
@@ -221,6 +222,7 @@ export function BuildingCard({
     setElevatorStatus(elev)
     setMemoText(remaining.trim())
     setMemoDraft(remaining.trim())
+    setIsEditingElevator(false)
   }, [currentBuilding.memo])
 
   const composeMemo = (status: "" | "yes" | "no", text: string) => {
@@ -575,45 +577,61 @@ export function BuildingCard({
               <div className="flex items-start gap-2 py-2 border-b border-border/40 last:border-0">
                 <span className="text-xs text-muted-foreground w-16 flex-shrink-0 pt-2">메모</span>
                 <div className="flex-1 min-w-0">
-                  {(!canEdit || isElevatorLocked) ? (
-                    // 표시 전용: 활성 상태일 때만 해당 뱃지 노출
-                    (elevatorStatus === "yes" || elevatorStatus === "no") ? (
-                      <div className="flex flex-wrap gap-2">
-                        {elevatorStatus === "yes" && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-blue-300 border border-blue-500/30 bg-blue-600/20">
-                            <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-blue-600 flex-shrink-0">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M8 9 L12 5 L16 9" />
-                                <path d="M8 15 L12 19 L16 15" />
-                              </svg>
-                            </span>
-                            엘리베이터
+                  {/*
+                    뱃지 표시 규칙:
+                    - 값이 설정됨 + 수정 모드 아님 → 선택된 뱃지 하나만 (편집자는 클릭해 수정 모드 진입)
+                    - 값이 설정됨 + 수정 모드 OR 미설정 + 편집 가능 → 두 버튼 (선택 시 저장 후 보기 모드 복귀)
+                    - 미설정 + 편집 불가 → 아무것도 표시 안 함
+                  */}
+                  {elevatorStatus !== "" && !isEditingElevator ? (
+                    <div className="flex flex-wrap gap-2">
+                      {elevatorStatus === "yes" && (
+                        <button
+                          type="button"
+                          disabled={!canEdit || isElevatorLocked}
+                          onClick={() => setIsEditingElevator(true)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-blue-300 border border-blue-500/30 bg-blue-600/20 ${(!canEdit || isElevatorLocked) ? "cursor-default" : "hover:bg-blue-600/30 transition-all"}`}
+                        >
+                          <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-blue-600 flex-shrink-0">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 9 L12 5 L16 9" />
+                              <path d="M8 15 L12 19 L16 15" />
+                            </svg>
                           </span>
-                        )}
-                        {elevatorStatus === "no" && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-amber-300 border border-amber-500/30 bg-amber-500/20">
-                            <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-amber-500 flex-shrink-0">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 20 L4 16 L9 16 L9 12 L14 12 L14 8 L19 8 L19 4 L22 4" />
-                              </svg>
-                            </span>
-                            계단만
+                          엘리베이터
+                        </button>
+                      )}
+                      {elevatorStatus === "no" && (
+                        <button
+                          type="button"
+                          disabled={!canEdit || isElevatorLocked}
+                          onClick={() => setIsEditingElevator(true)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-amber-300 border border-amber-500/30 bg-amber-500/20 ${(!canEdit || isElevatorLocked) ? "cursor-default" : "hover:bg-amber-500/30 transition-all"}`}
+                        >
+                          <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-amber-500 flex-shrink-0">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 20 L4 16 L9 16 L9 12 L14 12 L14 8 L19 8 L19 4 L22 4" />
+                            </svg>
                           </span>
-                        )}
-                      </div>
-                    ) : null
-                  ) : (
-                    // 편집 가능 + 미설정 상태: 두 뱃지를 선택 버튼으로 노출
-                    // (isElevatorLocked === false 이므로 elevatorStatus === "")
+                          계단만
+                        </button>
+                      )}
+                    </div>
+                  ) : canEdit && !isElevatorLocked ? (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         disabled={saving}
                         onClick={() => {
                           setElevatorStatus("yes")
+                          setIsEditingElevator(false)
                           void saveField("memo", composeMemo("yes", memoText))
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-blue-500/30 bg-blue-600/20 text-blue-300 text-xs font-medium hover:bg-blue-600/30 transition-all"
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-medium transition-all ${
+                          elevatorStatus === "yes"
+                            ? "border-blue-400 bg-blue-600/30 text-blue-200 ring-2 ring-blue-500/40"
+                            : "border-blue-500/30 bg-blue-600/20 text-blue-300 hover:bg-blue-600/30"
+                        }`}
                       >
                         <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-blue-600 flex-shrink-0">
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -628,9 +646,14 @@ export function BuildingCard({
                         disabled={saving}
                         onClick={() => {
                           setElevatorStatus("no")
+                          setIsEditingElevator(false)
                           void saveField("memo", composeMemo("no", memoText))
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-amber-500/30 bg-amber-500/20 text-amber-300 text-xs font-medium hover:bg-amber-500/30 transition-all"
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md border text-xs font-medium transition-all ${
+                          elevatorStatus === "no"
+                            ? "border-amber-400 bg-amber-500/30 text-amber-200 ring-2 ring-amber-500/40"
+                            : "border-amber-500/30 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+                        }`}
                       >
                         <span className="flex items-center justify-center w-[18px] h-[18px] rounded-md bg-amber-500 flex-shrink-0">
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -640,7 +663,7 @@ export function BuildingCard({
                         계단만
                       </button>
                     </div>
-                  )}
+                  ) : null}
 
                   <div className="mt-2">
                     {isEditingMemo ? (
