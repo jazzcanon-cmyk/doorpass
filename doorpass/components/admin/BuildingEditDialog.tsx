@@ -42,7 +42,7 @@ export function BuildingEditDialog({
   const [memo, setMemo] = useState("")
   const [createdAt, setCreatedAt] = useState("")
   const [accessType, setAccessType] = useState<"free" | "password">("password")
-  const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no">("")
+  const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no" | "other">("")
   const [memoText, setMemoText] = useState("")
 
   const reset = useCallback(() => {
@@ -79,7 +79,7 @@ export function BuildingEditDialog({
 
       setAccessType(pw === "자유출입" || pw === "" ? "free" : "password")
 
-      let elev: "" | "yes" | "no" = ""
+      let elev: "" | "yes" | "no" | "other" = ""
       let remaining = rawMemo
       if (rawMemo.includes("엘리베이터 있음")) {
         elev = "yes"
@@ -87,6 +87,9 @@ export function BuildingEditDialog({
       } else if (rawMemo.includes("엘리베이터 없음")) {
         elev = "no"
         remaining = rawMemo.replace(/엘리베이터 없음\.?\s*/g, "")
+      } else if (rawMemo.startsWith("기타. ") || rawMemo === "기타") {
+        elev = "other"
+        remaining = rawMemo.replace(/^기타\.?\s*/g, "")
       }
       setElevatorStatus(elev)
       setMemoText(remaining.trim())
@@ -118,7 +121,9 @@ export function BuildingEditDialog({
         ? "엘리베이터 있음. "
         : elevatorStatus === "no"
           ? "엘리베이터 없음. "
-          : ""
+          : elevatorStatus === "other"
+            ? "기타. "
+            : ""
     const finalMemo = (elevatorPrefix + memoText).trim()
     setSaving(true)
     try {
@@ -166,7 +171,7 @@ export function BuildingEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-full max-w-md sm:max-w-md"
+        className="w-full max-w-md sm:max-w-md bg-white dark:bg-[#1e293b]"
         onPointerDownOutside={(e) => {
           if (busy) e.preventDefault()
         }}
@@ -175,7 +180,7 @@ export function BuildingEditDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white">건물 상세</DialogTitle>
+          <DialogTitle className="text-[#111827] dark:text-white">건물 상세</DialogTitle>
         </DialogHeader>
 
         {loadingDetail ? (
@@ -185,7 +190,7 @@ export function BuildingEditDialog({
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="b-name" className="text-gray-900 dark:text-gray-100">
+              <Label htmlFor="b-name" className="font-medium text-[#374151] dark:text-gray-200">
                 건물명
               </Label>
               <Input
@@ -193,19 +198,19 @@ export function BuildingEditDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={busy}
-                className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                className="border-[#d1d5db] bg-white text-[#111827] dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-900 dark:text-gray-100">주소</Label>
-              <div className="rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
+              <Label className="font-medium text-[#374151] dark:text-gray-200">주소</Label>
+              <div className="rounded-md border border-[#d1d5db] bg-[#f9fafb] px-3 py-2 text-sm text-[#374151] dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
                 {address || "—"}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-900 dark:text-gray-100">비밀번호</Label>
+              <Label className="font-medium text-[#374151] dark:text-gray-200">비밀번호</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -214,10 +219,10 @@ export function BuildingEditDialog({
                     setPassword("")
                   }}
                   disabled={busy}
-                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                     accessType === "free"
-                      ? "bg-blue-500/20 border-blue-400 text-blue-700 dark:text-white"
-                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "border-blue-500 bg-blue-500 text-white"
+                      : "border-[#d1d5db] bg-white text-[#374151] hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                   }`}
                 >
                   자유출입
@@ -226,10 +231,10 @@ export function BuildingEditDialog({
                   type="button"
                   onClick={() => setAccessType("password")}
                   disabled={busy}
-                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                     accessType === "password"
-                      ? "bg-blue-500/20 border-blue-400 text-blue-700 dark:text-white"
-                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "border-blue-500 bg-blue-500 text-white"
+                      : "border-[#d1d5db] bg-white text-[#374151] hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                   }`}
                 >
                   직접입력
@@ -243,52 +248,52 @@ export function BuildingEditDialog({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={busy}
-                  className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="border-[#d1d5db] bg-white text-[#111827] focus:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400"
                 />
               )}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-900 dark:text-gray-100">메모</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <Label className="font-medium text-[#374151] dark:text-gray-200">메모</Label>
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setElevatorStatus((prev) => (prev === "yes" ? "" : "yes"))
-                  }
+                  onClick={() => setElevatorStatus((prev) => (prev === "yes" ? "" : "yes"))}
                   disabled={busy}
-                  className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border text-sm font-medium transition ${
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition ${
                     elevatorStatus === "yes"
-                      ? "border-blue-500/50 bg-blue-600/20 text-blue-300"
-                      : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                      : "border-[#d1d5db] bg-white text-[#374151] hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                   }`}
                 >
-                  <span className="flex items-center justify-center w-[44px] h-[44px] rounded-xl bg-blue-600">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 9 L12 5 L16 9" />
-                      <path d="M8 15 L12 19 L16 15" />
-                    </svg>
-                  </span>
+                  <span className="text-xl">🛗</span>
                   엘리베이터
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    setElevatorStatus((prev) => (prev === "no" ? "" : "no"))
-                  }
+                  onClick={() => setElevatorStatus((prev) => (prev === "no" ? "" : "no"))}
                   disabled={busy}
-                  className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border text-sm font-medium transition ${
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition ${
                     elevatorStatus === "no"
-                      ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
-                      : "bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                      : "border-[#d1d5db] bg-white text-[#374151] hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                   }`}
                 >
-                  <span className="flex items-center justify-center w-[44px] h-[44px] rounded-xl bg-amber-500">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 20 L4 16 L9 16 L9 12 L14 12 L14 8 L19 8 L19 4 L22 4" />
-                    </svg>
-                  </span>
+                  <span className="text-xl">🪜</span>
                   계단만
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setElevatorStatus((prev) => (prev === "other" ? "" : "other"))}
+                  disabled={busy}
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition ${
+                    elevatorStatus === "other"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                      : "border-[#d1d5db] bg-white text-[#374151] hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <span className="text-xl">📝</span>
+                  기타
                 </button>
               </div>
               <Textarea
@@ -298,13 +303,13 @@ export function BuildingEditDialog({
                 onChange={(e) => setMemoText(e.target.value)}
                 disabled={busy}
                 placeholder="추가 메모 (예: 공동현관, 2층 계단 옆)"
-                className="resize-y bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                className="resize-y border-[#d1d5db] bg-white text-[#111827] placeholder:text-[#9ca3af] dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-gray-500 dark:text-gray-400 text-xs">등록일</Label>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
+              <Label className="text-xs text-[#6b7280]">등록일</Label>
+              <p className="text-sm text-[#6b7280] dark:text-gray-400">
                 {createdAt ? new Date(createdAt).toLocaleString("ko-KR") : "—"}
               </p>
             </div>
@@ -317,7 +322,7 @@ export function BuildingEditDialog({
             variant="destructive"
             disabled={busy || loadingDetail || buildingId == null}
             onClick={() => void handleDelete()}
-            className="inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700"
           >
             {deleting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : null}
             삭제
@@ -327,7 +332,7 @@ export function BuildingEditDialog({
             variant="default"
             disabled={busy || loadingDetail || buildingId == null}
             onClick={() => void handleSave()}
-            className="inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
           >
             {saving ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : null}
             저장
