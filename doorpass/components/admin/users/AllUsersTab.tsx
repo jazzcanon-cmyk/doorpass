@@ -163,12 +163,15 @@ export function AllUsersTab() {
           email: u.email ?? null,
         }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error((data as { error?: string }).error || '초기화 실패')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error((err as { error?: string }).error || '회원 초기화에 실패했습니다.')
+        return
+      }
       toast.success((u.name ?? u.email ?? '회원') + '이 초기화되었습니다.')
       void load()
-    } catch (e) {
-      toast.error('초기화 실패')
+    } catch {
+      toast.error('네트워크 오류가 발생했습니다. 다시 시도해주세요.')
     }
   }
 

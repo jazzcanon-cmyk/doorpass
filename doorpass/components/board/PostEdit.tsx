@@ -21,8 +21,17 @@ export function PostEdit({ post }: { post: PostDetail }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       })
-      if (r.ok) { afterEdit() } else { toast.error("수정 실패"); setSubmitting(false) }
-    } catch { toast.error("수정 실패"); setSubmitting(false) }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        toast.error(err.error || "게시글 수정에 실패했습니다.")
+        setSubmitting(false)
+        return
+      }
+      afterEdit()
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+      setSubmitting(false)
+    }
   }
 
   return (

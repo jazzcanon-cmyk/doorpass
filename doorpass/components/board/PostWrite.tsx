@@ -43,9 +43,19 @@ export function PostWrite({ defaultAuthor }: { defaultAuthor?: string }) {
       const fd = new FormData(); fd.append("file", imageFile)
       try {
         const r = await fetch("/api/upload", { method: "POST", body: fd })
-        if (r.ok) { const d = await r.json(); image_url = d.url }
-        else { toast.error("이미지 업로드에 실패했습니다."); setSubmitting(false); return }
-      } catch { toast.error("이미지 업로드에 실패했습니다."); setSubmitting(false); return }
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}))
+          toast.error(err.error || "이미지 업로드에 실패했습니다.")
+          setSubmitting(false)
+          return
+        }
+        const d = await r.json()
+        image_url = d.url
+      } catch {
+        toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+        setSubmitting(false)
+        return
+      }
     }
     try {
       const r = await fetch("/api/posts", {
@@ -53,8 +63,17 @@ export function PostWrite({ defaultAuthor }: { defaultAuthor?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, author: author || "익명", image_url }),
       })
-      if (r.ok) { afterWrite() } else { toast.error("게시글 등록에 실패했습니다."); setSubmitting(false) }
-    } catch { toast.error("게시글 등록에 실패했습니다."); setSubmitting(false) }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        toast.error(err.error || "게시글 등록에 실패했습니다.")
+        setSubmitting(false)
+        return
+      }
+      afterWrite()
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+      setSubmitting(false)
+    }
   }
 
   return (

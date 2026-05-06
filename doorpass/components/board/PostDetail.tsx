@@ -29,14 +29,54 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
 
   useEffect(() => {
     if (!postId || isNaN(postId)) { setError("잘못된 ID"); setLoading(false); return }
-    fetch("/api/posts/" + postId)
-      .then((r) => r.json())
-      .then((d) => { if (d.error) setError("게시글을 불러오지 못했습니다."); else { setPost(d.post); if (d.post) trackPostView(postId, d.post.title) } setLoading(false) })
-      .catch(() => { setError("불러오기 실패"); setLoading(false) })
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch("/api/posts/" + postId)
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          if (!cancelled) {
+            setError(err.error || "게시글을 불러오지 못했습니다.")
+            setLoading(false)
+          }
+          return
+        }
+        const d = await res.json()
+        if (cancelled) return
+        setPost(d.post)
+        if (d.post) trackPostView(postId, d.post.title)
+        setLoading(false)
+      } catch {
+        if (!cancelled) {
+          setError("네트워크 오류가 발생했습니다.")
+          setLoading(false)
+        }
+      }
+    })()
+    return () => { cancelled = true }
   }, [postId])
 
   const toggleLike = async (commentId: number) => {
     if (likingIds.has(commentId)) return
+
+    // 실패 시 롤백을 위해 원래 상태 저장
+    const original = post?.comments.find((c) => c.id === commentId)
+    if (!original) return
+    const wasLiked = original.liked
+    const wasCount = original.like_count
+
+    const rollback = () => {
+      setPost((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          comments: prev.comments.map((c: Comment) =>
+            c.id === commentId ? { ...c, liked: wasLiked, like_count: wasCount } : c
+          ),
+        }
+      })
+    }
+
     setLikingIds((prev) => new Set(prev).add(commentId))
     setPost((prev) => {
       if (!prev) return prev
@@ -51,20 +91,28 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
     })
     try {
       const res = await fetch(`/api/posts/${postId}/comments/${commentId}/like`, { method: "POST" })
-      if (res.ok) {
-        const data = await res.json()
-        setPost((prev) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            comments: prev.comments.map((c: Comment) =>
-              c.id === commentId ? { ...c, liked: data.liked, like_count: data.like_count } : c
-            ),
-          }
-        })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        rollback()
+        toast.error(err.error || "좋아요 처리에 실패했습니다.")
+        return
       }
-    } catch { /* 낙관적 업데이트 유지 */ }
-    setLikingIds((prev) => { const s = new Set(prev); s.delete(commentId); return s })
+      const data = await res.json()
+      setPost((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          comments: prev.comments.map((c: Comment) =>
+            c.id === commentId ? { ...c, liked: data.liked, like_count: data.like_count } : c
+          ),
+        }
+      })
+    } catch {
+      rollback()
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setLikingIds((prev) => { const s = new Set(prev); s.delete(commentId); return s })
+    }
   }
 
   const submitComment = async () => {
@@ -76,15 +124,23 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: comment, author: author || "익명" }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || "댓글 작성에 실패했습니다.")
+        return
+      }
       const data = await res.json()
-      if (res.ok && data.comment) {
+      if (data.comment) {
         setPost((prev) => prev ? { ...prev, comments: [...prev.comments, data.comment] } : prev)
         setComment("")
       } else {
         toast.error("댓글 작성에 실패했습니다.")
       }
-    } catch { toast.error("댓글 작성에 실패했습니다.") }
-    setSubmitting(false)
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -92,9 +148,19 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
     setDeleting(true)
     try {
       const res = await fetch("/api/posts/" + postId, { method: "DELETE" })
-      if (res.ok) { afterDelete() }
-      else { toast.error("삭제 실패"); setDeleting(false); setConfirmDelete(false) }
-    } catch { toast.error("삭제 실패"); setDeleting(false); setConfirmDelete(false) }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error || "게시글 삭제에 실패했습니다.")
+        setDeleting(false)
+        setConfirmDelete(false)
+        return
+      }
+      afterDelete()
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
   }
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

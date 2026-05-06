@@ -43,14 +43,18 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
       params.set("page", String(p))
       if (search) params.set("search", search)
       const res = await fetch(`/api/buildings?${params.toString()}`)
-      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || "조회 실패")
+        const err = await res.json().catch(() => ({}))
+        setError((err as { error?: string }).error || "건물 목록을 불러오지 못했습니다.")
+        setBuildings([])
+        setTotal(0)
+        return
       }
+      const data = await res.json()
       setBuildings(Array.isArray(data.buildings) ? data.buildings : [])
       setTotal(typeof data.total === "number" ? data.total : 0)
-    } catch (e) {
-      setError("오류가 발생했습니다")
+    } catch {
+      setError("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
       setBuildings([])
       setTotal(0)
     } finally {

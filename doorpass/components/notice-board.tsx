@@ -42,11 +42,15 @@ export function NoticeBoard() {
     setError(null)
     try {
       const r = await fetch("/api/notices")
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        setError((err as { error?: string }).error || "공지사항을 불러오지 못했습니다.")
+        return
+      }
       const d = await r.json()
-      if (d.error) { setError("공지사항을 불러오지 못했습니다."); return }
       setNotices(d.notices ?? [])
     } catch {
-      setError("공지사항을 불러오지 못했습니다.")
+      setError("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
     } finally {
       setLoading(false)
     }
@@ -67,13 +71,19 @@ export function NoticeBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content, author: author || "관리자", is_important: isImportant }),
       })
-      const d = await r.json()
-      if (!r.ok) { toast.error("등록 실패"); return }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        toast.error((err as { error?: string }).error || "공지사항 등록에 실패했습니다.")
+        return
+      }
       toast.success("공지사항이 등록됐습니다.")
       resetForm()
       await fetchNotices()
-    } catch { toast.error("등록 실패") }
-    setSubmitting(false)
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const deleteNotice = async (id: number) => {
@@ -84,10 +94,16 @@ export function NoticeBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete", id }),
       })
-      if (!r.ok) { toast.error("삭제 실패"); return }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        toast.error((err as { error?: string }).error || "공지사항 삭제에 실패했습니다.")
+        return
+      }
       setNotices((prev) => prev.filter((n) => n.id !== id))
       toast.success("삭제됐습니다.")
-    } catch { toast.error("삭제 실패") }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    }
   }
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
