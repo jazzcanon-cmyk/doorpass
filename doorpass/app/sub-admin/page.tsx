@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { Users, Building2, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw, Link2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Users, Building2, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw, Link2, Bell } from 'lucide-react'
 
 interface DashboardStats {
   userCount: number
@@ -42,10 +43,11 @@ interface ReferralRecord {
 export default function SubAdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({ userCount: 0, buildingCount: 0, totalBuildingCount: 0, pendingApprovals: 0, recentUploads: 0 })
   const [isLoading, setIsLoading] = useState(true)
-  const [showApprovals, setShowApprovals] = useState(false)
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [approvalsLoading, setApprovalsLoading] = useState(false)
   const [processingId, setProcessingId] = useState<number | null>(null)
+  const [processingRoleChoice, setProcessingRoleChoice] = useState<'driver' | 'editor' | 'reject' | null>(null)
+  const approvalSectionRef = useRef<HTMLDivElement | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showRoleRequests, setShowRoleRequests] = useState(false)
   const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([])
@@ -85,9 +87,17 @@ export default function SubAdminDashboardPage() {
 
   useEffect(() => {
     void fetchStats()
-    const interval = setInterval(() => void fetchStats(), 30000)
+    void fetchApprovals()
+    const interval = setInterval(() => {
+      void fetchStats()
+      void fetchApprovals()
+    }, 30000)
     return () => clearInterval(interval)
-  }, [fetchStats])
+  }, [fetchStats, fetchApprovals])
+
+  const scrollToApprovals = () => {
+    approvalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const fetchRoleRequests = useCallback(async () => {
     setRoleRequestsLoading(true)
@@ -142,14 +152,6 @@ export default function SubAdminDashboardPage() {
     }
   }, [])
 
-  const handleApprovalToggle = async () => {
-    const next = !showApprovals
-    setShowApprovals(next)
-    if (next && approvals.length === 0) {
-      await fetchApprovals()
-    }
-  }
-
   const handleReferralToggle = async () => {
     const next = !showReferralHistory
     setShowReferralHistory(next)
@@ -164,23 +166,43 @@ export default function SubAdminDashboardPage() {
     return { label: '⏳ 대기중', color: 'text-yellow-400' }
   }
 
-  const handleApprove = async (approvalId: number, action: 'approve' | 'reject') => {
-    if (!confirm(action === 'approve' ? '승인하시겠습니까?' : '거부하시겠습니까?')) return
-    setProcessingId(approvalId)
+  const handleApprove = async (
+    approval: Approval,
+    choice: 'driver' | 'editor' | 'reject'
+  ) => {
+    const action: 'approve' | 'reject' = choice === 'reject' ? 'reject' : 'approve'
+    const role: 'driver' | 'editor' | undefined = choice === 'reject' ? undefined : choice
+    const name = approval.user_name || approval.user_email
+    const confirmMsg =
+      choice === 'driver' ? `${name}님을 driver(기사)로 승인할까요?` :
+      choice === 'editor' ? `${name}님을 editor(편집자)로 승인할까요?` :
+      `${name}님 가입 요청을 거절할까요?`
+    if (!confirm(confirmMsg)) return
+
+    setProcessingId(approval.id)
+    setProcessingRoleChoice(choice)
     try {
       const res = await fetch('/api/admin/approve-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvalId, action }),
+        body: JSON.stringify({ approvalId: approval.id, action, role }),
       })
-      if (!res.ok) throw new Error('처리 실패')
-      setApprovals((prev) => prev.filter((a) => a.id !== approvalId))
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      if (!res.ok) throw new Error(data.error || '처리 실패')
+
+      setApprovals((prev) => prev.filter((a) => a.id !== approval.id))
       setStats((prev) => ({ ...prev, pendingApprovals: Math.max(0, prev.pendingApprovals - 1) }))
-      alert(action === 'approve' ? '✅ 승인 완료!' : '❌ 거부 완료')
-    } catch {
-      alert('처리 중 오류가 발생했습니다')
+
+      if (choice === 'reject') {
+        toast.success(`${name}님 가입을 거절했습니다`)
+      } else {
+        toast.success(`${name}님을 ${choice}로 승인했습니다`)
+      }
+    } catch (e) {
+      toast.error((e as Error).message || '처리 중 오류가 발생했습니다')
     } finally {
       setProcessingId(null)
+      setProcessingRoleChoice(null)
     }
   }
 
@@ -239,29 +261,23 @@ export default function SubAdminDashboardPage() {
           <p className='text-2xl font-bold'>{stats.buildingCount.toLocaleString()}<span className='text-sm font-normal text-muted-foreground ml-1'>개</span></p>
         </Link>
 
-        {/* 승인 대기 - 클릭 시 펼침 */}
+        {/* 승인 대기 - 클릭 시 아래 섹션으로 스크롤 */}
         <button
-          onClick={() => void handleApprovalToggle()}
+          onClick={scrollToApprovals}
           className={'bg-card border rounded-xl p-4 text-left transition-all w-full ' +
             (stats.pendingApprovals > 0
               ? 'border-yellow-400 hover:border-yellow-500 cursor-pointer'
               : 'hover:border-gray-400 cursor-pointer')}
         >
-          <div className='flex items-center justify-between mb-2'>
-            <div className='flex items-center gap-2'>
-              <Clock className={'h-4 w-4 ' + (stats.pendingApprovals > 0 ? 'text-yellow-500' : 'text-muted-foreground')} />
-              <p className='text-xs text-muted-foreground font-medium'>승인 대기</p>
-            </div>
-            {showApprovals ? <ChevronUp className='h-3 w-3 text-muted-foreground' /> : <ChevronDown className='h-3 w-3 text-muted-foreground' />}
+          <div className='flex items-center gap-2 mb-2'>
+            <Clock className={'h-4 w-4 ' + (stats.pendingApprovals > 0 ? 'text-yellow-500' : 'text-muted-foreground')} />
+            <p className='text-xs text-muted-foreground font-medium'>승인 대기</p>
           </div>
           <div className='flex items-end gap-2'>
             <p className={'text-2xl font-bold ' + (stats.pendingApprovals > 0 ? 'text-yellow-500' : '')}>
               {stats.pendingApprovals}
             </p>
             <span className='text-sm text-muted-foreground mb-0.5'>건</span>
-            {stats.pendingApprovals > 0 && (
-              <span className='text-xs text-yellow-500 mb-0.5 font-medium'>▼ 클릭하여 승인</span>
-            )}
           </div>
         </button>
 
@@ -276,74 +292,95 @@ export default function SubAdminDashboardPage() {
 
       </div>
 
-      {/* 승인 대기 목록 (펼침) */}
-      {showApprovals && (
-        <div className='mb-6 border rounded-xl overflow-hidden'>
-          <div className='bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3 flex items-center justify-between'>
-            <div className='flex items-center gap-2'>
-              <Clock className='h-4 w-4 text-yellow-500' />
-              <span className='font-semibold text-sm'>승인 대기 목록</span>
-              <span className='text-xs bg-yellow-500 text-white rounded-full px-2 py-0.5 font-bold'>{approvals.length}</span>
-            </div>
-            <button
-              onClick={() => void fetchApprovals()}
-              className='text-xs text-muted-foreground hover:text-foreground flex items-center gap-1'
-            >
-              <RefreshCw className='h-3 w-3' /> 새로고침
-            </button>
+      {/* 승인 대기 목록 (항상 표시) */}
+      <div
+        ref={approvalSectionRef}
+        className={
+          'mb-6 border rounded-xl overflow-hidden ' +
+          (approvals.length > 0 ? 'border-yellow-400/60 ring-2 ring-yellow-400/20' : '')
+        }
+      >
+        <div className='bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3 flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Bell className={'h-4 w-4 ' + (approvals.length > 0 ? 'text-yellow-500' : 'text-muted-foreground')} />
+            <span className='font-semibold text-sm'>🔔 승인 대기</span>
+            {approvals.length > 0 && (
+              <span className='text-xs bg-yellow-500 text-white rounded-full px-2 py-0.5 font-bold'>{approvals.length}건</span>
+            )}
           </div>
+          <button
+            onClick={() => void fetchApprovals()}
+            className='text-xs text-muted-foreground hover:text-foreground flex items-center gap-1'
+          >
+            <RefreshCw className='h-3 w-3' /> 새로고침
+          </button>
+        </div>
 
-          {approvalsLoading ? (
-            <div className='p-8 text-center text-muted-foreground text-sm'>
-              <RefreshCw className='h-5 w-5 animate-spin mx-auto mb-2' />
-              로딩 중...
-            </div>
-          ) : approvals.length === 0 ? (
-            <div className='p-8 text-center text-muted-foreground text-sm'>
-              ✅ 승인 대기 중인 요청이 없습니다
-            </div>
-          ) : (
-            <div className='divide-y'>
-              {approvals.map((approval) => (
-                <div key={approval.id} className='p-4 flex items-center justify-between gap-4 hover:bg-muted/30'>
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-center gap-2 mb-1'>
-                      <span className='font-semibold text-sm truncate'>
+        {approvalsLoading ? (
+          <div className='p-8 text-center text-muted-foreground text-sm'>
+            <RefreshCw className='h-5 w-5 animate-spin mx-auto mb-2' />
+            로딩 중...
+          </div>
+        ) : approvals.length === 0 ? (
+          <div className='p-8 text-center text-muted-foreground text-sm'>
+            승인 대기 중인 회원이 없습니다
+          </div>
+        ) : (
+          <div className='divide-y'>
+            {approvals.map((approval) => {
+              const isBusy = processingId === approval.id
+              return (
+                <div key={approval.id} className='p-4 hover:bg-muted/30'>
+                  <div className='mb-2'>
+                    <div className='flex items-center gap-2 flex-wrap'>
+                      <span className='font-semibold text-sm'>
                         {approval.user_name || '이름 미입력'}
                       </span>
-                      <span className='text-xs bg-blue-500/10 text-blue-400 rounded px-1.5 py-0.5 shrink-0'>
-                        {approval.branches?.name ?? approval.selected_branch_id}
+                      <span className='text-xs text-muted-foreground'>|</span>
+                      <span className='text-xs text-muted-foreground truncate'>{approval.user_email}</span>
+                      <span className='text-xs text-muted-foreground'>|</span>
+                      <span className='text-xs text-muted-foreground'>
+                        {new Date(approval.requested_at).toLocaleString('ko-KR', {
+                          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+                        })}
                       </span>
                     </div>
-                    <p className='text-xs text-muted-foreground truncate'>{approval.user_email}</p>
-                    <p className='text-xs text-muted-foreground mt-0.5'>
-                      {new Date(approval.requested_at).toLocaleString('ko-KR')}
-                    </p>
+                    <div className='text-xs text-muted-foreground mt-1'>
+                      소속: <span className='text-blue-400'>{approval.branches?.name ?? approval.selected_branch_id}</span>
+                    </div>
                   </div>
-                  <div className='flex gap-2 shrink-0'>
+                  <div className='flex gap-2 flex-wrap'>
                     <button
-                      onClick={() => void handleApprove(approval.id, 'approve')}
-                      disabled={processingId === approval.id}
+                      onClick={() => void handleApprove(approval, 'driver')}
+                      disabled={isBusy}
                       className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
                     >
                       <CheckCircle2 className='h-3.5 w-3.5' />
-                      승인
+                      {isBusy && processingRoleChoice === 'driver' ? '처리 중...' : 'driver 승인'}
                     </button>
                     <button
-                      onClick={() => void handleApprove(approval.id, 'reject')}
-                      disabled={processingId === approval.id}
-                      className='flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
+                      onClick={() => void handleApprove(approval, 'editor')}
+                      disabled={isBusy}
+                      className='flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
+                    >
+                      <CheckCircle2 className='h-3.5 w-3.5' />
+                      {isBusy && processingRoleChoice === 'editor' ? '처리 중...' : 'editor 승인'}
+                    </button>
+                    <button
+                      onClick={() => void handleApprove(approval, 'reject')}
+                      disabled={isBusy}
+                      className='flex items-center gap-1 bg-white/5 border border-red-500/40 text-red-300 hover:bg-red-500/10 text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50 transition-colors'
                     >
                       <XCircle className='h-3.5 w-3.5' />
-                      거부
+                      {isBusy && processingRoleChoice === 'reject' ? '처리 중...' : '거절'}
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 편집자 권한 요청 목록 */}
       <div className='mb-6 border rounded-xl overflow-hidden'>
