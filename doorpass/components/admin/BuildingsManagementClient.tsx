@@ -34,6 +34,29 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [detailBuildingId, setDetailBuildingId] = useState<number | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = useCallback(async () => {
+    setIsExporting(true)
+    try {
+      const res = await fetch("/api/buildings/export")
+      if (!res.ok) throw new Error("export failed")
+      const blob = await res.blob()
+      const disposition = res.headers.get("Content-Disposition") ?? ""
+      const match = disposition.match(/filename\*=UTF-8''(.+)/)
+      const filename = match ? decodeURIComponent(match[1]) : "buildings.xlsx"
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert("다운로드에 실패했습니다.")
+    } finally {
+      setIsExporting(false)
+    }
+  }, [])
 
   const fetchPage = useCallback(async (p: number, search: string) => {
     setIsLoading(true)
@@ -98,6 +121,17 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
           className="w-full max-w-xl px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         />
         <div className="flex items-center gap-2">
+          {editable && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isExporting}
+              onClick={handleExport}
+            >
+              {isExporting ? "다운로드 중..." : "📥 Excel 다운로드"}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
