@@ -1,5 +1,5 @@
 "use client"
-import { User, ShieldCheck, Ban, Crown, RotateCcw } from "lucide-react"
+import { User, ShieldCheck, Ban, Crown, RotateCcw, Phone } from "lucide-react"
 import { formatDate, providerLabel } from "@/lib/admin-api"
 import type { AuthUser } from "@/types/admin-users"
 
@@ -125,6 +125,12 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail,
         </div>
         <div className="flex gap-3 mt-0.5 flex-wrap">
           {u.email && <span className="text-xs text-white/40 truncate max-w-[220px]">{u.email}</span>}
+          {u.phone && (
+            <span className="flex items-center gap-1 text-xs text-white/40">
+              <Phone className="h-3 w-3" />
+              {u.phone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")}
+            </span>
+          )}
           {u.is_blocked && u.blocked_reason && (
             <span className="text-xs text-red-400/70 truncate max-w-[200px]">사유: {u.blocked_reason}</span>
           )}

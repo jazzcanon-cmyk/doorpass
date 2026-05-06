@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Mail, Calendar, Ban } from "lucide-react"
+import { Mail, Calendar, Ban, Phone } from "lucide-react"
 
 interface User {
   email: string
@@ -10,6 +10,7 @@ interface User {
   role: string
   created_at: string
   branch_id: string
+  phone?: string | null
   kakao_name?: string | null
   kakao_nickname?: string | null
   profile_image_url?: string | null
@@ -168,6 +169,12 @@ export default function SubAdminUsersPage() {
                     <p className="flex items-center gap-1.5">
                       <Calendar className="h-3 w-3 flex-shrink-0" />
                       {new Date(user.created_at).toLocaleDateString("ko-KR")} 가입
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 flex-shrink-0" />
+                      {user.phone
+                        ? user.phone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")
+                        : "-"}
                     </p>
                     {user.approved_by?.startsWith("referral:") && (
                       <p className="flex items-center gap-1 mt-1">

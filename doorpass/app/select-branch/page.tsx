@@ -20,7 +20,20 @@ export default function SelectBranchPage() {
   const [termsChecked, setTermsChecked] = useState(false)
   const [purposeChecked, setPurposeChecked] = useState(false)
   const [userName, setUserName] = useState("")
+  const [phone, setPhone] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11)
+    if (digits.length <= 3) return digits
+    if (digits.length <= 7) return digits.slice(0, 3) + "-" + digits.slice(3)
+    return digits.slice(0, 3) + "-" + digits.slice(3, 7) + "-" + digits.slice(7)
+  }
+
+  const isValidPhone = (p: string) => {
+    const digits = p.replace(/\D/g, "")
+    return digits.length === 11 && digits.startsWith("010")
+  }
 
   const isEtc = selected === "etc-branch"
 
@@ -67,7 +80,8 @@ export default function SelectBranchPage() {
     !!selected &&
     termsChecked &&
     purposeChecked &&
-    (!isEtc || reason.trim().length >= 2)
+    (!isEtc || reason.trim().length >= 2) &&
+    (!phone || isValidPhone(phone))
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -80,6 +94,7 @@ export default function SelectBranchPage() {
           branchId: selected,
           userName: userName || "",
           reason: isEtc ? reason.trim() : undefined,
+          phone: phone ? phone.replace(/\D/g, "") : undefined,
         }),
       })
       const data = await res.json()
@@ -168,6 +183,23 @@ export default function SelectBranchPage() {
               />
             </div>
           )}
+
+          {/* 전화번호 입력 */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              휴대폰 번호 <span className="text-white/40">(선택)</span>
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              placeholder="010-0000-0000"
+              className="w-full px-4 py-3 rounded-xl bg-white/[0.05] border border-white/[0.1] text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+            />
+            {phone && !isValidPhone(phone) && (
+              <p className="mt-1.5 text-xs text-red-400">010으로 시작하는 11자리 번호를 입력해주세요</p>
+            )}
+          </div>
 
           {/* 약관 동의 */}
           <div className="border-t border-white/10 pt-6">

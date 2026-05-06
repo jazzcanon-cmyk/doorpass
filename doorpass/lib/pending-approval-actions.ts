@@ -6,6 +6,7 @@ export type PendingApprovalRow = {
   user_name: string | null
   selected_branch_id: string
   status: string
+  phone?: string | null
 }
 
 export type ExecuteApprovalResult =
@@ -58,6 +59,7 @@ export async function executePendingApprovalById(
           first_login_at: new Date().toISOString(),
           role: assignedRole,
           ...(row.user_name ? { name: row.user_name } : {}),
+          ...(row.phone ? { phone: row.phone } : {}),
         })
         .eq("id", existing.id)
       if (updateError) throw updateError
@@ -68,6 +70,7 @@ export async function executePendingApprovalById(
         role: assignedRole,
         branch_id: assignedBranchId,
         first_login_at: new Date().toISOString(),
+        phone: row.phone ?? null,
       })
       if (insertError) throw insertError
     }

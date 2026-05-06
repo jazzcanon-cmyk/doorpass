@@ -26,6 +26,7 @@ export interface AuthUser {
   approved_id: number | null
   is_blocked: boolean
   blocked_reason: string | null
+  phone: string | null
 }
 
 export type AdminUserTab = "all" | "manage"

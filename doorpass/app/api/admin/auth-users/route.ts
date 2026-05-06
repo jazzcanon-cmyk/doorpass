@@ -15,7 +15,7 @@ export async function GET() {
 
     const { data: approvedUsers, error: approvedError } = await supabaseAdmin
       .from("approved_users")
-      .select("id, email, kakao_id, role, is_active, is_blocked, blocked_reason")
+      .select("id, email, kakao_id, role, is_active, is_blocked, blocked_reason, phone")
     if (approvedError) throw approvedError
 
     // 이메일 맵 + kakao_id 맵 둘 다 구성 (카카오 사용자는 이메일 없이 kakao_id만 등록된 경우가 많음)
@@ -59,6 +59,7 @@ export async function GET() {
         approved_id: approved?.id ?? null,
         is_blocked: approved?.is_blocked ?? false,
         blocked_reason: approved?.blocked_reason ?? null,
+        phone: (approved as { phone?: string | null } | undefined)?.phone ?? null,
       }
     })
 

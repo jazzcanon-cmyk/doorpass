@@ -10,7 +10,12 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized
 
     const body = await request.json()
-    const { branchId, userName, reason } = body
+    const { branchId, userName, reason, phone } = body as {
+      branchId?: string
+      userName?: string
+      reason?: string
+      phone?: string
+    }
 
     if (!branchId) {
       return NextResponse.json({ success: false, error: 'branchId 필요' }, { status: 400 })
@@ -71,6 +76,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         token,
         reason: branchId === 'etc-branch' ? (reason?.trim() || null) : null,
+        phone: phone?.trim() || null,
       })
 
     if (insertError) {
