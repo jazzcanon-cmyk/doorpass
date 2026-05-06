@@ -131,6 +131,56 @@ export function BuildingCard({
   const [isEditingPassword, setIsEditingPassword] = useState(false)
   const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no">("")
   const [isEditingElevator, setIsEditingElevator] = useState(false)
+
+  // 비밀번호 오류 신고 모달
+  const [showPasswordReport, setShowPasswordReport] = useState(false)
+  const [pwReportMode, setPwReportMode] = useState<"changed" | "wrong" | null>(null)
+  const [pwReportNewPassword, setPwReportNewPassword] = useState("")
+  const [pwReportMemo, setPwReportMemo] = useState("")
+  const [pwReportSubmitting, setPwReportSubmitting] = useState(false)
+
+  const submitPasswordReport = async () => {
+    let content = ""
+    if (pwReportMode === "changed") {
+      const np = pwReportNewPassword.trim()
+      if (!np) { toast.error("새 비밀번호를 입력해주세요."); return }
+      content = `[비밀번호 변경됨] 새 비밀번호: ${np}`
+    } else if (pwReportMode === "wrong") {
+      const memo = pwReportMemo.trim()
+      if (!memo) { toast.error("간단한 설명을 입력해주세요."); return }
+      content = `[비밀번호 안 맞음] ${memo}`
+    } else {
+      return
+    }
+
+    setPwReportSubmitting(true)
+    try {
+      const res = await fetch("/api/feedbacks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "password_error",
+          content,
+          building_id: currentBuilding.id,
+          building_name: currentBuilding.name || currentBuilding.address,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error((err as { error?: string }).error || "신고 전송에 실패했습니다.")
+        return
+      }
+      toast.success("신고가 접수됐어요. 빠르게 확인할게요.")
+      setShowPasswordReport(false)
+      setPwReportMode(null)
+      setPwReportNewPassword("")
+      setPwReportMemo("")
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setPwReportSubmitting(false)
+    }
+  }
   const [memoText, setMemoText] = useState("")
   const [memoDraft, setMemoDraft] = useState("")
   const [isEditingMemo, setIsEditingMemo] = useState(false)
@@ -488,6 +538,15 @@ export function BuildingCard({
                         </button>
                       </div>
 
+                      {accessType === "password" && canRevealBuildingPassword && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowPasswordReport(true); setPwReportMode(null) }}
+                          className="mt-2 text-[11px] text-amber-400 hover:text-amber-300 underline underline-offset-2"
+                        >
+                          ⚠️ 비밀번호가 틀려요?
+                        </button>
+                      )}
                       {accessType === "password" && (
                         <div className="mt-2">
                           {isEditingPassword ? (
@@ -860,6 +919,99 @@ export function BuildingCard({
       )}
 
       <ApprovalRequestModal open={showApprovalModal} onOpenChange={setShowApprovalModal} />
+
+      {showPasswordReport && (
+        <div
+          onClick={() => !pwReportSubmitting && setShowPasswordReport(false)}
+          className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-6"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-5 text-white"
+          >
+            <h3 className="text-base font-bold mb-1">비밀번호 오류 신고</h3>
+            <p className="text-xs text-white/60 mb-4">
+              건물: <span className="text-white">{currentBuilding.name || currentBuilding.address}</span>
+            </p>
+
+            {pwReportMode === null && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setPwReportMode("changed")}
+                  className="w-full rounded-xl border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 px-4 py-3 text-left text-sm transition"
+                >
+                  <div className="font-semibold">🔄 비밀번호가 변경됐어요</div>
+                  <div className="text-xs text-white/60 mt-0.5">새 비밀번호를 알려주세요.</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPwReportMode("wrong")}
+                  className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 px-4 py-3 text-left text-sm transition"
+                >
+                  <div className="font-semibold">⚠️ 비밀번호가 안 맞아요</div>
+                  <div className="text-xs text-white/60 mt-0.5">상황을 간단히 알려주세요.</div>
+                </button>
+              </div>
+            )}
+
+            {pwReportMode === "changed" && (
+              <div className="space-y-3">
+                <label className="block text-xs text-white/60">새 비밀번호</label>
+                <Input
+                  value={pwReportNewPassword}
+                  onChange={(e) => setPwReportNewPassword(e.target.value.slice(0, 50))}
+                  placeholder="예: 1234#"
+                  className="bg-white/[0.05] border-white/10 text-white"
+                  autoFocus
+                />
+                <p className="text-[11px] text-white/40">
+                  관리자가 확인 후 건물 정보를 업데이트합니다.
+                </p>
+              </div>
+            )}
+
+            {pwReportMode === "wrong" && (
+              <div className="space-y-3">
+                <label className="block text-xs text-white/60">상세 설명 (선택)</label>
+                <textarea
+                  value={pwReportMemo}
+                  onChange={(e) => setPwReportMemo(e.target.value.slice(0, 500))}
+                  placeholder="예: 표시된 1234#를 눌렀는데 안 열려요. 어제는 됐는데..."
+                  rows={4}
+                  className="w-full rounded-xl bg-white/[0.05] border border-white/10 p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-5">
+              <Button
+                onClick={() => {
+                  if (pwReportMode === null) {
+                    setShowPasswordReport(false)
+                  } else {
+                    setPwReportMode(null)
+                  }
+                }}
+                disabled={pwReportSubmitting}
+                variant="outline"
+                className="flex-1"
+              >
+                {pwReportMode === null ? "취소" : "뒤로"}
+              </Button>
+              {pwReportMode !== null && (
+                <Button
+                  onClick={() => void submitPasswordReport()}
+                  disabled={pwReportSubmitting}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {pwReportSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "신고 보내기"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <BuildingPhotoModal
         buildingId={currentBuilding.id}

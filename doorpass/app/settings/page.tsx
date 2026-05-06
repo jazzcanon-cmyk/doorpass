@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, ShieldCheck, Clock, ShieldAlert } from "lucide-react"
+import { ArrowLeft, Loader2, ShieldCheck, Clock, ShieldAlert, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 
@@ -14,6 +14,32 @@ interface RoleRequest {
   created_at: string
 }
 
+interface FeedbackRow {
+  id: number
+  category: "bug" | "feature" | "complaint" | "password_error" | "general"
+  building_name: string | null
+  content: string
+  status: "new" | "reading" | "resolved" | "rejected"
+  admin_reply: string | null
+  replied_at: string | null
+  created_at: string
+}
+
+const CATEGORY_LABEL: Record<FeedbackRow["category"], string> = {
+  bug: "🐛 버그",
+  feature: "💡 기능요청",
+  complaint: "😤 불편사항",
+  password_error: "⚠️ 비밀번호 오류",
+  general: "💬 기타",
+}
+
+const STATUS_LABEL: Record<FeedbackRow["status"], string> = {
+  new: "🆕 신규",
+  reading: "📖 확인중",
+  resolved: "✅ 해결",
+  rejected: "❌ 반려",
+}
+
 export default function SettingsPage() {
   const [role, setRole] = useState<string>("driver")
   const [pending, setPending] = useState<RoleRequest | null>(null)
@@ -21,6 +47,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
+
+  // 피드백 상태
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackCategory, setFeedbackCategory] =
+    useState<"bug" | "feature" | "complaint">("bug")
+  const [feedbackContent, setFeedbackContent] = useState("")
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+  const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([])
 
   const load = async () => {
     setLoading(true)
@@ -47,7 +81,19 @@ export default function SettingsPage() {
     }
   }
 
-  useEffect(() => { void load() }, [])
+  const loadFeedbacks = async () => {
+    try {
+      const res = await fetch("/api/feedbacks", { cache: "no-store" })
+      if (!res.ok) return
+      const d = (await res.json()) as { feedbacks?: FeedbackRow[] }
+      setFeedbacks(d.feedbacks ?? [])
+    } catch {}
+  }
+
+  useEffect(() => {
+    void load()
+    void loadFeedbacks()
+  }, [])
 
   const submit = async () => {
     if (reason.trim().length < 10) {
@@ -71,6 +117,37 @@ export default function SettingsPage() {
       await load()
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const submitFeedback = async () => {
+    if (feedbackContent.trim().length < 5) {
+      toast.error("내용을 5자 이상 입력해주세요.")
+      return
+    }
+    setFeedbackSubmitting(true)
+    try {
+      const res = await fetch("/api/feedbacks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: feedbackCategory,
+          content: feedbackContent.trim(),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error((err as { error?: string }).error || "전송에 실패했습니다.")
+        return
+      }
+      toast.success("의견이 전달되었습니다. 감사합니다!")
+      setFeedbackOpen(false)
+      setFeedbackContent("")
+      void loadFeedbacks()
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")
+    } finally {
+      setFeedbackSubmitting(false)
     }
   }
 
@@ -181,7 +258,115 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* 의견 보내기 */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <h2 className="text-sm font-semibold mb-1 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-blue-400" /> 의견 보내기
+          </h2>
+          <p className="text-xs text-white/50 mb-4">
+            버그·불편·기능요청 등 자유롭게 알려주세요. 관리자가 직접 확인하고 답변드려요.
+          </p>
+          <Button
+            onClick={() => { setFeedbackOpen(true); setFeedbackContent("") }}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            📝 의견 보내기
+          </Button>
+
+          {feedbacks.length > 0 && (
+            <div className="mt-4 border-t border-white/10 pt-4 space-y-2">
+              <p className="text-xs text-white/40 mb-1">내 의견 이력 ({feedbacks.length}건)</p>
+              {feedbacks.slice(0, 8).map((fb) => {
+                const date = new Date(fb.created_at).toLocaleDateString("ko-KR", {
+                  year: "2-digit", month: "2-digit", day: "2-digit",
+                })
+                return (
+                  <div key={fb.id} className="rounded-lg border border-white/5 bg-white/[0.03] p-3 text-xs">
+                    <div className="flex items-center justify-between mb-1 gap-2">
+                      <span className="text-white/80 font-medium truncate">{CATEGORY_LABEL[fb.category]}</span>
+                      <span className="text-white/50 shrink-0">{STATUS_LABEL[fb.status]}</span>
+                    </div>
+                    <p className="text-white/60 line-clamp-2 mb-1">{fb.content}</p>
+                    <p className="text-[10px] text-white/30">{date}{fb.building_name ? ` · ${fb.building_name}` : ""}</p>
+                    {fb.admin_reply && (
+                      <div className="mt-2 rounded-md bg-blue-500/10 border border-blue-500/20 p-2 text-blue-200">
+                        <p className="text-[10px] font-semibold mb-0.5">관리자 답변</p>
+                        <p className="text-xs">{fb.admin_reply}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </div>
+
+      {feedbackOpen && (
+        <div
+          onClick={() => !feedbackSubmitting && setFeedbackOpen(false)}
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 text-white"
+          >
+            <h3 className="text-base font-bold mb-4">💬 의견 보내기</h3>
+
+            <div className="text-xs text-white/50 mb-2">분류</div>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {([
+                ["bug", "🐛 버그"],
+                ["feature", "💡 기능요청"],
+                ["complaint", "😤 불편사항"],
+              ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setFeedbackCategory(val)}
+                  className={
+                    "rounded-lg border px-3 py-2 text-xs font-medium transition " +
+                    (feedbackCategory === val
+                      ? "border-blue-500 bg-blue-500/20 text-blue-200"
+                      : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.07]")
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="text-xs text-white/50 mb-2">내용</div>
+            <textarea
+              value={feedbackContent}
+              onChange={(e) => setFeedbackContent(e.target.value.slice(0, 2000))}
+              placeholder="어떤 점이 불편하셨나요? 자유롭게 작성해주세요."
+              rows={6}
+              className="w-full rounded-xl bg-white/[0.05] border border-white/10 p-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-blue-500/50 mb-1"
+            />
+            <p className="text-[10px] text-white/30 mb-4 text-right">{feedbackContent.length}/2000</p>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setFeedbackOpen(false)}
+                disabled={feedbackSubmitting}
+                variant="outline"
+                className="flex-1"
+              >
+                취소
+              </Button>
+              <Button
+                onClick={() => void submitFeedback()}
+                disabled={feedbackSubmitting}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {feedbackSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "보내기"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

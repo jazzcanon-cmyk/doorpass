@@ -40,6 +40,19 @@ interface ReferralRecord {
   created_at: string
 }
 
+interface FeedbackRow {
+  id: number
+  user_email: string
+  user_name: string | null
+  category: 'bug' | 'feature' | 'complaint' | 'password_error' | 'general'
+  building_id: number | null
+  building_name: string | null
+  content: string
+  status: 'new' | 'reading' | 'resolved' | 'rejected'
+  admin_reply: string | null
+  created_at: string
+}
+
 export default function SubAdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({ userCount: 0, buildingCount: 0, totalBuildingCount: 0, pendingApprovals: 0, recentUploads: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -48,6 +61,8 @@ export default function SubAdminDashboardPage() {
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [processingRoleChoice, setProcessingRoleChoice] = useState<'driver' | 'editor' | 'reject' | null>(null)
   const approvalSectionRef = useRef<HTMLDivElement | null>(null)
+  const [pwReports, setPwReports] = useState<FeedbackRow[]>([])
+  const [pwReportsBusy, setPwReportsBusy] = useState<number | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showRoleRequests, setShowRoleRequests] = useState(false)
   const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([])
@@ -85,15 +100,47 @@ export default function SubAdminDashboardPage() {
     }
   }, [])
 
+  const fetchPasswordReports = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/feedbacks?category=password_error&status=new', { cache: 'no-store' })
+      if (!res.ok) return
+      const d = (await res.json()) as { feedbacks?: FeedbackRow[] }
+      setPwReports(d.feedbacks ?? [])
+    } catch {}
+  }, [])
+
+  const handleResolvePwReport = async (id: number) => {
+    setPwReportsBusy(id)
+    try {
+      const res = await fetch(`/api/admin/feedbacks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved' }),
+      })
+      if (!res.ok) {
+        toast.error('처리에 실패했어요.')
+        return
+      }
+      toast.success('해결로 처리됐어요.')
+      void fetchPasswordReports()
+    } catch {
+      toast.error('네트워크 오류가 발생했습니다. 다시 시도해주세요.')
+    } finally {
+      setPwReportsBusy(null)
+    }
+  }
+
   useEffect(() => {
     void fetchStats()
     void fetchApprovals()
+    void fetchPasswordReports()
     const interval = setInterval(() => {
       void fetchStats()
       void fetchApprovals()
+      void fetchPasswordReports()
     }, 30000)
     return () => clearInterval(interval)
-  }, [fetchStats, fetchApprovals])
+  }, [fetchStats, fetchApprovals, fetchPasswordReports])
 
   const scrollToApprovals = () => {
     approvalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -381,6 +428,42 @@ export default function SubAdminDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* 비밀번호 오류 신고 (내 대리점 건물) */}
+      {pwReports.length > 0 && (
+        <div className='mb-6 border border-amber-400/40 ring-2 ring-amber-400/20 rounded-xl overflow-hidden'>
+          <div className='bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center gap-2'>
+            <span className='font-semibold text-sm'>⚠️ 비밀번호 오류 신고</span>
+            <span className='text-xs bg-amber-500 text-white rounded-full px-2 py-0.5 font-bold'>{pwReports.length}건</span>
+          </div>
+          <div className='divide-y'>
+            {pwReports.map((fb) => {
+              const created = new Date(fb.created_at).toLocaleString('ko-KR', {
+                month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+              })
+              return (
+                <div key={fb.id} className='p-4 hover:bg-muted/30'>
+                  <div className='mb-2'>
+                    <div className='text-sm font-bold'>
+                      {fb.building_name ?? '(건물 미상)'}
+                      <span className='text-xs text-muted-foreground font-normal ml-2'>· {fb.user_name ?? fb.user_email}</span>
+                    </div>
+                    <p className='text-sm text-foreground/90 mt-1 whitespace-pre-wrap'>{fb.content}</p>
+                    <p className='text-xs text-muted-foreground mt-1'>{created}</p>
+                  </div>
+                  <button
+                    onClick={() => void handleResolvePwReport(fb.id)}
+                    disabled={pwReportsBusy === fb.id}
+                    className='px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50'
+                  >
+                    {pwReportsBusy === fb.id ? '처리 중...' : '✅ 해결'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 편집자 권한 요청 목록 */}
       <div className='mb-6 border rounded-xl overflow-hidden'>
