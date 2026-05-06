@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   try {
     ensureVapid()
   } catch (e) {
-    console.error("[push/send] VAPID 설정 오류", e)
+    console.error("[push/send] VAPID 설정 오류:", (e as Error).message)
     return NextResponse.json({ error: "푸시 설정 오류" }, { status: 500 })
   }
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     .eq("user_email", userEmail)
 
   if (error) {
-    console.error("[push/send] 구독 조회 실패", error)
+    console.error("[push/send] 구독 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "구독 조회 실패" }, { status: 500 })
   }
 
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         if (status === 404 || status === 410) {
           staleIds.push(row.id)
         } else {
-          console.error("[push/send] 발송 오류", row.id, err)
+          console.error("[push/send] 발송 오류 (id=" + row.id + "):", (err as Error).message)
         }
       }
     })

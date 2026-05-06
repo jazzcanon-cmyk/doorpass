@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Branch Create] 오류:", error)
+    console.error("[admin/branches:create] 추가 실패:", (error as Error).message)
     return NextResponse.json({ error: "추가 실패" }, { status: 500 })
   }
 }

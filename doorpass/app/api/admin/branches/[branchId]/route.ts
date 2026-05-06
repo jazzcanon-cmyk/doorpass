@@ -132,7 +132,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       },
     })
   } catch (error) {
-    console.error("[Branch Detail] 오류:", error)
+    console.error("[admin/branches:detail] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }
@@ -169,7 +169,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Branch Update] 오류:", error)
+    console.error("[admin/branches:update] 수정 실패:", (error as Error).message)
     return NextResponse.json({ error: "수정 실패" }, { status: 500 })
   }
 }
@@ -206,7 +206,7 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Branch Delete] 오류:", error)
+    console.error("[admin/branches:delete] 삭제 실패:", (error as Error).message)
     return NextResponse.json({ error: "삭제 실패" }, { status: 500 })
   }
 }

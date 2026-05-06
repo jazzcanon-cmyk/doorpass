@@ -30,7 +30,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     void id
     return NextResponse.json({ success: true })
   } catch (e) {
-    console.error('[reset user]', e)
+    console.error('[admin/users:reset-by-id] 초기화 실패:', (e as Error).message)
     return NextResponse.json({ error: '초기화 실패' }, { status: 500 })
   }
 }

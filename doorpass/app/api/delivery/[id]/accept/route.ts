@@ -90,7 +90,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Delivery accept] 오류:", error)
+    console.error("[delivery:accept] 처리 실패:", (error as Error).message)
     return NextResponse.json({ error: "처리 실패" }, { status: 500 })
   }
 }

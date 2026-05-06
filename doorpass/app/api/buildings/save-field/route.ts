@@ -73,11 +73,9 @@ export async function POST(request: Request) {
       .eq('id', buildingId)
 
     if (updateError) {
-      console.error('[save-field] DB 업데이트 실패:', updateError)
+      console.error('[save-field] DB 업데이트 실패:', (updateError as Error).message)
       return NextResponse.json({ error: '저장에 실패했습니다.' }, { status: 500 })
     }
-
-    console.log('[save-field] 저장 성공:', { email: user!.email, buildingId, field })
 
     let action: PointAction | null = null
 
@@ -116,7 +114,7 @@ export async function POST(request: Request) {
           buildingName: existing.name ?? '',
         })
       } catch (e) {
-        console.error('[save-field] 포인트 적립 오류 (저장은 성공):', e)
+        console.error('[save-field] 포인트 적립 오류 (저장은 성공):', (e as Error).message)
       }
     }
 
@@ -127,7 +125,7 @@ export async function POST(request: Request) {
       action,
     })
   } catch (e) {
-    console.error('[save-field] 예외 발생:', e)
+    console.error('[save-field] 예외 발생:', (e as Error).message)
     return NextResponse.json({ error: '저장에 실패했습니다.' }, { status: 500 })
   }
 }

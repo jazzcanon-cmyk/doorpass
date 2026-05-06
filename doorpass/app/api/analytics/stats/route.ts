@@ -128,7 +128,7 @@ export async function GET() {
       totalToday: last24hRes.data?.length ?? 0,
     })
   } catch (err) {
-    console.error("[Analytics] stats error:", err)
+    console.error("[analytics/stats] 조회 실패:", (err as Error).message)
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

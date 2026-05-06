@@ -109,7 +109,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("[Sub-Admin Stats] 오류:", error)
+    console.error("[sub-admin/stats] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }

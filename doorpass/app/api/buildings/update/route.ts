@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error updating building:", error)
+    console.error("[buildings/update] 수정 실패:", (error as Error).message)
     return NextResponse.json({ error: "업데이트에 실패했습니다." }, { status: 500 })
   }
 }

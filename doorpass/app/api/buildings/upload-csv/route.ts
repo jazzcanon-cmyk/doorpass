@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     .select("id")
 
   if (error) {
-    console.error("[CSV Upload] Insert error:", error)
+    console.error("[buildings/upload-csv] Insert 실패:", (error as Error).message)
     return NextResponse.json({ error: "DB 삽입 실패: " + error.message }, { status: 500 })
   }
 

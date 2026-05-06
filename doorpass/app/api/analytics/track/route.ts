@@ -34,13 +34,13 @@ export async function POST(request: Request) {
       if (matched) {
         sendTelegramMessage(
           `⚠️ 중요 검색어 감지\n검색어: ${query}\n검색자: ${data.userEmail || "알 수 없음"}\n결과: ${data.results ?? 0}개`
-        ).catch((err) => console.error("[Telegram] 검색어 알림 전송 실패:", err))
+        ).catch((err) => console.error("[analytics/track] 검색어 알림 전송 실패:", (err as Error).message))
       }
     }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error("[Analytics] track error:", err)
+    console.error("[analytics/track] 처리 실패:", (err as Error).message)
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

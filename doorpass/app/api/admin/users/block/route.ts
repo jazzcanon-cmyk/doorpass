@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Block User] 오류:", error)
+    console.error("[admin/users:block] 차단 실패:", (error as Error).message)
     return NextResponse.json({ error: "차단 실패" }, { status: 500 })
   }
 }

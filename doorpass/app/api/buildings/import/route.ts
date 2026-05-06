@@ -178,13 +178,11 @@ export async function POST(request: Request) {
       if ((i + 1) % 10 === 0) await delay(200)
     }
 
-    console.log(`[Import] 완료 — 성공: ${stats.success}, 실패: ${stats.failed}, 건너뜀: ${stats.skipped}`)
-
     sendTelegramMessage(`📥 건물 일괄등록\n등록 수: ${stats.success}건`).catch(console.error)
 
     return NextResponse.json({ ...stats, errors })
   } catch (err) {
-    console.error("[Import] 오류:", err)
+    console.error("[buildings/import] 처리 실패:", (err as Error).message)
     return NextResponse.json({ error: "파일 처리 중 오류가 발생했습니다." }, { status: 500 })
   }
 }

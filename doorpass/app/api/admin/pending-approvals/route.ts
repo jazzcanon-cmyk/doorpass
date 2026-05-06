@@ -51,7 +51,7 @@ export async function GET() {
 
     return NextResponse.json({ approvals: data ?? [] })
   } catch (error) {
-    console.error("[Pending Approvals] 오류:", error)
+    console.error("[admin/pending-approvals] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }

@@ -133,13 +133,13 @@ export async function POST(request: Request) {
           ).catch(console.error)
         }
       } catch (e) {
-        console.error('[referral]', e)
+        console.error('[approve-user/referral]', (e as Error).message)
       }
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Approve User] 오류:", error)
+    console.error("[approve-user] 처리 실패:", (error as Error).message)
     return NextResponse.json({ error: "처리 실패" }, { status: 500 })
   }
 }

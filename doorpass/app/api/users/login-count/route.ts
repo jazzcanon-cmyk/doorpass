@@ -24,7 +24,7 @@ export async function GET() {
     .eq("user_email", identifier)
 
   if (error) {
-    console.error("[Login Count] 오류:", error)
+    console.error("[users/login-count] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 
@@ -43,12 +43,12 @@ export async function POST() {
       .insert({ user_email: identifier })
 
     if (error) {
-      console.error("[Login Count] 기록 오류:", error)
+      console.error("[users/login-count:record] 기록 실패:", (error as Error).message)
       return NextResponse.json({ error: "기록 실패" }, { status: 500 })
     }
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Login Count] 오류:", error)
+    console.error("[users/login-count:record] 처리 실패:", (error as Error).message)
     return NextResponse.json({ error: "기록 실패" }, { status: 500 })
   }
 }

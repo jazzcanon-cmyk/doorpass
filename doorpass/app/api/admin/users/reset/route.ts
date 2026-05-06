@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (e) {
-    console.error('[reset user]', e)
+    console.error('[admin/users:reset] 초기화 실패:', (e as Error).message)
     return NextResponse.json({ error: '초기화 실패' }, { status: 500 })
   }
 }

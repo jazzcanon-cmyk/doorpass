@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
       .select("email, name")
       .maybeSingle()
     if (error) {
-      console.error("[assign-subadmin] update error:", error)
+      console.error("[assign-subadmin] update error:", (error as Error).message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     if (!data) return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
       .update({ role, managed_region: region })
       .eq("id", existing.id)
     if (error) {
-      console.error("[assign-subadmin] update by email error:", error)
+      console.error("[assign-subadmin] update by email error:", (error as Error).message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
   } else {
@@ -99,7 +99,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
         managed_region: region,
       })
     if (error) {
-      console.error("[assign-subadmin] insert error:", error)
+      console.error("[assign-subadmin] insert error:", (error as Error).message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
   }

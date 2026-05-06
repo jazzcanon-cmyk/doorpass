@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent") ?? undefined,
     })
   } catch (err) {
-    console.error("[Activity Track] 실패(무시):", err)
+    console.error("[Activity Track] 실패(무시):", (err as Error).message)
   }
   return NextResponse.json({ success: true })
 }

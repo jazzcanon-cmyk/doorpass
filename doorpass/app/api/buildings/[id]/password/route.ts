@@ -54,7 +54,7 @@ export async function POST(
       .single();
 
     if (updateError) {
-      console.error('업데이트 오류:', updateError);
+      console.error('[buildings/password:update] DB 오류:', (updateError as Error).message);
       return NextResponse.json({ error: '비밀번호 업데이트에 실패했습니다.' }, { status: 500 });
     }
 
@@ -82,7 +82,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('API 오류:', error);
+    console.error('[buildings/password:update] 처리 실패:', (error as Error).message);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
@@ -113,7 +113,7 @@ export async function GET(
       total: history?.length || 0,
     });
   } catch (error) {
-    console.error('이력 조회 오류:', error);
+    console.error('[buildings/password:history] 조회 실패:', (error as Error).message);
     return NextResponse.json({ error: '이력 조회에 실패했습니다.' }, { status: 500 });
   }
 }

@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 
     return resultRedirect(request, "rejected")
   } catch (e) {
-    console.error("[GET /api/reject]", e)
+    console.error("[reject] 처리 실패:", (e as Error).message)
     return resultRedirect(request, "error")
   }
 }

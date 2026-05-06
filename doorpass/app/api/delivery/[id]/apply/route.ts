@@ -84,7 +84,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     return NextResponse.json({ application: data })
   } catch (error) {
-    console.error("[Delivery apply] 오류:", error)
+    console.error("[delivery:apply] 신청 실패:", (error as Error).message)
     return NextResponse.json({ error: "신청 실패" }, { status: 500 })
   }
 }
@@ -105,7 +105,7 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Delivery apply DELETE] 오류:", error)
+    console.error("[delivery:apply-cancel] 취소 실패:", (error as Error).message)
     return NextResponse.json({ error: "취소 실패" }, { status: 500 })
   }
 }

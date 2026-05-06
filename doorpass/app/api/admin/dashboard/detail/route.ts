@@ -146,7 +146,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: "unknown type" }, { status: 400 })
   } catch (e) {
-    console.error("[dashboard/detail]", e)
+    console.error("[admin/dashboard/detail] 처리 실패:", (e as Error).message)
     return NextResponse.json({ error: "서버 오류" }, { status: 500 })
   }
 }

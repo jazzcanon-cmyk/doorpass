@@ -77,7 +77,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Role Change] 오류:", error)
+    console.error("[admin/users:role] 역할 변경 실패:", (error as Error).message)
     return NextResponse.json({ error: "역할 변경 실패" }, { status: 500 })
   }
 }

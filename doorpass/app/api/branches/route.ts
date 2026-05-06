@@ -19,7 +19,7 @@ export async function GET() {
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600", "Vary": "Cookie" } }
     )
   } catch (error) {
-    console.error("[Branches API] 오류:", error)
+    console.error("[branches] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }

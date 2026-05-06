@@ -15,15 +15,11 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   const body = (await request.json().catch(() => ({}))) as { branch_id?: string | null }
   const branch_id = body.branch_id ?? null
 
-  console.log("[branch PATCH] userId:", numericId, "branch_id:", branch_id)
-
   const { data: updated, error } = await supabaseAdmin
     .from("approved_users")
     .update({ branch_id })
     .eq("id", numericId)
     .select("id, branch_id")
-
-  console.log("[branch PATCH] 결과 — updated:", updated, "error:", error)
 
   if (error) {
     console.error("[branch PATCH] DB 오류:", error.message)

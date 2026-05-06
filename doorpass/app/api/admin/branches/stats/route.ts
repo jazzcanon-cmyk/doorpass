@@ -76,7 +76,7 @@ export async function GET() {
 
     return NextResponse.json({ branches: branchesWithStats })
   } catch (error) {
-    console.error("[Branches Stats] 오류:", error)
+    console.error("[admin/branches/stats] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }

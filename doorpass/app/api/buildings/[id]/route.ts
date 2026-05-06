@@ -195,7 +195,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 
     return NextResponse.json({ success: true })
   } catch (e) {
-    console.error("[buildings PUT]", e)
+    console.error("[buildings:update] 수정 실패:", (e as Error).message)
     return NextResponse.json({ error: "저장에 실패했습니다." }, { status: 500 })
   }
 }
@@ -239,7 +239,7 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
 
     return NextResponse.json({ success: true })
   } catch (e) {
-    console.error("[buildings DELETE]", e)
+    console.error("[buildings:delete] 삭제 실패:", (e as Error).message)
     return NextResponse.json({ error: "삭제에 실패했습니다." }, { status: 500 })
   }
 }

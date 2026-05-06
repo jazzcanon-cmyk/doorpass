@@ -64,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json({ users })
   } catch (error) {
-    console.error("Error fetching auth users:", error)
+    console.error("[admin/auth-users] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "Failed to fetch auth users" }, { status: 500 })
   }
 }

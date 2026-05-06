@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       hasMore,
     })
   } catch (error) {
-    console.error("[Delivery GET] 오류:", error)
+    console.error("[delivery:list] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ request: data })
   } catch (error) {
-    console.error("[Delivery POST] 오류:", error)
+    console.error("[delivery:create] 등록 실패:", (error as Error).message)
     return NextResponse.json({ error: "등록 실패" }, { status: 500 })
   }
 }

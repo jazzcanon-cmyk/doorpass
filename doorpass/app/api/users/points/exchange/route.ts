@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   )
 
   if (rpcError) {
-    console.error("[exchange] RPC 오류", rpcError)
+    console.error("[users/points/exchange] RPC 오류:", (rpcError as Error).message)
     return NextResponse.json({ error: "교환 처리 중 오류가 발생했습니다." }, { status: 500 })
   }
 
@@ -142,7 +142,7 @@ export async function GET() {
     .limit(20)
 
   if (error) {
-    console.error("[exchange GET] 조회 실패", error)
+    console.error("[users/points/exchange:list] 조회 실패:", (error as Error).message)
     return NextResponse.json({ exchanges: [] })
   }
 

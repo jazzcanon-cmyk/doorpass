@@ -18,7 +18,7 @@ export async function GET() {
     .limit(200)
 
   if (error) {
-    console.error("[admin/exchanges GET] 조회 실패", error)
+    console.error("[admin/exchanges:list] 조회 실패:", (error as Error).message)
     return NextResponse.json({ exchanges: [] }, { status: 500 })
   }
 

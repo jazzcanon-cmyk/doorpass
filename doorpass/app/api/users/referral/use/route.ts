@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     })
 
   if (insertError) {
-    console.error('[referral/use] approved_users 등록 실패', insertError)
+    console.error('[users/referral/use] approved_users 등록 실패:', (insertError as Error).message)
     return NextResponse.json({ error: '자동 승인 처리 실패' }, { status: 500 })
   }
 

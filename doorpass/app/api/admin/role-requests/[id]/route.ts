@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
       .maybeSingle()
 
     if (fetchErr) {
-      console.error("[Role Approval] Failed to fetch request:", fetchErr)
+      console.error("[role-request:process] Failed to fetch request:", (fetchErr as Error).message)
       return NextResponse.json({ error: fetchErr.message }, { status: 500 })
     }
     if (!roleRequest) return NextResponse.json({ error: "Request not found" }, { status: 404 })
@@ -55,18 +55,14 @@ export async function POST(request: Request, { params }: { params: Params }) {
     const newStatus = action === "approve" ? "approved" : "rejected"
 
     if (action === "approve") {
-      console.log("[Role Approval] Updating role for:", roleRequest.user_email)
-
       const { data: updateData, error: updateError } = await supabase
         .from("approved_users")
         .update({ role: "editor" })
         .eq("email", roleRequest.user_email)
         .select()
 
-      console.log("[Role Approval] Update result:", { updateData, updateError })
-
       if (updateError) {
-        console.error("[Role Approval] Failed to update role:", updateError)
+        console.error("[role-request:process] Failed to update role:", (updateError as Error).message)
         return NextResponse.json(
           { error: "Failed to update user role: " + updateError.message },
           { status: 500 }
@@ -74,14 +70,12 @@ export async function POST(request: Request, { params }: { params: Params }) {
       }
 
       if (!updateData || updateData.length === 0) {
-        console.error("[Role Approval] User not found in approved_users:", roleRequest.user_email)
+        console.error("[role-request:process] User not found in approved_users:", roleRequest.user_email)
         return NextResponse.json(
           { error: "User not found in approved_users table" },
           { status: 404 }
         )
       }
-
-      console.log("[Role Approval] Successfully updated role to editor")
     }
 
     const { error: statusUpdateError } = await supabase
@@ -94,7 +88,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
       .eq("id", id)
 
     if (statusUpdateError) {
-      console.error("[Role Approval] Failed to update request status:", statusUpdateError)
+      console.error("[role-request:process] Failed to update request status:", (statusUpdateError as Error).message)
     }
 
     const message =

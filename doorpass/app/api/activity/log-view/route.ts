@@ -85,6 +85,6 @@ async function detectAnomaly(userEmail: string, ip: string | null) {
       `🚨 [이상 감지] ${userEmail}\n최근 1시간 ${count}개 건물 조회\n계정 자동 차단됨${ip ? `\nIP: ${ip}` : ""}`
     ).catch(console.error)
   } catch (err) {
-    console.error("[log-view] anomaly detection error:", err)
+    console.error("[log-view] anomaly detection error:", (err as Error).message)
   }
 }

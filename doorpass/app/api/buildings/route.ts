@@ -169,7 +169,7 @@ export async function GET(request: Request) {
         { headers: BUILDING_CACHE_HEADERS }
       )
     } catch (error) {
-      console.error("Error fetching nearby buildings:", error)
+      console.error("[buildings:nearby] 조회 실패:", (error as Error).message)
       return NextResponse.json(
         { error: "Failed to fetch nearby buildings" },
         { status: 500 }
@@ -251,7 +251,7 @@ export async function GET(request: Request) {
         { headers: BUILDING_CACHE_HEADERS }
       )
     } catch (error) {
-      console.error("Error searching buildings:", error)
+      console.error("[buildings:search] 검색 실패:", (error as Error).message)
       return NextResponse.json(
         { error: "Failed to fetch building data" },
         { status: 500 }
@@ -378,7 +378,7 @@ export async function GET(request: Request) {
       buildings: allBuildings.map((row) => toBuilding(row, revealPassword)),
     })
   } catch (error) {
-    console.error("Error fetching buildings:", error)
+    console.error("[buildings:list] 조회 실패:", (error as Error).message)
     return NextResponse.json(
       { error: "Failed to fetch building data" },
       { status: 500 }
@@ -490,7 +490,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ building: data }, { status: 201 })
   } catch (error) {
-    console.error("Error creating building:", error)
+    console.error("[buildings:create] 등록 실패:", (error as Error).message)
     return NextResponse.json({ error: "건물 등록에 실패했습니다." }, { status: 500 })
   }
 }

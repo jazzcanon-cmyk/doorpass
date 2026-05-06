@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (existingError) {
-      console.error('[request-approval] 중복 확인 에러:', existingError)
+      console.error('[users/request-approval] 중복 확인 실패:', (existingError as Error).message)
       return NextResponse.json({ success: false, error: existingError.message }, { status: 500 })
     }
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (insertError) {
-      console.error('[request-approval] insert 에러:', insertError)
+      console.error('[users/request-approval] insert 실패:', (insertError as Error).message)
       return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
     }
 
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
-    console.error('[request-approval] 전체 에러:', error)
+    console.error('[users/request-approval] 처리 실패:', (error as Error).message)
     return NextResponse.json({ success: false, error: '서버 오류' }, { status: 500 })
   }
 }

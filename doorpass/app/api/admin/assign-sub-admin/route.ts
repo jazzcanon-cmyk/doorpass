@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (branchError) {
-      console.error("[assign-sub-admin] branch error:", branchError)
+      console.error("[assign-sub-admin] branch error:", (branchError as Error).message)
       return NextResponse.json({ error: "대리점 조회 실패" }, { status: 500 })
     }
     if (!branch) {
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (newManagerError) {
-      console.error("[assign-sub-admin] new manager error:", newManagerError)
+      console.error("[assign-sub-admin] new manager error:", (newManagerError as Error).message)
       return NextResponse.json({ error: "사용자 조회 실패" }, { status: 500 })
     }
     if (!newManager) {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       .eq("id", newManager.id)
 
     if (updateError) {
-      console.error("[assign-sub-admin] update error:", updateError)
+      console.error("[assign-sub-admin] update error:", (updateError as Error).message)
       return NextResponse.json({ error: "역할 변경 실패" }, { status: 500 })
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       .eq("id", branchId)
 
     if (branchUpdateError) {
-      console.error("[assign-sub-admin] branch update error:", branchUpdateError)
+      console.error("[assign-sub-admin] branch update error:", (branchUpdateError as Error).message)
       return NextResponse.json({ error: "대리점 정보 업데이트 실패" }, { status: 500 })
     }
 

@@ -64,7 +64,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       isOwner,
     })
   } catch (error) {
-    console.error("[Delivery GET id] 오류:", error)
+    console.error("[delivery:detail] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }
@@ -103,7 +103,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
     if (error) throw error
     return NextResponse.json({ request: data })
   } catch (error) {
-    console.error("[Delivery PUT] 오류:", error)
+    console.error("[delivery:update] 수정 실패:", (error as Error).message)
     return NextResponse.json({ error: "수정 실패" }, { status: 500 })
   }
 }
@@ -131,7 +131,7 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[Delivery DELETE] 오류:", error)
+    console.error("[delivery:delete] 삭제 실패:", (error as Error).message)
     return NextResponse.json({ error: "삭제 실패" }, { status: 500 })
   }
 }

@@ -139,7 +139,7 @@ export async function GET() {
       NO_STORE
     )
   } catch (error) {
-    console.error("[Users Me] 오류:", error)
+    console.error("[users/me] 조회 실패:", (error as Error).message)
     return NextResponse.json({ error: "조회 실패" }, { status: 500 })
   }
 }

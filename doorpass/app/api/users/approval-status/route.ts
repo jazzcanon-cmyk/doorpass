@@ -65,7 +65,7 @@ export async function GET() {
       canRevealBuildingPassword: false,
     })
   } catch (error) {
-    console.error("[Approval Status] 오류:", error)
+    console.error("[users/approval-status] 조회 실패:", (error as Error).message)
     return NextResponse.json({ status: "error" }, { status: 500 })
   }
 }

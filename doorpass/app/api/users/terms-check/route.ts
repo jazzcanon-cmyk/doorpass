@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   )
 
   if (error) {
-    console.error("[terms-check POST]", error)
+    console.error("[users/terms-check] 저장 실패:", (error as Error).message)
     return NextResponse.json({ error: "저장 실패" }, { status: 500 })
   }
 

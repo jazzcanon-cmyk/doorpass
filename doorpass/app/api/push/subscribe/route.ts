@@ -28,13 +28,13 @@ export async function POST(request: Request) {
       })
 
     if (error) {
-      console.error('[push/subscribe] DB 오류:', error)
+      console.error('[push/subscribe] DB 오류:', (error as Error).message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (e) {
-    console.error('[push/subscribe] 오류:', e)
+    console.error('[push/subscribe] 처리 실패:', (e as Error).message)
     return NextResponse.json({ error: '구독 저장 실패' }, { status: 500 })
   }
 }

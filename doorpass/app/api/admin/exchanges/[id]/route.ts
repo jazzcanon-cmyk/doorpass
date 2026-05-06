@@ -66,7 +66,7 @@ export async function POST(
   )
 
   if (rpcError) {
-    console.error("[admin/exchanges process] RPC 오류", rpcError)
+    console.error("[admin/exchanges:process] RPC 오류:", (rpcError as Error).message)
     return NextResponse.json({ error: "처리 중 오류" }, { status: 500 })
   }
 
