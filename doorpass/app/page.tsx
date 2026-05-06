@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Board } from "@/components/board"
 import { DeliveryBoard } from "@/components/delivery/DeliveryBoard"
 import { WelcomeDialog } from "@/components/WelcomeDialog"
+import { KakaoChannelButton } from "@/components/KakaoChannelButton"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
 import { NearbyTab } from "@/components/NearbyTab"
@@ -310,7 +311,8 @@ export default function Home() {
       )}
 
       <footer className="relative border-t border-white/[0.08] py-6">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-4 text-center space-y-3">
+          <KakaoChannelButton />
           <p className="text-[11px] text-white/20">배달/택배 기사님들의 빠른 배송을 응원합니다 🚚</p>
         </div>
       </footer>

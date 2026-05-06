@@ -291,6 +291,11 @@ export async function GET(request: Request) {
       const from = (pageNum - 1) * MANAGEMENT_PAGE_SIZE
       const to = from + MANAGEMENT_PAGE_SIZE - 1
 
+      const VALID_SORT_COLS = new Set(["name", "address", "created_at"])
+      const sortByParam = searchParams.get("sortBy") ?? "created_at"
+      const sortByCol = VALID_SORT_COLS.has(sortByParam) ? sortByParam : "created_at"
+      const ascending = searchParams.get("sortOrder") === "asc"
+
       const { data: me, error: meErr } = await supabaseAdmin
         .from("approved_users")
         .select("role, branch_id")
@@ -327,7 +332,7 @@ export async function GET(request: Request) {
       }
 
       const { data, error, count } = await q
-        .order("created_at", { ascending: false })
+        .order(sortByCol, { ascending, nullsFirst: false })
         .range(from, to)
 
       if (error) throw new Error(error.message)

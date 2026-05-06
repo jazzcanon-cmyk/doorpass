@@ -7,6 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { KakaoChannelButton } from '@/components/KakaoChannelButton'
 
 interface WelcomeDialogProps {
   open: boolean
@@ -69,7 +70,8 @@ export function WelcomeDialog({ open, userName, onClose }: WelcomeDialogProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 space-y-3">
+          <KakaoChannelButton className="w-full" />
           <Button
             onClick={onClose}
             className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 active:scale-95"

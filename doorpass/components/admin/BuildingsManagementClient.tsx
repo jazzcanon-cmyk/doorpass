@@ -1,12 +1,21 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Building2, ChevronLeft, ChevronRight, MapPin } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown, Building2, ChevronLeft, ChevronRight, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { BuildingEditDialog } from "@/components/admin/BuildingEditDialog"
 
 const PAGE_SIZE = 100
+
+type SortCol = "name" | "address" | "created_at"
+type SortOrder = "asc" | "desc"
+
+const SORT_COLS: { col: SortCol; label: string; defaultOrder: SortOrder }[] = [
+  { col: "name", label: "건물명", defaultOrder: "asc" },
+  { col: "address", label: "주소", defaultOrder: "asc" },
+  { col: "created_at", label: "등록일", defaultOrder: "desc" },
+]
 
 export interface BuildingListItem {
   id: number
@@ -35,6 +44,8 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
   const [error, setError] = useState<string | null>(null)
   const [detailBuildingId, setDetailBuildingId] = useState<number | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [sortBy, setSortBy] = useState<SortCol>("created_at")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
 
   const handleExport = useCallback(async () => {
     setIsExporting(true)
@@ -58,12 +69,14 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
     }
   }, [])
 
-  const fetchPage = useCallback(async (p: number, search: string) => {
+  const fetchPage = useCallback(async (p: number, search: string, by: SortCol, order: SortOrder) => {
     setIsLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
       params.set("page", String(p))
+      params.set("sortBy", by)
+      params.set("sortOrder", order)
       if (search) params.set("search", search)
       const res = await fetch(`/api/buildings?${params.toString()}`)
       if (!res.ok) {
@@ -87,11 +100,20 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, sortBy, sortOrder])
 
   useEffect(() => {
-    void fetchPage(page, debouncedSearch)
-  }, [page, debouncedSearch, fetchPage])
+    void fetchPage(page, debouncedSearch, sortBy, sortOrder)
+  }, [page, debouncedSearch, sortBy, sortOrder, fetchPage])
+
+  const handleSortClick = (col: SortCol, defaultOrder: SortOrder) => {
+    if (sortBy === col) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"))
+    } else {
+      setSortBy(col)
+      setSortOrder(defaultOrder)
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const showing = buildings.length
@@ -103,16 +125,16 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
   return (
     <div className="p-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">건물 관리</h1>
-        <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">{summary}</p>
+        <h1 className="text-2xl font-bold text-white">건물 관리</h1>
+        <p className="text-sm font-medium text-white/50 mt-1">{summary}</p>
         {!isLoading && total > 0 && (
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+          <p className="text-xs text-white/30 mt-0.5">
             페이지 {page.toLocaleString("ko-KR")} / {totalPages.toLocaleString("ko-KR")} · 페이지당 {PAGE_SIZE}개
           </p>
         )}
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <input
           type="text"
           value={searchInput}
@@ -158,6 +180,36 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
         </div>
       </div>
 
+      {/* 정렬 버튼 */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-white/30">정렬</span>
+        {SORT_COLS.map(({ col, label, defaultOrder }) => {
+          const active = sortBy === col
+          return (
+            <button
+              key={col}
+              type="button"
+              onClick={() => handleSortClick(col, defaultOrder)}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                active
+                  ? "bg-blue-600/20 text-blue-400 border-blue-500/40"
+                  : "text-white/40 border-white/[0.08] hover:text-white/70 hover:border-white/20"
+              )}
+            >
+              {label}
+              {active ? (
+                sortOrder === "asc"
+                  ? <ArrowUp className="h-3 w-3" />
+                  : <ArrowDown className="h-3 w-3" />
+              ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-60" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
       {error && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error}
@@ -165,7 +217,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
       )}
 
       {isLoading ? (
-        <div className="py-12 text-center text-gray-600 dark:text-gray-400">로딩 중…</div>
+        <div className="py-12 text-center text-white/40">로딩 중…</div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
