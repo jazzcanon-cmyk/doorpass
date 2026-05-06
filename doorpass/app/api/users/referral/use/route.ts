@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { addPoints } from '@/lib/points'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
@@ -37,14 +38,16 @@ export async function POST(request: Request) {
 
   if (existing) return NextResponse.json({ error: '이미 승인된 회원' }, { status: 400 })
 
-  // c. 추천인의 branch_id 조회
+  // c. 추천인의 branch_id + 대리점 이름 조회 (알림 메시지에 사용)
   const { data: referrer } = await supabaseAdmin
     .from('approved_users')
-    .select('branch_id')
+    .select('branch_id, branches(name)')
     .eq('email', referrerEmail)
     .maybeSingle()
 
-  const branchId = referrer?.branch_id ?? null
+  const branchId = (referrer?.branch_id as string | null | undefined) ?? null
+  const branchName =
+    (referrer as { branches?: { name?: string } | null } | null)?.branches?.name ?? null
 
   // d. 신청자 approved_users 자동 등록
   const { error: insertError } = await supabaseAdmin
@@ -68,6 +71,19 @@ export async function POST(request: Request) {
     .from('referral_tokens')
     .update({ status: 'used', referred_email: email })
     .eq('id', ref.id)
+
+  // 관리자/부관리자 텔레그램 알림 (자동 승인 가시성 확보 — fire-and-forget)
+  sendTelegramMessage(
+    [
+      '🔗 추천 링크로 자동 승인',
+      `📧 이메일: ${email}`,
+      `👤 이름: ${kakaoName || '(미입력)'}`,
+      `🤝 추천인: ${referrerEmail}`,
+      `🏢 대리점: ${branchName ?? (branchId ?? '미배정')}`,
+      `📅 일시: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+    ].join('\n'),
+    'new_user_notification'
+  ).catch(console.error)
 
   // f, g. 포인트 지급 (병렬)
   await Promise.allSettled([
