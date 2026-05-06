@@ -44,6 +44,8 @@ export function BuildingEditDialog({
   const [accessType, setAccessType] = useState<"free" | "password">("password")
   const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no" | "other">("")
   const [memoText, setMemoText] = useState("")
+  const [jibunAddress, setJibunAddress] = useState<string | null>(null)
+  const [jibunLoading, setJibunLoading] = useState(false)
 
   const reset = useCallback(() => {
     setName("")
@@ -54,6 +56,8 @@ export function BuildingEditDialog({
     setAccessType("password")
     setElevatorStatus("")
     setMemoText("")
+    setJibunAddress(null)
+    setJibunLoading(false)
     setLoadingDetail(false)
     setSaving(false)
     setDeleting(false)
@@ -110,6 +114,29 @@ export function BuildingEditDialog({
     setLoadingDetail(true)
     void loadDetail(buildingId)
   }, [open, buildingId, loadDetail, reset])
+
+  useEffect(() => {
+    if (!open || !address) {
+      setJibunAddress(null)
+      return
+    }
+    setJibunLoading(true)
+    setJibunAddress(null)
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`/api/address/jibun?address=${encodeURIComponent(address)}`)
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { jibun?: string | null }
+        if (!cancelled) setJibunAddress(data.jibun ?? null)
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setJibunLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [open, address])
 
   const busy = saving || deleting
 
@@ -205,7 +232,13 @@ export function BuildingEditDialog({
             <div className="space-y-2">
               <Label className="font-medium text-[#374151] dark:text-gray-200">주소</Label>
               <div className="rounded-md border border-[#d1d5db] bg-[#f9fafb] px-3 py-2 text-sm text-[#374151] dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                {address || "—"}
+                <p>{address || "—"}</p>
+                {jibunLoading && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">번지 조회 중...</p>
+                )}
+                {!jibunLoading && jibunAddress && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">({jibunAddress})</p>
+                )}
               </div>
             </div>
 

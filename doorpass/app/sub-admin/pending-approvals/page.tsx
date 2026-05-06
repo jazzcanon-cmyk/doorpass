@@ -102,18 +102,18 @@ export default function SubAdminPendingApprovalsPage() {
       </div>
 
       {approvals.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">승인 대기 중인 요청이 없습니다</div>
+        <div className="text-center py-12 text-white/40">승인 대기 중인 요청이 없습니다</div>
       ) : (
         <div className="space-y-4">
           {approvals.map((approval) => (
-            <div key={approval.id} className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
+            <div key={approval.id} className="bg-slate-800/50 p-6 rounded-lg border border-white/[0.08]">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="h-5 w-5 text-yellow-500" />
                     <h3 className="font-semibold text-lg">{approval.user_name || approval.user_email}</h3>
                   </div>
-                  <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="space-y-1 text-sm text-white/50">
                     <p>📧 {approval.user_email}</p>
                     <p>🏢 {approval.branches?.name ?? approval.selected_branch_id}{approval.branches?.region ? ` (${approval.branches.region})` : ""}</p>
                     <p>📅 {new Date(approval.requested_at).toLocaleString("ko-KR")}</p>
@@ -144,7 +144,7 @@ export default function SubAdminPendingApprovalsPage() {
               <UserCheck className="h-5 w-5 text-green-500" />
               역할 선택
             </DialogTitle>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-white/50">
               <span className="font-medium">{roleModal?.userName}</span> 님에게 부여할 역할을 선택하세요.
             </p>
           </DialogHeader>
@@ -155,26 +155,26 @@ export default function SubAdminPendingApprovalsPage() {
               onClick={() => setSelectedRole("driver")}
               className={`rounded-lg border-2 p-4 text-center transition-colors ${
                 selectedRole === "driver"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
-                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-white/[0.12] hover:border-white/25"
               }`}
             >
               <div className="text-2xl mb-1">🚗</div>
               <div className="font-semibold text-sm">기사</div>
-              <div className="text-xs text-gray-500 mt-0.5">비번 열람만</div>
+              <div className="text-xs text-white/40 mt-0.5">비번 열람만</div>
             </button>
             <button
               type="button"
               onClick={() => setSelectedRole("editor")}
               className={`rounded-lg border-2 p-4 text-center transition-colors ${
                 selectedRole === "editor"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
-                  : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-white/[0.12] hover:border-white/25"
               }`}
             >
               <div className="text-2xl mb-1">✏️</div>
               <div className="font-semibold text-sm">편집자</div>
-              <div className="text-xs text-gray-500 mt-0.5">열람 + 수정</div>
+              <div className="text-xs text-white/40 mt-0.5">열람 + 수정</div>
             </button>
           </div>
 

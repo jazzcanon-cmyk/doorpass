@@ -176,15 +176,15 @@ export default function SubAdminUploadPage() {
     <div className="p-6">
       <header className="mb-6">
         <div className="flex items-center gap-3">
-          <Link href="/sub-admin" className="text-gray-500 hover:text-gray-900 dark:hover:text-white">
+          <Link href="/sub-admin" className="text-white/40 hover:text-white">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">건물 데이터 일괄 업로드</h1>
+          <h1 className="text-2xl font-bold text-white">건물 데이터 일괄 업로드</h1>
         </div>
       </header>
 
-      <div className="bg-white dark:bg-gray-800 border rounded-2xl p-6 space-y-5">
-        <p className="text-sm text-gray-700 dark:text-gray-300">Excel 템플릿을 다운로드해 건물 정보를 입력한 뒤 업로드하세요.</p>
+      <div className="bg-slate-800/50 border border-white/[0.08] rounded-2xl p-6 space-y-5">
+        <p className="text-sm text-white/70">Excel 템플릿을 다운로드해 건물 정보를 입력한 뒤 업로드하세요.</p>
         <Button onClick={() => void downloadTemplate()} variant="outline">
           <Download className="h-4 w-4 mr-2" />
           Excel 템플릿 다운로드
@@ -196,7 +196,7 @@ export default function SubAdminUploadPage() {
           </Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onFileChange} disabled={uploading} className="hidden" />
           {uploading && progress.total > 0 && (
-            <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">{percent}% 완료</div>
+            <div className="mt-3 text-sm text-white/70">{percent}% 완료</div>
           )}
         </div>
       </div>

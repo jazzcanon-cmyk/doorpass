@@ -98,8 +98,8 @@ export default function SubAdminUsersPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">회원 관리</h1>
-        <p className="text-gray-600 dark:text-gray-400">{users.length}명의 회원</p>
+        <h1 className="text-2xl font-bold text-white">회원 관리</h1>
+        <p className="text-white/50">{users.length}명의 회원</p>
       </div>
 
       <div className="mb-6">
@@ -125,17 +125,17 @@ export default function SubAdminUsersPage() {
           const initial = (displayName || "?").trim().charAt(0).toUpperCase()
           const roleBadgeClass =
             user.role === "sub_admin"
-              ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+              ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
               : user.role === "editor"
-              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+              ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
               : user.role === "driver"
-              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
-              : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
+              ? "bg-green-500/20 text-green-300 border-green-500/30"
+              : "bg-slate-700 text-white/50 border-white/[0.08]"
 
           return (
             <div
               key={user.email}
-              className="bg-white dark:bg-gray-800 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700"
+              className="bg-slate-800/50 px-4 py-3 rounded-lg border border-white/[0.08]"
             >
               <div className="flex items-center gap-3">
                 {user.profile_image_url ? (
@@ -143,24 +143,24 @@ export default function SubAdminUsersPage() {
                   <img
                     src={user.profile_image_url}
                     alt={displayName}
-                    className="h-11 w-11 rounded-full object-cover border border-gray-200 dark:border-gray-700 flex-shrink-0"
+                    className="h-11 w-11 rounded-full object-cover border border-white/[0.08] flex-shrink-0"
                   />
                 ) : (
-                  <div className="h-11 w-11 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-base font-semibold text-gray-600 dark:text-gray-300 flex-shrink-0">
+                  <div className="h-11 w-11 rounded-full bg-slate-700 flex items-center justify-center text-base font-semibold text-white/60 flex-shrink-0">
                     {initial}
                   </div>
                 )}
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    <h3 className="text-sm font-semibold text-white truncate">
                       {displayName}
                     </h3>
                     <span className={`text-[11px] px-1.5 py-0.5 rounded border ${roleBadgeClass} flex-shrink-0`}>
                       {getRoleLabel(user.role)}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                  <div className="text-xs text-white/40 space-y-0.5">
                     <p className="flex items-center gap-1.5 truncate">
                       <Mail className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate">{user.email}</span>
@@ -184,18 +184,18 @@ export default function SubAdminUsersPage() {
                 <select
                   value={user.role}
                   onChange={(e) => void handleRoleChange(user.email, e.target.value)}
-                  className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs font-medium text-white bg-slate-800 border border-white/[0.08]"
                 >
-                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="driver">기사</option>
-                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="editor">편집자</option>
-                  <option className="text-gray-900 dark:text-white bg-white dark:bg-gray-800" value="sub_admin">부관리자</option>
+                  <option className="text-white bg-slate-800" value="driver">기사</option>
+                  <option className="text-white bg-slate-800" value="editor">편집자</option>
+                  <option className="text-white bg-slate-800" value="sub_admin">부관리자</option>
                 </select>
 
                 <Button
                   onClick={() => void handleBlockUser(user.email, displayName)}
                   variant="outline"
                   size="sm"
-                  className="flex-1 min-w-0 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900 dark:hover:bg-red-950"
+                  className="flex-1 min-w-0 text-red-400 border-red-500/30 hover:bg-red-500/10"
                 >
                   <Ban className="h-3.5 w-3.5 mr-1" />
                   차단
@@ -204,7 +204,7 @@ export default function SubAdminUsersPage() {
             </div>
           )
         })}
-        {filteredUsers.length === 0 && <div className="text-center py-12 text-gray-500">등록된 회원이 없습니다</div>}
+        {filteredUsers.length === 0 && <div className="text-center py-12 text-white/40">등록된 회원이 없습니다</div>}
       </div>
     </div>
   )

@@ -118,7 +118,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="건물명 또는 주소로 검색 (서버 검색)…"
-          className="w-full max-w-xl px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="w-full max-w-xl px-4 py-2.5 border border-white/[0.12] rounded-lg bg-slate-800 text-white placeholder:text-white/30"
         />
         <div className="flex items-center gap-2">
           {editable && (
@@ -142,7 +142,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
             <ChevronLeft className="h-4 w-4 mr-1" />
             이전
           </Button>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums px-2">
+          <span className="text-sm font-medium text-white/60 tabular-nums px-2">
             {page} / {totalPages}
           </span>
           <Button
@@ -159,7 +159,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
@@ -175,9 +175,9 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
                 role={editable ? "button" : undefined}
                 tabIndex={editable ? 0 : undefined}
                 className={cn(
-                  "bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700",
+                  "bg-slate-800/50 p-6 rounded-lg border border-white/[0.08]",
                   editable &&
-                    "cursor-pointer transition-colors hover:border-blue-400 dark:hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    "cursor-pointer transition-colors hover:border-blue-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 )}
                 onClick={editable ? () => setDetailBuildingId(building.id) : undefined}
                 onKeyDown={
@@ -193,17 +193,17 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
               >
                 <div className="flex items-start justify-between mb-3">
                   <Building2 className="h-6 w-6 text-blue-500" />
-                  <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-gray-800 dark:text-gray-200">
+                  <span className="text-xs px-2 py-1 bg-white/[0.06] rounded text-white/60">
                     {building.region || "미분류"}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{building.name}</h3>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-start gap-2">
+                <h3 className="text-lg font-bold text-white mb-2">{building.name}</h3>
+                <p className="text-sm font-medium text-white/70 mb-3 flex items-start gap-2">
                   <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   {building.address}
                 </p>
-                <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="pt-3 border-t border-white/[0.06]">
+                  <p className="text-xs text-white/40">
                     등록일: {new Date(building.created_at).toLocaleDateString("ko-KR")}
                   </p>
                 </div>
@@ -211,7 +211,7 @@ export function BuildingsManagementClient({ editable = false }: { editable?: boo
             ))}
           </div>
           {buildings.length === 0 && !error && (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-12 text-white/40">
               {debouncedSearch ? "검색 결과가 없습니다" : "등록된 건물이 없습니다"}
             </div>
           )}
