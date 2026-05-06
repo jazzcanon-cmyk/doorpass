@@ -96,7 +96,7 @@ const PANEL_TITLES: Record<string, string> = {
   search: "검색 상세",
   building_view: "건물 조회 상세",
   activity: "전체 활동",
-  buildings: "등록 건물 상세",
+  buildings: "전체 건물 상세",
   users: "등록 기사님 상세",
 }
 
@@ -770,7 +770,7 @@ export function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <StatCard
             icon={Building2}
-            label="등록 건물"
+            label="전체 건물"
             value={overview?.buildings ?? "—"}
             sub="전체 누적"
             color="bg-blue-500/20 text-blue-400"

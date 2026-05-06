@@ -5,7 +5,8 @@ import { Users, Building2, TrendingUp, Clock, CheckCircle2, XCircle, ChevronDown
 
 interface DashboardStats {
   userCount: number
-  buildingCount: number
+  buildingCount: number          // 내 대리점 건물
+  totalBuildingCount: number     // 전체 건물 (앱 검색 화면과 동일)
   pendingApprovals: number
   recentUploads: number
 }
@@ -39,7 +40,7 @@ interface ReferralRecord {
 }
 
 export default function SubAdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({ userCount: 0, buildingCount: 0, pendingApprovals: 0, recentUploads: 0 })
+  const [stats, setStats] = useState<DashboardStats>({ userCount: 0, buildingCount: 0, totalBuildingCount: 0, pendingApprovals: 0, recentUploads: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [showApprovals, setShowApprovals] = useState(false)
   const [approvals, setApprovals] = useState<Approval[]>([])
@@ -209,7 +210,7 @@ export default function SubAdminDashboardPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className='grid grid-cols-2 md:grid-cols-4 gap-3 mb-6'>
+      <div className='grid grid-cols-2 md:grid-cols-5 gap-3 mb-6'>
 
         {/* 총 회원 */}
         <Link href='/sub-admin/users' className='bg-card border rounded-xl p-4 hover:border-blue-500 transition-colors'>
@@ -220,11 +221,20 @@ export default function SubAdminDashboardPage() {
           <p className='text-2xl font-bold'>{stats.userCount}<span className='text-sm font-normal text-muted-foreground ml-1'>명</span></p>
         </Link>
 
-        {/* 등록 건물 */}
+        {/* 전체 건물 (앱 검색 화면과 동일) */}
+        <div className='bg-card border rounded-xl p-4'>
+          <div className='flex items-center gap-2 mb-2'>
+            <Building2 className='h-4 w-4 text-emerald-500' />
+            <p className='text-xs text-muted-foreground font-medium'>전체 건물</p>
+          </div>
+          <p className='text-2xl font-bold'>{stats.totalBuildingCount.toLocaleString()}<span className='text-sm font-normal text-muted-foreground ml-1'>개</span></p>
+        </div>
+
+        {/* 내 대리점 건물 */}
         <Link href='/sub-admin/buildings' className='bg-card border rounded-xl p-4 hover:border-green-500 transition-colors'>
           <div className='flex items-center gap-2 mb-2'>
             <Building2 className='h-4 w-4 text-green-500' />
-            <p className='text-xs text-muted-foreground font-medium'>등록 건물</p>
+            <p className='text-xs text-muted-foreground font-medium'>내 대리점</p>
           </div>
           <p className='text-2xl font-bold'>{stats.buildingCount.toLocaleString()}<span className='text-sm font-normal text-muted-foreground ml-1'>개</span></p>
         </Link>

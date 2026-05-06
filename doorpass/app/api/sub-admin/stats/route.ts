@@ -40,10 +40,15 @@ export async function GET() {
     const branchId = userData.branch_id
 
     if (userData.role === "sub_admin" && !branchId) {
+      // 대리점 미배정 부관리자도 전체 건물 수는 보여줌
+      const { count: totalNoBranch } = await supabaseAdmin
+        .from("buildings")
+        .select("id", { count: "exact", head: true })
       return NextResponse.json({
         stats: {
           userCount: 0,
           buildingCount: 0,
+          totalBuildingCount: totalNoBranch ?? 0,
           pendingApprovals: 0,
           recentUploads: 0,
         },
@@ -61,6 +66,11 @@ export async function GET() {
     let buildingsQ = supabaseAdmin.from("buildings").select("id", { count: "exact", head: true })
     if (!isAdmin) buildingsQ = buildingsQ.eq("branch_id", branchId as string)
 
+    // 전체 건물 수 (검색 화면 등 다른 곳과 동일한 SELECT COUNT(*) FROM buildings)
+    const totalBuildingsQ = supabaseAdmin
+      .from("buildings")
+      .select("id", { count: "exact", head: true })
+
     let pendingQ = supabaseAdmin
       .from("pending_approvals")
       .select("id", { count: "exact", head: true })
@@ -73,22 +83,27 @@ export async function GET() {
       .gte("created_at", startIso)
     if (!isAdmin) uploadsQ = uploadsQ.eq("branch_id", branchId as string)
 
-    const [usersRes, buildingsRes, pendingRes, uploadsRes] = await Promise.all([
+    const [usersRes, buildingsRes, totalBuildingsRes, pendingRes, uploadsRes] = await Promise.all([
       usersQ,
       buildingsQ,
+      totalBuildingsQ,
       pendingQ,
       uploadsQ,
     ])
 
     if (usersRes.error) throw usersRes.error
     if (buildingsRes.error) throw buildingsRes.error
+    if (totalBuildingsRes.error) throw totalBuildingsRes.error
     if (pendingRes.error) throw pendingRes.error
     if (uploadsRes.error) throw uploadsRes.error
 
     return NextResponse.json({
       stats: {
         userCount: usersRes.count ?? 0,
+        // 내 대리점 건물 (admin은 곧 전체와 동일)
         buildingCount: buildingsRes.count ?? 0,
+        // 전체 건물 (앱 검색 화면과 동일한 카운트)
+        totalBuildingCount: totalBuildingsRes.count ?? 0,
         pendingApprovals: pendingRes.count ?? 0,
         recentUploads: uploadsRes.count ?? 0,
       },
