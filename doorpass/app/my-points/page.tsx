@@ -393,7 +393,7 @@ export default function MyPointsPage() {
           type='text'
           value={inviteMemo}
           onChange={(e) => setInviteMemo(e.target.value.slice(0, 50))}
-          placeholder='예: 신정대리점 김기사 (선택사항)'
+          placeholder='예: DoorPass 김기사 (선택사항)'
           maxLength={50}
           style={{
             width: '100%',
