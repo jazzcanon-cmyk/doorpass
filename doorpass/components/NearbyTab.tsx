@@ -35,6 +35,7 @@ interface NearbyTabProps {
   onRetry: () => void
   onBuildingSelect: (b: Building | null) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
+  onPointsUpdate?: () => void
   onBoundsChange: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void
   onGoToSearch?: () => void
   onLocateMe?: () => Promise<boolean>
@@ -56,6 +57,7 @@ export function NearbyTab({
   onRetry,
   onBuildingSelect,
   onBuildingUpdate,
+  onPointsUpdate,
   onBoundsChange,
   onGoToSearch,
   onLocateMe,
@@ -181,6 +183,7 @@ export function NearbyTab({
                   showDistance
                   canRevealBuildingPassword={canRevealBuildingPassword}
                   onUpdate={onBuildingUpdate}
+                  onPointsUpdate={onPointsUpdate}
                 />
               ))}
             </div>

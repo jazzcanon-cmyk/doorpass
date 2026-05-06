@@ -13,6 +13,7 @@ interface SearchTabProps {
   canRevealBuildingPassword: boolean
   onSearch: (query: string) => void
   onBuildingUpdate: (id: string, updated: Partial<Building>) => void
+  onPointsUpdate?: () => void
   onAddBuilding?: () => void
   autoOpenBuildingId?: string
 }
@@ -35,6 +36,7 @@ export function SearchTab({
   canRevealBuildingPassword,
   onSearch,
   onBuildingUpdate,
+  onPointsUpdate,
   onAddBuilding,
   autoOpenBuildingId,
 }: SearchTabProps) {
@@ -163,6 +165,7 @@ export function SearchTab({
                 showDistance={false}
                 canRevealBuildingPassword={canRevealBuildingPassword}
                 onUpdate={onBuildingUpdate}
+                onPointsUpdate={onPointsUpdate}
                 autoOpen={autoOpenBuildingId === b.id}
               />
             ))}

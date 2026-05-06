@@ -23,7 +23,7 @@ const STATE_TTL = 10 * 60 * 1000
 const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5분 이상 지난 캐시면 백그라운드 갱신
 
 export default function Home() {
-  const { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout } = useAuth()
+  const { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout, refreshPoints } = useAuth()
   const { location, getLocation, loading, error: locationError, locationAge } = useLocation()
   const {
     allBuildings,
@@ -241,6 +241,7 @@ export default function Home() {
           onRetry={refreshLocation}
           onBuildingSelect={handleBuildingSelect}
           onBuildingUpdate={handleBuildingUpdate}
+          onPointsUpdate={refreshPoints}
           onBoundsChange={fetchBuildingsByViewport}
           onGoToSearch={() => handleTabChange("search")}
           onLocateMe={handleLocateMe}
@@ -262,6 +263,7 @@ export default function Home() {
           canRevealBuildingPassword={currentUser?.canRevealBuildingPassword === true}
           onSearch={handleSearchWithGA}
           onBuildingUpdate={handleBuildingUpdate}
+          onPointsUpdate={refreshPoints}
           onAddBuilding={
             currentUser?.canRevealBuildingPassword === true
               ? () => setIsAddBuildingOpen(true)
@@ -277,7 +279,10 @@ export default function Home() {
           onClose={() => setIsAddBuildingOpen(false)}
           branchId={currentUser.branchId}
           userEmail={currentUser.email}
-          onSuccess={fetchBuildings}
+          onSuccess={() => {
+            void fetchBuildings()
+            void refreshPoints()
+          }}
           onGoToBuilding={(buildingId, address) => {
             setIsAddBuildingOpen(false)
             handleTabChange("search")

@@ -194,6 +194,27 @@ export function useAuth() {
     fetch("/api/users/welcome", { method: "POST" }).catch(() => {})
   }, [])
 
+  // 포인트 적립 직후 화면(왼쪽 위 표시)을 즉시 갱신하기 위한 함수.
+  // 실패해도 조용히 무시 — 다음 me 호출이나 재로그인 시 자연 반영됨.
+  const refreshPoints = useCallback(async () => {
+    try {
+      const res = await fetch("/api/users/me", { cache: "no-store" })
+      if (!res.ok) return
+      const data = (await res.json()) as MeResponse
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              total_points: data?.total_points ?? prev.total_points,
+              canRevealBuildingPassword:
+                data?.canRevealBuildingPassword ?? prev.canRevealBuildingPassword,
+              branchId: data?.branchId ?? prev.branchId ?? null,
+            }
+          : prev
+      )
+    } catch {}
+  }, [])
+
   const handleLogout = useCallback(async () => {
     await fetch("/api/activity/track", {
       method: "POST",
@@ -207,5 +228,5 @@ export function useAuth() {
     router.replace("/login")
   }, [router])
 
-  return { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout }
+  return { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout, refreshPoints }
 }

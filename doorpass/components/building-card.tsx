@@ -42,6 +42,8 @@ interface BuildingCardProps {
   /** 승인·역할이 갖춰진 사용자만 실제 비밀번호 노출 (서버와 동일 기준) */
   canRevealBuildingPassword?: boolean
   onUpdate?: (buildingId: string, updated: Partial<Building>) => void
+  /** 포인트 적립 후 헤더 표시를 즉시 갱신하기 위한 콜백 */
+  onPointsUpdate?: () => void
   /** true이면 마운트 즉시 팝업 오픈 (중복 건물에서 이동 시 사용) */
   autoOpen?: boolean
 }
@@ -112,6 +114,7 @@ export function BuildingCard({
   showDistance = true,
   canRevealBuildingPassword = false,
   onUpdate,
+  onPointsUpdate,
   autoOpen = false,
 }: BuildingCardProps) {
   const { canEdit, role } = useIsAdmin()
@@ -271,6 +274,7 @@ export function BuildingCard({
           action: ACTION_LABEL[data.action ?? ""] ?? "정보 입력",
           total: data.newTotal,
         })
+        onPointsUpdate?.()
       }
     } catch (e) {
       toast.error("저장 실패")
@@ -847,6 +851,7 @@ export function BuildingCard({
               action: "사진 업로드",
               total: result.point.newTotal,
             })
+            onPointsUpdate?.()
           }
         }}
       />
