@@ -311,8 +311,16 @@ export default function Home() {
       )}
 
       <footer className="relative border-t border-white/[0.08] py-6">
-        <div className="container mx-auto px-4 text-center space-y-3">
-          <KakaoChannelButton />
+        <div className="container mx-auto px-4 flex flex-col items-center gap-3">
+          <div className="w-full max-w-sm bg-white/5 border border-yellow-400/30 rounded-2xl p-4 space-y-3">
+            <p className="text-white font-medium">📢 카카오 채널에서 알림받기</p>
+            <ul className="space-y-1 text-sm text-gray-300">
+              <li>✅ 가입 승인 · 자격 변경 알림</li>
+              <li>✅ 비밀번호 변경 안내</li>
+              <li>✅ 대체배송 요청 알림</li>
+            </ul>
+            <KakaoChannelButton className="w-full" />
+          </div>
           <p className="text-[11px] text-white/20">배달/택배 기사님들의 빠른 배송을 응원합니다 🚚</p>
         </div>
       </footer>
