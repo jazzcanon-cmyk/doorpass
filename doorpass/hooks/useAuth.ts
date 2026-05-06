@@ -3,6 +3,12 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase-client"
+import {
+  loadUserCache,
+  saveUserCache,
+  clearUserCache,
+  clearBuildingsCache,
+} from "@/lib/app-state"
 import type { CurrentUser } from "@/types/building"
 
 type MeResponse = {
@@ -18,9 +24,29 @@ type MeResponse = {
 
 export function useAuth() {
   const router = useRouter()
-  const [authStatus, setAuthStatus] = useState<"loading" | "ok">("loading")
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  // 캐시된 인증 정보가 있으면 즉시 복원하여 로딩 화면을 건너뜀.
+  // Supabase 세션 검증은 아래 useEffect에서 백그라운드로 실행됨.
+  const [authStatus, setAuthStatus] = useState<"loading" | "ok">(() =>
+    loadUserCache() ? "ok" : "loading"
+  )
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(() => {
+    const cached = loadUserCache()
+    if (!cached) return null
+    return {
+      userId: cached.userId,
+      userName: cached.userName,
+      email: cached.email,
+      branchId: cached.branchId ?? null,
+      canRevealBuildingPassword: cached.canRevealBuildingPassword,
+      total_points: cached.total_points,
+    }
+  })
   const [showWelcome, setShowWelcome] = useState(false)
+
+  // currentUser 변경 시 캐시 동기화 (비밀번호 등 민감정보는 저장하지 않음)
+  useEffect(() => {
+    if (currentUser) saveUserCache(currentUser)
+  }, [currentUser])
 
   useEffect(() => {
     let cancelled = false
@@ -33,6 +59,9 @@ export function useAuth() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled) return
       if (!user) {
+        // 세션 만료/무효 → 캐시 폐기 후 로그인으로
+        clearUserCache()
+        clearBuildingsCache()
         router.replace("/login")
         return
       }
@@ -172,6 +201,8 @@ export function useAuth() {
       body: JSON.stringify({ actionType: "logout", pageUrl: window.location.pathname }),
       keepalive: true,
     }).catch(() => {})
+    clearUserCache()
+    clearBuildingsCache()
     await supabase.auth.signOut()
     router.replace("/login")
   }, [router])

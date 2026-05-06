@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { calculateDistance } from "@/lib/geo-utils"
 import { trackSearch } from "@/lib/analytics"
+import { loadBuildingsCache, saveBuildingsCache } from "@/lib/app-state"
 import type { Building, CurrentUser } from "@/types/building"
 
 function trackUserActivity(
@@ -18,14 +19,18 @@ function trackUserActivity(
 }
 
 export function useBuildings(currentUser: CurrentUser | null) {
-  const [allBuildings, setAllBuildings] = useState<Building[]>([])
+  // 캐시된 건물 데이터가 있으면 즉시 표시 — 서버 갱신은 백그라운드에서 진행됨.
+  const cachedInit = typeof window !== "undefined" ? loadBuildingsCache() : null
+  const [allBuildings, setAllBuildings] = useState<Building[]>(cachedInit?.allBuildings ?? [])
   const [viewportBuildings, setViewportBuildings] = useState<Building[]>([])
-  const [nearbyBuildings, setNearbyBuildings] = useState<Building[]>([])
-  const [nearbyRadius, setNearbyRadius] = useState<number>(50)
+  const [nearbyBuildings, setNearbyBuildings] = useState<Building[]>(cachedInit?.nearbyBuildings ?? [])
+  const [nearbyRadius, setNearbyRadius] = useState<number>(cachedInit?.radius ?? 50)
   const [searchResults, setSearchResults] = useState<Building[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [searchNote, setSearchNote] = useState<string | undefined>()
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    cachedInit?.timestamp ? new Date(cachedInit.timestamp) : null
+  )
   const [error, setError] = useState<string | null>(null)
   const viewportFetchingRef = useRef(false)
   const currentUserRef = useRef(currentUser)
@@ -57,11 +62,14 @@ export function useBuildings(currentUser: CurrentUser | null) {
           }))
           .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
 
+        const usedRadius = data.usedRadius ?? radius
         setNearbyBuildings(withDistance)
-        setNearbyRadius(data.usedRadius ?? radius)
+        setNearbyRadius(usedRadius)
+        saveBuildingsCache({ nearbyBuildings: withDistance, lat, lng, radius: usedRadius })
         // allBuildings은 초기 전체 로드(lat/lng 없는 호출)에서 설정됨
       } else {
         setAllBuildings(buildings)
+        saveBuildingsCache({ allBuildings: buildings })
       }
       setLastUpdated(new Date())
     } catch (err) {
@@ -152,15 +160,31 @@ export function useBuildings(currentUser: CurrentUser | null) {
     cacheBustRef.current = true // 수정 후 다음 검색은 캐시 우회
     if ((updated as Record<string, unknown>)._deleted) {
       const del = (list: Building[]) => list.filter((b) => b.id !== id)
-      setAllBuildings(del)
-      setNearbyBuildings(del)
+      setAllBuildings((prev) => {
+        const next = del(prev)
+        saveBuildingsCache({ allBuildings: next })
+        return next
+      })
+      setNearbyBuildings((prev) => {
+        const next = del(prev)
+        saveBuildingsCache({ nearbyBuildings: next })
+        return next
+      })
       setSearchResults(del)
       setViewportBuildings(del)
     } else {
       const upd = (list: Building[]) =>
         list.map((b) => (b.id === id ? { ...b, ...updated } : b))
-      setAllBuildings(upd)
-      setNearbyBuildings(upd)
+      setAllBuildings((prev) => {
+        const next = upd(prev)
+        saveBuildingsCache({ allBuildings: next })
+        return next
+      })
+      setNearbyBuildings((prev) => {
+        const next = upd(prev)
+        saveBuildingsCache({ nearbyBuildings: next })
+        return next
+      })
       setSearchResults(upd)
     }
   }, [])

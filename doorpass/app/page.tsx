@@ -16,10 +16,11 @@ import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"
 import { useLocation } from "@/hooks/useLocation"
 import { useBuildings } from "@/hooks/useBuildings"
-import { saveAppState, loadAppState } from "@/lib/app-state"
+import { saveAppState, loadAppState, loadBuildingsCache } from "@/lib/app-state"
 import type { Building, TabType } from "@/types/building"
 
 const STATE_TTL = 10 * 60 * 1000
+const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5분 이상 지난 캐시면 백그라운드 갱신
 
 export default function Home() {
   const { authStatus, currentUser, showWelcome, handleWelcomeClose, handleLogout } = useAuth()
@@ -54,7 +55,20 @@ export default function Home() {
   })
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
-  const [selectedRadius, setSelectedRadius] = useState<number>(50)
+  const [selectedRadius, setSelectedRadius] = useState<number>(() => {
+    try {
+      const saved = loadAppState()
+      if (
+        saved.lastVisited &&
+        Date.now() - saved.lastVisited < STATE_TTL &&
+        typeof saved.selectedRadius === "number" &&
+        saved.selectedRadius > 0
+      ) {
+        return saved.selectedRadius
+      }
+    } catch {}
+    return 50
+  })
   const [autoOpenBuildingId, setAutoOpenBuildingId] = useState<string | undefined>()
 
   const error = locationError ?? buildingsError
@@ -160,6 +174,27 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [authStatus])
 
+  // 다른 앱에서 돌아왔을 때(visibilitychange) 캐시 나이에 따라 스마트 갱신
+  // - 캐시 < 5분: 갱신 생략 (이미 충분히 신선함)
+  // - 캐시 ≥ 5분: 백그라운드에서 조용히 갱신
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return
+      const cache = loadBuildingsCache()
+      const tooStale =
+        !cache || Date.now() - cache.timestamp > VISIBILITY_REFRESH_THRESHOLD
+      if (!tooStale) return
+      if (location) {
+        void fetchBuildings(location.lat, location.lng, selectedRadius)
+      } else {
+        void fetchBuildings()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
+  }, [authStatus, location, selectedRadius, fetchBuildings])
+
   if (authStatus === "loading") return <LoadingScreen />
 
   return (
@@ -212,6 +247,7 @@ export default function Home() {
           radius={selectedRadius}
           onRadiusChange={(r) => {
             setSelectedRadius(r)
+            saveAppState({ selectedRadius: r })
             if (location) fetchBuildings(location.lat, location.lng, r)
           }}
         />
