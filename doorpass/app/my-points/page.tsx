@@ -25,6 +25,20 @@ interface RankData {
   branchUsers: number
 }
 
+interface ExchangeRow {
+  id: number
+  user_email: string
+  user_name: string | null
+  points_used: number
+  reward_type: string
+  reward_name: string
+  receive_method: 'visit' | 'mobile'
+  status: 'pending' | 'completed' | 'rejected'
+  admin_memo: string | null
+  requested_at: string
+  processed_at: string | null
+}
+
 const ACTION_LABEL: Record<string, string> = {
   building_name: '🏢 건물명 입력',
   building_password: '🔑 비밀번호 입력',
@@ -49,6 +63,17 @@ export default function MyPointsPage() {
   const [inviteMemo, setInviteMemo] = useState('')
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null)
   const [referrerName, setReferrerName] = useState<string>('친구')
+  const [exchangeOpen, setExchangeOpen] = useState(false)
+  const [exchangeMethod, setExchangeMethod] = useState<'visit' | 'mobile'>('visit')
+  const [myExchanges, setMyExchanges] = useState<ExchangeRow[]>([])
+
+  const refreshMyExchanges = () => {
+    fetch('/api/users/points/exchange', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { exchanges?: ExchangeRow[] }) => setMyExchanges(d.exchanges ?? []))
+      .catch(() => {})
+  }
+  useEffect(() => { refreshMyExchanges() }, [])
 
   useEffect(() => {
     fetch('/api/users/me', { cache: 'no-store' })
@@ -167,17 +192,25 @@ export default function MyPointsPage() {
     }
   }
 
-  const handleExchange = async () => {
-    if (!window.confirm('10,000P를 차감하고 GS상품권을 신청하시겠습니까?')) return
+  const submitExchange = async () => {
     setExchanging(true)
     try {
-      const res = await fetch('/api/users/points/exchange', { method: 'POST' })
-      const d = await res.json() as { error?: string }
-      if (!res.ok) throw new Error(d.error || '교환 실패')
-      toast.success('🎁 교환 신청 완료! 소장님이 확인 후 상품권을 전달해드려요.')
-      const res2 = await fetch('/api/users/points')
-      setData(await res2.json() as PointData)
-    } catch (e) {
+      const res = await fetch('/api/users/points/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiveMethod: exchangeMethod }),
+      })
+      const d = (await res.json()) as { error?: string; remainingPoints?: number }
+      if (!res.ok) {
+        toast.error(d.error || '교환 실패')
+        return
+      }
+      toast.success('🎁 교환 신청 완료! 소장님 확인 후 처리됩니다.')
+      setExchangeOpen(false)
+      const res2 = await fetch('/api/users/points', { cache: 'no-store' })
+      setData((await res2.json()) as PointData)
+      refreshMyExchanges()
+    } catch {
       toast.error('교환 실패')
     } finally {
       setExchanging(false)
@@ -312,7 +345,7 @@ export default function MyPointsPage() {
         {/* 교환 버튼 */}
         <div style={{ padding: '8px 20px 20px' }}>
           <button
-            onClick={() => canExchange && void handleExchange()}
+            onClick={() => { if (canExchange) setExchangeOpen(true) }}
             disabled={!canExchange || exchanging}
             style={{
               width: '100%',
@@ -439,6 +472,48 @@ export default function MyPointsPage() {
         </div>
       </div>
 
+      {/* 교환 이력 */}
+      {myExchanges.length > 0 && (
+        <div className='mx-4 mt-3 bg-white/5 border border-white/10 rounded-2xl p-4'>
+          <div className='text-sm font-bold text-white mb-2'>🎁 내 교환 이력</div>
+          <div className='space-y-2'>
+            {myExchanges.slice(0, 10).map((ex) => {
+              const date = new Date(ex.requested_at).toLocaleDateString('ko-KR', {
+                year: '2-digit', month: '2-digit', day: '2-digit',
+              })
+              const methodLabel = ex.receive_method === 'mobile' ? '모바일' : '방문'
+              const statusBadge =
+                ex.status === 'completed' ? (
+                  <span className='text-xs text-emerald-400'>✅ 지급완료</span>
+                ) : ex.status === 'rejected' ? (
+                  <span className='text-xs text-red-400'>❌ 반려</span>
+                ) : (
+                  <span className='text-xs text-amber-400'>⏳ 처리중</span>
+                )
+              return (
+                <div
+                  key={ex.id}
+                  className='flex items-start justify-between gap-2 bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2'
+                >
+                  <div className='min-w-0 flex-1'>
+                    <div className='text-xs text-white'>{ex.reward_name}</div>
+                    <div className='text-[11px] text-white/40 mt-0.5'>
+                      {date} · {methodLabel} · -{ex.points_used.toLocaleString()}P
+                    </div>
+                    {ex.status === 'rejected' && (
+                      <div className='text-[11px] text-emerald-400/80 mt-0.5'>
+                        포인트 환불됨{ex.admin_memo ? ` (${ex.admin_memo})` : ''}
+                      </div>
+                    )}
+                  </div>
+                  {statusBadge}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 탭 */}
       <div className='flex gap-1 mx-4 mt-4 bg-white/5 rounded-xl p-1'>
         {([['all', '전체'], ['earn', '적립'], ['exchange', '교환']] as const).map(([key, label]) => (
@@ -480,6 +555,117 @@ export default function MyPointsPage() {
             ))
         )}
       </div>
+
+      {/* 교환 신청 모달 */}
+      {exchangeOpen && (
+        <div
+          onClick={() => !exchanging && setExchangeOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '380px',
+              background: '#0f172a',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '20px',
+              padding: '24px',
+              color: 'white',
+            }}
+          >
+            <div style={{ fontSize: '17px', fontWeight: 800, marginBottom: '4px' }}>
+              🎁 GS상품권 교환
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '18px' }}>
+              GS상품권 1만원권 (10,000P 차감)
+            </div>
+
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
+              수령 방법
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+              {([
+                ['visit', '🏢 사무실 방문 수령'],
+                ['mobile', '📱 모바일 상품권 (카카오)'],
+              ] as const).map(([val, label]) => (
+                <label
+                  key={val}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid ' + (exchangeMethod === val ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.1)'),
+                    background: exchangeMethod === val ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                  }}
+                >
+                  <input
+                    type='radio'
+                    name='exchangeMethod'
+                    value={val}
+                    checked={exchangeMethod === val}
+                    onChange={() => setExchangeMethod(val)}
+                    style={{ accentColor: '#f59e0b' }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <div style={{
+              fontSize: '11px',
+              color: 'rgba(255,255,255,0.4)',
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              marginBottom: '16px',
+              lineHeight: 1.6,
+            }}>
+              · 신청 후 관리자가 확인하여 상품권을 전달해 드립니다.<br />
+              · 반려 시 차감된 10,000P는 자동 환불됩니다.<br />
+              · 처리 중인 신청이 있으면 추가 신청이 불가합니다.
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setExchangeOpen(false)}
+                disabled={exchanging}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: '12px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'white', fontWeight: 600, fontSize: '14px',
+                  cursor: exchanging ? 'not-allowed' : 'pointer',
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm('10,000P를 사용하여 GS상품권을 신청할까요?')) {
+                    void submitExchange()
+                  }
+                }}
+                disabled={exchanging}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+                  border: 'none', color: 'white', fontWeight: 700, fontSize: '14px',
+                  cursor: exchanging ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {exchanging ? '⏳ 처리 중...' : '신청하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

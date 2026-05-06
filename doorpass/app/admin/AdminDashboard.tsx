@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Building2, Users, Activity, Search,
   BarChart2, Upload, MessageSquare, Settings,
-  ArrowRight, Loader2, TrendingUp, Eye, MapPin, RefreshCw, X, Trophy, Link2,
+  ArrowRight, Loader2, TrendingUp, Eye, MapPin, RefreshCw, X, Trophy, Link2, Gift,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 import {
@@ -109,6 +109,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 const QUICK_LINKS = [
   { href: "/admin/analytics", icon: BarChart2, label: "분석 대시보드", desc: "활동 통계 확인" },
+  { href: "/admin/exchanges", icon: Gift, label: "상품권 교환 관리", desc: "신청 처리·반려" },
   { href: "/admin/buildings/import", icon: Upload, label: "건물 일괄 등록", desc: "Excel 파일 업로드" },
   { href: "/admin/users", icon: Users, label: "사용자 관리", desc: "제한·권한 관리" },
   { href: "/admin/slack", icon: MessageSquare, label: "Slack 메시지", desc: "알림 테스트" },

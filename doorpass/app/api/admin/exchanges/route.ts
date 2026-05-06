@@ -1,0 +1,37 @@
+import { NextResponse } from "next/server"
+import { requireAdminApi } from "@/lib/auth"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+
+// 관리자 — 전체 교환 신청 목록 (pending 우선, 최신순)
+export async function GET() {
+  const { unauthorized } = await requireAdminApi()
+  if (unauthorized) return unauthorized
+
+  const { data, error } = await supabaseAdmin
+    .from("point_exchanges")
+    .select(
+      "id, user_email, user_name, points_used, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
+    )
+    // pending(0) → completed/rejected(1) 순서 정렬을 위해 created 시간으로 보조 정렬
+    .order("status", { ascending: true })
+    .order("requested_at", { ascending: false })
+    .limit(200)
+
+  if (error) {
+    console.error("[admin/exchanges GET] 조회 실패", error)
+    return NextResponse.json({ exchanges: [] }, { status: 500 })
+  }
+
+  // pending 을 항상 맨 위로
+  const rows = (data ?? []) as Array<{ status: string }>
+  const sorted = rows.sort((a, b) => {
+    if (a.status === b.status) return 0
+    if (a.status === "pending") return -1
+    if (b.status === "pending") return 1
+    return 0
+  })
+
+  const pendingCount = sorted.filter((r) => r.status === "pending").length
+
+  return NextResponse.json({ exchanges: sorted, pendingCount })
+}
