@@ -16,14 +16,22 @@ const REQUIRED = new Set([
 ])
 
 export async function GET() {
-  const { unauthorized } = await requireAdminApi()
-  if (unauthorized) return unauthorized
+  try {
+    const { unauthorized } = await requireAdminApi()
+    if (unauthorized) return unauthorized
 
-  const vars = KEYS.map((key) => ({
-    key,
-    set: Boolean(process.env[key]?.trim()),
-    required: REQUIRED.has(key),
-  }))
+    const vars = KEYS.map((key) => ({
+      key,
+      set: Boolean(process.env[key]?.trim()),
+      required: REQUIRED.has(key),
+    }))
 
-  return NextResponse.json({ vars })
+    return NextResponse.json({ vars })
+  } catch (error) {
+    console.error("[env-check] 오류:", (error as Error).message)
+    return NextResponse.json(
+      { error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    )
+  }
 }
