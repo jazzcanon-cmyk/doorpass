@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { shareToKakao, isKakaoShareReady } from '@/lib/kakao-share'
 
 interface PointLog {
   id: number
@@ -46,6 +47,22 @@ export default function MyPointsPage() {
   const [remainingInvites, setRemainingInvites] = useState(3)
   const [rank, setRank] = useState<RankData | null>(null)
   const [inviteMemo, setInviteMemo] = useState('')
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null)
+  const [referrerName, setReferrerName] = useState<string>('친구')
+
+  useEffect(() => {
+    fetch('/api/users/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { name?: string }) => {
+        if (d?.name) setReferrerName(d.name)
+      })
+      .catch(() => {})
+  }, [])
+
+  // 메모 변경 시 기존 생성 링크 무효화 (다음 공유 클릭에서 새로 생성)
+  useEffect(() => {
+    setGeneratedUrl(null)
+  }, [inviteMemo])
 
   useEffect(() => {
     document.title = '🏆 내 포인트 | DoorPass'
@@ -73,13 +90,15 @@ export default function MyPointsPage() {
       .catch(() => {})
   }, [])
 
-  const handleInvite = async () => {
+  // 초대 링크가 없으면 생성(invite 1회 차감), 있으면 캐시된 URL 반환.
+  // 메모 변경 시 useEffect로 캐시가 비워지므로 다음 호출에서 새 메모로 재생성됨.
+  const ensureLink = async (): Promise<string | null> => {
+    if (generatedUrl) return generatedUrl
     if (remainingInvites === 0) {
       toast.error('오늘 초대 한도 완료 (3회)')
-      return
+      return null
     }
     setInviting(true)
-    let url: string
     try {
       const res = await fetch('/api/users/referral/generate', {
         method: 'POST',
@@ -89,35 +108,62 @@ export default function MyPointsPage() {
       const data = await res.json()
       if (!res.ok) {
         toast.error('링크 생성 실패')
-        return
+        return null
       }
-      url = data.url as string
+      const url = data.url as string
+      setGeneratedUrl(url)
+      setRemainingInvites((prev) => Math.max(0, prev - 1))
+      return url
     } catch {
       toast.error('링크 생성 실패')
-      return
+      return null
     } finally {
       setInviting(false)
     }
-    setRemainingInvites((prev) => Math.max(0, prev - 1))
-    try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
+  }
+
+  // Kakao SDK → navigator.share → clipboard 순서로 폴백
+  const handleKakaoShare = async () => {
+    const url = await ensureLink()
+    if (!url) return
+
+    if (isKakaoShareReady()) {
+      const ok = shareToKakao({ referralUrl: url, referrerName })
+      if (ok) {
+        toast.success('카카오톡 공유 화면이 열렸어요 💬')
+        return
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
         await navigator.share({
           title: 'DoorPass 초대장 🎁',
-          text: '공동현관 비밀번호 앱 DoorPass! 가입하면 300P를 드려요 🎁',
+          text: `${referrerName}님이 초대했어요! 가입하면 +300P`,
           url,
         })
-      } else {
-        await navigator.clipboard.writeText(url)
-        toast.success('링크가 복사됐어요! 카카오톡에 붙여넣기 하세요 📋')
+        return
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return
       }
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') return
-      try {
-        await navigator.clipboard.writeText(url)
-        toast.success('링크 복사됐어요 📋')
-      } catch {
-        toast.error('공유 실패')
-      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('링크가 복사됐어요 📋 카카오톡에 붙여넣기 하세요')
+    } catch {
+      toast.error('공유 실패')
+    }
+  }
+
+  const handleCopyLink = async () => {
+    const url = await ensureLink()
+    if (!url) return
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('링크가 복사됐어요 📋')
+    } catch {
+      toast.error('복사 실패')
     }
   }
 
@@ -329,27 +375,68 @@ export default function MyPointsPage() {
             boxSizing: 'border-box',
           }}
         />
-        <button
-          onClick={() => void handleInvite()}
-          disabled={inviting || remainingInvites === 0}
-          style={{
-            width: '100%',
-            padding: '14px',
-            borderRadius: '12px',
-            background: remainingInvites === 0 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #10b981, #059669)',
-            color: remainingInvites === 0 ? 'rgba(255,255,255,0.3)' : 'white',
-            border: 'none',
-            fontSize: '15px',
-            fontWeight: 700,
-            cursor: remainingInvites === 0 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-        >
-          {inviting ? '⏳ 링크 생성 중...' : remainingInvites === 0 ? '오늘 초대 한도 완료 (3/3)' : '🔗 카카오톡으로 초대 링크 보내기'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => void handleKakaoShare()}
+            disabled={inviting || (remainingInvites === 0 && !generatedUrl)}
+            style={{
+              flex: 2,
+              padding: '14px',
+              borderRadius: '12px',
+              background:
+                remainingInvites === 0 && !generatedUrl
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'linear-gradient(135deg, #FEE500, #FFCD00)',
+              color:
+                remainingInvites === 0 && !generatedUrl
+                  ? 'rgba(255,255,255,0.3)'
+                  : '#3B1E1E',
+              border: 'none',
+              fontSize: '15px',
+              fontWeight: 700,
+              cursor:
+                remainingInvites === 0 && !generatedUrl ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {inviting
+              ? '⏳ 생성 중...'
+              : remainingInvites === 0 && !generatedUrl
+                ? '오늘 한도 완료 (3/3)'
+                : '💬 카카오톡으로 공유'}
+          </button>
+          <button
+            onClick={() => void handleCopyLink()}
+            disabled={inviting || (remainingInvites === 0 && !generatedUrl)}
+            style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: '12px',
+              background:
+                remainingInvites === 0 && !generatedUrl
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(255,255,255,0.1)',
+              color:
+                remainingInvites === 0 && !generatedUrl
+                  ? 'rgba(255,255,255,0.3)'
+                  : 'white',
+              border: '1px solid rgba(255,255,255,0.15)',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor:
+                remainingInvites === 0 && !generatedUrl ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            🔗 링크 복사
+          </button>
+        </div>
       </div>
 
       {/* 탭 */}

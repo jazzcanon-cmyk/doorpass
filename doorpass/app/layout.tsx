@@ -55,6 +55,10 @@ export default function RootLayout({
         src="https://www.googletagmanager.com/gtag/js?id=G-4VT7N36ZS0"
         strategy="lazyOnload"
       />
+      <Script
+        src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
+        strategy="lazyOnload"
+      />
       <Script id="google-analytics" strategy="lazyOnload">
         {`
           window.dataLayer = window.dataLayer || [];
