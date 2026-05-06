@@ -166,9 +166,8 @@ export function BuildingCard({
   useEffect(() => {
     if (!showPopup) return
     const buildingId = currentBuilding.id
-    const lat = currentBuilding.lat
-    const lng = currentBuilding.lng
-    if (lat == null || lng == null) return
+    const address = currentBuilding.address?.trim()
+    if (!address) return
     if (jibunCacheRef.current.has(buildingId)) {
       setJibunAddress(jibunCacheRef.current.get(buildingId) ?? null)
       setJibunLoading(false)
@@ -179,7 +178,7 @@ export function BuildingCard({
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetch(`/api/address/jibun?lat=${lat}&lng=${lng}`)
+        const res = await fetch(`/api/address/jibun?address=${encodeURIComponent(address)}`)
         if (!res.ok || cancelled) return
         const data = await res.json() as { jibun?: string | null }
         const result = data.jibun ?? null
@@ -194,7 +193,7 @@ export function BuildingCard({
       }
     })()
     return () => { cancelled = true }
-  }, [showPopup, currentBuilding.id, currentBuilding.lat, currentBuilding.lng])
+  }, [showPopup, currentBuilding.id, currentBuilding.address])
 
   useEffect(() => {
     if (autoOpen) setShowPopup(true)
