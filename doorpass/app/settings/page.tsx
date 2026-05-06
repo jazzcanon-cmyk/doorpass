@@ -301,6 +301,46 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* 사업자 정보 */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          <h2 className="text-sm font-semibold mb-3 text-white/80">사업자 정보</h2>
+          <dl className="text-xs text-white/60 space-y-1.5 leading-relaxed">
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">서비스명</dt>
+              <dd className="text-white/80">DoorPass (도어패스)</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">상호</dt>
+              <dd>(주)상상커머스 (CJ대한통운택배 신정대리점)</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">대표</dt>
+              <dd>박진성</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">사업자번호</dt>
+              <dd className="font-mono">341-88-00423</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">주소</dt>
+              <dd>울산 남구 산업로625번길 9</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-white/40">연락처</dt>
+              <dd>
+                <a href="tel:010-5008-0008" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                  010-5008-0008
+                </a>
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 pt-3 border-t border-white/[0.06]">
+            <Link href="/terms" className="text-[11px] text-white/40 hover:text-white/70 underline underline-offset-2">
+              이용약관 보기 →
+            </Link>
+          </div>
+        </section>
       </div>
 
       {feedbackOpen && (
