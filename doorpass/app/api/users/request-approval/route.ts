@@ -4,11 +4,23 @@ import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendApprovalRequestEmail } from '@/lib/email'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { authLimiter, checkRateLimit, getClientIp, rateLimitIdentifier } from '@/lib/ratelimit'
 
 export async function POST(request: NextRequest) {
   try {
     const { user, unauthorized } = await requireAuth()
     if (unauthorized) return unauthorized
+
+    const rl = await checkRateLimit(
+      authLimiter,
+      rateLimitIdentifier(user?.email, getClientIp(request.headers))
+    )
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        { status: 429, headers: { 'X-RateLimit-Remaining': '0' } }
+      )
+    }
 
     const body = await request.json()
     const { branchId, userName, reason, phone } = body as {

@@ -3,6 +3,7 @@ import ExcelJS from "exceljs"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
+import { generalLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
 
 interface BuildingRow {
   id: number
@@ -34,6 +35,14 @@ function resolvePassword(b: BuildingRow): string {
 export async function GET(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+    )
+  }
 
   const { data: me, error: meErr } = await supabaseAdmin
     .from("approved_users")

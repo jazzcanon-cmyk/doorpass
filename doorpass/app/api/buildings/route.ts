@@ -7,6 +7,12 @@ import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
 import { addPoints } from "@/lib/points"
 import { lookupAddress } from "@/lib/address-convert"
+import { passwordLimiter, checkRateLimit, getClientIp } from "@/lib/ratelimit"
+
+const RATE_LIMIT_RESPONSE = NextResponse.json(
+  { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+  { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+)
 
 interface BuildingRow {
   id: number
@@ -115,6 +121,10 @@ function toBuilding(b: BuildingRow, revealPassword: boolean) {
 }
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request.headers)
+  const rl = await checkRateLimit(passwordLimiter, `ip:${ip}`)
+  if (!rl.success) return RATE_LIMIT_RESPONSE
+
   const { searchParams } = new URL(request.url)
   const minLat = searchParams.get("minLat")
   const maxLat = searchParams.get("maxLat")

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { authLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
 
 function resolveIdentifier(user: NonNullable<Awaited<ReturnType<typeof requireAuth>>["user"]>) {
   const email = user.email
@@ -36,6 +37,14 @@ export async function POST() {
   if (unauthorized) return unauthorized
 
   const identifier = resolveIdentifier(user!)
+
+  const rl = await checkRateLimit(authLimiter, rateLimitIdentifier(identifier, null))
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+    )
+  }
 
   try {
     const { error } = await supabaseAdmin

@@ -4,6 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { addPoints } from "@/lib/points"
+import { generalLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
+
+const RATE_LIMIT_RESPONSE = NextResponse.json(
+  { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+  { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+)
 
 type Params = Promise<{ id: string }>
 
@@ -74,6 +80,9 @@ export async function GET(_request: Request, { params }: { params: Params }) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  if (!rl.success) return RATE_LIMIT_RESPONSE
+
   const { id: raw } = await params
   const id = Number(raw)
   if (!Number.isFinite(id)) {
@@ -98,6 +107,9 @@ export async function GET(_request: Request, { params }: { params: Params }) {
 export async function PUT(request: Request, { params }: { params: Params }) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  if (!rl.success) return RATE_LIMIT_RESPONSE
 
   const { id: raw } = await params
   const id = Number(raw)
@@ -203,6 +215,9 @@ export async function PUT(request: Request, { params }: { params: Params }) {
 export async function DELETE(_request: Request, { params }: { params: Params }) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  if (!rl.success) return RATE_LIMIT_RESPONSE
 
   const { data: approvedUser } = await supabaseAdmin
     .from("approved_users")

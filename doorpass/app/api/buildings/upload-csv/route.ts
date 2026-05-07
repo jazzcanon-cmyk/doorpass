@@ -3,6 +3,7 @@ import { requireAuth, canUploadCSV } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { encryptPassword } from "@/lib/encryption"
+import { generalLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
 
 const supabase = supabaseAdmin
 const MAX_BATCH = 200
@@ -37,6 +38,14 @@ interface BatchInfo {
 export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
+
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+    )
+  }
 
   if (!(await canUploadCSV(user!.email))) {
     return NextResponse.json({ error: "CSV 업로드 권한이 없습니다." }, { status: 403 })
