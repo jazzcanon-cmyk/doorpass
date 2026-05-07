@@ -184,13 +184,21 @@ export function NewBuildingModal({
         }),
       })
 
-      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      const data = (await res.json().catch(() => ({}))) as { error?: string; existingId?: number }
+      if (res.status === 409) {
+        toast.error(
+          data.error
+            ? `${data.error}. 기존 건물을 수정하시겠어요?`
+            : "이미 등록된 건물입니다. 기존 건물을 수정하시겠어요?"
+        )
+        return
+      }
       if (!res.ok) throw new Error(data.error ?? "등록 실패")
 
       toast.success("새 건물이 등록되었습니다! 감사합니다 🎉")
       resetAndClose()
       onSuccess()
-    } catch (error) {
+    } catch {
       toast.error("건물 등록에 실패했습니다.")
     } finally {
       setIsSubmitting(false)

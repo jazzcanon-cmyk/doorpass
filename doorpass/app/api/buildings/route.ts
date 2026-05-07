@@ -449,6 +449,22 @@ export async function POST(request: Request) {
     }
 
     const normalizedAddress = normalizeAddress(address.trim())
+    const trimmedName = name?.trim() || null
+
+    // 동시 등록 race + 사용자 실수 중복 등록 방지: branch_id + 정규화 주소 + 이름으로 사전 검증
+    let dupQuery = supabase
+      .from("buildings")
+      .select("id")
+      .eq("address", normalizedAddress)
+    dupQuery = trimmedName ? dupQuery.eq("name", trimmedName) : dupQuery.is("name", null)
+    dupQuery = branch_id ? dupQuery.eq("branch_id", branch_id) : dupQuery.is("branch_id", null)
+    const { data: existingDup } = await dupQuery.limit(1)
+    if (existingDup && existingDup.length > 0) {
+      return NextResponse.json(
+        { error: "이미 등록된 건물입니다", existingId: existingDup[0].id },
+        { status: 409 }
+      )
+    }
 
     // 자유출입/기타: 라벨은 access_type으로 표현 → password 컬럼은 null
     // password 타입: 입력값 암호화 → password_encrypted에만 저장
@@ -462,7 +478,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("buildings")
       .insert({
-        name: name?.trim() || null,
+        name: trimmedName,
         address: normalizedAddress,
         password: null,
         password_encrypted: encryptedPassword,

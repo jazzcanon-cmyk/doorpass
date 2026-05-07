@@ -53,9 +53,15 @@ export default function SubAdminUsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail, newRole }),
       })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      if (res.status === 409) {
+        alert(data.error || "이미 같은 역할로 변경되었습니다. 화면을 새로고침해주세요.")
+        await fetchUsers()
+        return
+      }
       if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        throw new Error(error.error || "역할 변경 실패")
+        alert(`❌ 역할 변경 실패\n\n${data.error || "오류가 발생했습니다."}`)
+        return
       }
       alert("✅ 역할이 변경되었습니다.")
       await fetchUsers()

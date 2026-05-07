@@ -47,23 +47,29 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "관리자 또는 부관리자로 승격할 권한이 없습니다" }, { status: 403 })
     }
 
-    let updateError: { message?: string } | null = null
-    const attemptWithUpdatedAt = await supabaseAdmin
-      .from("approved_users")
-      .update({
-        role: newRole,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("email", userEmail)
-    if (attemptWithUpdatedAt.error) {
-      if (/updated_at/i.test(attemptWithUpdatedAt.error.message || "")) {
-        const fallback = await supabaseAdmin.from("approved_users").update({ role: newRole }).eq("email", userEmail)
-        updateError = fallback.error
-      } else {
-        updateError = attemptWithUpdatedAt.error
-      }
+    const tryUpdate = async (includeUpdatedAt: boolean) => {
+      const patch: { role: string; updated_at?: string } = { role: newRole }
+      if (includeUpdatedAt) patch.updated_at = new Date().toISOString()
+      return await supabaseAdmin
+        .from("approved_users")
+        .update(patch)
+        .eq("email", userEmail)
+        .neq("role", newRole)
+        .select("id")
+        .maybeSingle()
     }
-    if (updateError) throw updateError
+
+    let result = await tryUpdate(true)
+    if (result.error && /updated_at/i.test(result.error.message || "")) {
+      result = await tryUpdate(false)
+    }
+    if (result.error) throw result.error
+    if (!result.data) {
+      return NextResponse.json(
+        { error: "이미 같은 역할로 변경되었습니다. 화면을 새로고침해주세요." },
+        { status: 409 }
+      )
+    }
 
     const roleLabels: Record<string, string> = {
       admin: "관리자",
