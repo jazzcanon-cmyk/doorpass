@@ -1,5 +1,12 @@
 import crypto from "crypto"
+import * as Sentry from "@sentry/nextjs"
 import { fetchWithTimeout } from "./fetch-with-timeout"
+
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "")
+  if (digits.length < 4) return "****"
+  return "***-****-" + digits.slice(-4)
+}
 
 function buildAuthHeader(apiKey: string, apiSecret: string): string {
   const date = new Date().toISOString()
@@ -61,8 +68,17 @@ export async function sendAlimtalk(
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       console.error("[solapi] 알림톡 발송 실패:", JSON.stringify(err))
+      Sentry.captureMessage("solapi:alimtalk_send_failed", {
+        level: "error",
+        tags: { feature: "notification", service: "solapi" },
+        extra: { templateId, phoneMasked: maskPhone(phone), status: res.status, response: err },
+      })
     }
   } catch (error) {
     console.error("[solapi] 알림톡 발송 오류:", (error as Error).message)
+    Sentry.captureException(error, {
+      tags: { feature: "notification", service: "solapi" },
+      extra: { templateId, phoneMasked: maskPhone(phone) },
+    })
   }
 }

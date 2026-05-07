@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs"
 import { supabaseAdmin } from "./supabase-admin"
 import { fetchWithTimeout } from "./fetch-with-timeout"
 
@@ -43,9 +44,19 @@ export async function sendTelegramMessage(text: string, settingKey?: string): Pr
       body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "HTML" }),
     })
     if (!res.ok) {
-      console.error(`[Telegram] 전송 실패 (${res.status}):`, await res.text())
+      const body = await res.text()
+      console.error(`[Telegram] 전송 실패 (${res.status}):`, body)
+      Sentry.captureMessage("telegram:send_failed", {
+        level: "error",
+        tags: { feature: "notification", service: "telegram" },
+        extra: { status: res.status, settingKey: settingKey ?? null, response: body },
+      })
     }
   } catch (err) {
     console.error("[Telegram] 전송 오류:", err)
+    Sentry.captureException(err, {
+      tags: { feature: "notification", service: "telegram" },
+      extra: { settingKey: settingKey ?? null },
+    })
   }
 }
