@@ -58,11 +58,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       return NextResponse.json({ success: true })
     }
 
-    if (reqRow.status !== "open") {
-      return NextResponse.json({ error: "이미 매칭되었습니다." }, { status: 400 })
-    }
-
-    const { error: reqErr } = await supabaseAdmin
+    const { data: matched, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .update({
         status: "matched",
@@ -70,7 +66,16 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         matched_name: appRow.applicant_name,
       })
       .eq("id", id)
+      .eq("status", "open")
+      .select("id")
+      .maybeSingle()
     if (reqErr) throw reqErr
+    if (!matched) {
+      return NextResponse.json(
+        { error: "이미 다른 기사님이 수락한 요청입니다. 다른 요청을 확인해주세요." },
+        { status: 409 }
+      )
+    }
 
     await supabaseAdmin
       .from("delivery_applications")

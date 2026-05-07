@@ -56,14 +56,25 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ applicationId, action }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "처리 실패")
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 409) {
+        toast.error(data?.error || "이미 다른 기사님이 수락한 요청입니다.")
+        onChanged()
+        const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
+        setRequest(r2.request)
+        setApplications(r2.applications ?? [])
+        return
+      }
+      if (!res.ok) {
+        toast.error(data?.error || "처리 실패")
+        return
+      }
       toast.success(action === "accept" ? "수락 완료 — 매칭되었습니다" : "거부 처리됨")
       onChanged()
       const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
       setRequest(r2.request)
       setApplications(r2.applications ?? [])
-    } catch (e) {
+    } catch {
       toast.error("처리 실패")
     } finally {
       setActingId(null)
