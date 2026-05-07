@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendApprovalRequestEmail } from '@/lib/email'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 export async function POST(request: NextRequest) {
   try {
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN
     const telegramChatId = process.env.TELEGRAM_CHAT_ID
     if (telegramToken && telegramChatId) {
-      fetch('https://api.telegram.org/bot' + telegramToken + '/sendMessage', {
+      fetchWithTimeout('https://api.telegram.org/bot' + telegramToken + '/sendMessage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

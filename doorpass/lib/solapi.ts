@@ -1,4 +1,5 @@
 import crypto from "crypto"
+import { fetchWithTimeout } from "./fetch-with-timeout"
 
 function buildAuthHeader(apiKey: string, apiSecret: string): string {
   const date = new Date().toISOString()
@@ -38,7 +39,7 @@ export async function sendAlimtalk(
   const pfId = process.env.SOLAPI_PF_ID ?? undefined
 
   try {
-    const res = await fetch("https://api.solapi.com/messages/v4/send", {
+    const res = await fetchWithTimeout("https://api.solapi.com/messages/v4/send", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

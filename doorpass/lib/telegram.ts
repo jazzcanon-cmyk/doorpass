@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase-admin"
+import { fetchWithTimeout } from "./fetch-with-timeout"
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID
@@ -36,7 +37,7 @@ export async function sendTelegramMessage(text: string, settingKey?: string): Pr
     return
   }
   try {
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const res = await fetchWithTimeout(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "HTML" }),
