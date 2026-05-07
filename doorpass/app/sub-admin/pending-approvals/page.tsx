@@ -62,10 +62,19 @@ export default function SubAdminPendingApprovalsPage() {
         body: JSON.stringify({ approvalId: roleModal.approvalId, action: "approve", role: selectedRole }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "처리 실패")
+      if (res.status === 409) {
+        alert(data?.error || "이미 처리된 승인 요청입니다. 화면을 새로고침해주세요.")
+        setRoleModal(null)
+        await fetchApprovals()
+        return
+      }
+      if (!res.ok) {
+        alert(data?.error || "처리 중 오류가 발생했습니다")
+        return
+      }
       setRoleModal(null)
       await fetchApprovals()
-    } catch (error) {
+    } catch {
       alert("처리 중 오류가 발생했습니다")
     } finally {
       setProcessing(false)
@@ -81,9 +90,17 @@ export default function SubAdminPendingApprovalsPage() {
         body: JSON.stringify({ approvalId, action: "reject" }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "처리 실패")
+      if (res.status === 409) {
+        alert(data?.error || "이미 처리된 승인 요청입니다. 화면을 새로고침해주세요.")
+        await fetchApprovals()
+        return
+      }
+      if (!res.ok) {
+        alert(data?.error || "처리 중 오류가 발생했습니다")
+        return
+      }
       await fetchApprovals()
-    } catch (error) {
+    } catch {
       alert("처리 중 오류가 발생했습니다")
     }
   }

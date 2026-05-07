@@ -235,6 +235,11 @@ export default function SubAdminDashboardPage() {
         body: JSON.stringify({ approvalId: approval.id, action, role }),
       })
       const data = await res.json().catch(() => ({})) as { error?: string }
+      if (res.status === 409) {
+        toast.error(data.error || '이미 처리된 승인 요청입니다. 화면을 새로고침해주세요.')
+        await fetchApprovals()
+        return
+      }
       if (!res.ok) throw new Error(data.error || '처리 실패')
 
       setApprovals((prev) => prev.filter((a) => a.id !== approval.id))

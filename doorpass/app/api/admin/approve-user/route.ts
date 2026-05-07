@@ -52,21 +52,19 @@ export async function POST(request: Request) {
       currentUser = data
     }
 
-    const { data: approval } = await supabaseAdmin
-      .from("pending_approvals")
-      .select("*")
-      .eq("id", approvalId)
-      .maybeSingle()
+    if (role === "sub_admin") {
+      const { data: approval } = await supabaseAdmin
+        .from("pending_approvals")
+        .select("selected_branch_id")
+        .eq("id", approvalId)
+        .maybeSingle()
 
-    if (!approval) {
-      return NextResponse.json({ error: "요청을 찾을 수 없습니다." }, { status: 404 })
-    }
-    if (approval.status !== "pending") {
-      return NextResponse.json({ error: "이미 처리된 요청입니다." }, { status: 400 })
-    }
-
-    if (role === "sub_admin" && approval.selected_branch_id !== currentUser?.branch_id) {
-      return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
+      if (!approval) {
+        return NextResponse.json({ error: "요청을 찾을 수 없습니다." }, { status: 404 })
+      }
+      if (approval.selected_branch_id !== currentUser?.branch_id) {
+        return NextResponse.json({ error: "다른 대리점 회원은 처리할 수 없습니다." }, { status: 403 })
+      }
     }
 
     const result = await executePendingApprovalById(approvalId, action, user?.email ?? "unknown", assignedRole, branchIdOverride)
@@ -105,17 +103,13 @@ export async function POST(request: Request) {
       try {
         const { data: referralToken } = await supabaseAdmin
           .from('referral_tokens')
-          .select('id, token, referrer_email')
+          .update({ status: 'used', used_at: new Date().toISOString() })
           .eq('referred_email', row.user_email)
           .eq('status', 'pending')
+          .select('id, token, referrer_email')
           .maybeSingle()
 
         if (referralToken) {
-          await supabaseAdmin
-            .from('referral_tokens')
-            .update({ status: 'used', used_at: new Date().toISOString() })
-            .eq('id', referralToken.id)
-
           const { addPoints } = await import('@/lib/points')
           await addPoints({
             email: referralToken.referrer_email,
