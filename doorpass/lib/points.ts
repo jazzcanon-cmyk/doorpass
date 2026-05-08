@@ -10,6 +10,13 @@ export const POINT_RULES = {
   building_photo: 50,
   referral_send: 500,
   referral_receive: 300,
+  attendance_common_10: 10,
+  attendance_common_20: 20,
+  attendance_rare: 30,
+  attendance_epic: 50,
+  attendance_jackpot: 100,
+  attendance_bonus_7day: 200,
+  attendance_bonus_30day: 1000,
 } as const
 
 export type PointAction = keyof typeof POINT_RULES

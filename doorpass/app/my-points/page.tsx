@@ -49,6 +49,20 @@ const ACTION_LABEL: Record<string, string> = {
   referral_send: '🔗 친구 초대 보상',
   referral_receive: '🎉 추천 가입 보너스',
   exchange: '🎁 GS상품권 교환',
+  attendance_common_10: '🎯 출석 룰렛 (보통)',
+  attendance_common_20: '🎯 출석 룰렛 (보통)',
+  attendance_rare: '🎯 출석 룰렛 (레어)',
+  attendance_epic: '🎯 출석 룰렛 (에픽)',
+  attendance_jackpot: '🎯 출석 룰렛 (잭팟)',
+  attendance_bonus_7day: '🔥 7일 연속 출석 보너스',
+  attendance_bonus_30day: '🏆 30일 연속 출석 보너스',
+}
+
+interface AttendanceStats {
+  consecutiveDays: number
+  totalDays: number
+  todayChecked: boolean
+  monthDates: string[]
 }
 
 export default function MyPointsPage() {
@@ -66,6 +80,7 @@ export default function MyPointsPage() {
   const [exchangeOpen, setExchangeOpen] = useState(false)
   const [exchangeMethod, setExchangeMethod] = useState<'visit' | 'mobile'>('visit')
   const [myExchanges, setMyExchanges] = useState<ExchangeRow[]>([])
+  const [attendance, setAttendance] = useState<AttendanceStats | null>(null)
 
   const refreshMyExchanges = () => {
     fetch('/api/users/points/exchange', { cache: 'no-store' })
@@ -112,6 +127,13 @@ export default function MyPointsPage() {
     fetch('/api/users/points/rank')
       .then((r) => r.json())
       .then((d: RankData) => setRank(d))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/attendance/status', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: AttendanceStats) => setAttendance(d))
       .catch(() => {})
   }, [])
 
@@ -375,6 +397,103 @@ export default function MyPointsPage() {
           </button>
         </div>
       </div>
+
+      {/* 출석 통계 */}
+      {attendance && (
+        <div className='mx-4 mt-3 bg-white/5 border border-white/10 rounded-2xl p-4'>
+          <div className='flex items-center justify-between mb-3'>
+            <div>
+              <div className='text-sm font-bold text-white'>출석 체크 🎯</div>
+              <div className='text-xs text-white/50 mt-0.5'>
+                매일 룰렛으로 포인트 받아가세요
+              </div>
+            </div>
+            {attendance.todayChecked ? (
+              <span className='text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'>
+                오늘 출석 완료
+              </span>
+            ) : (
+              <span className='text-xs px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30'>
+                오늘 미체크
+              </span>
+            )}
+          </div>
+
+          <div className='grid grid-cols-3 gap-2 mb-3'>
+            <div className='bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center'>
+              <div className='text-[11px] text-white/50 mb-1'>연속</div>
+              <div className='text-xl font-extrabold text-amber-300'>
+                🔥 {attendance.consecutiveDays}
+              </div>
+              <div className='text-[10px] text-white/40 mt-0.5'>일</div>
+            </div>
+            <div className='bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center'>
+              <div className='text-[11px] text-white/50 mb-1'>총 출석</div>
+              <div className='text-xl font-extrabold text-blue-300'>
+                {attendance.totalDays}
+              </div>
+              <div className='text-[10px] text-white/40 mt-0.5'>일</div>
+            </div>
+            <div className='bg-white/[0.04] border border-white/10 rounded-xl p-3 text-center'>
+              <div className='text-[11px] text-white/50 mb-1'>다음 보너스</div>
+              <div className='text-xl font-extrabold text-purple-300'>
+                D-{Math.max(1, 7 - (attendance.consecutiveDays % 7 || 7))}
+              </div>
+              <div className='text-[10px] text-white/40 mt-0.5'>+200P</div>
+            </div>
+          </div>
+
+          {/* 이번 달 출석 캘린더 */}
+          <div>
+            <div className='text-[11px] text-white/50 mb-1.5'>
+              이번 달 출석
+            </div>
+            <div className='grid grid-cols-7 gap-1'>
+              {(() => {
+                const now = new Date()
+                const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+                const year = kst.getUTCFullYear()
+                const month = kst.getUTCMonth()
+                const firstDay = new Date(Date.UTC(year, month, 1))
+                const startWeekday = firstDay.getUTCDay()
+                const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+                const set = new Set(attendance.monthDates)
+                const todayStr = kst.toISOString().split('T')[0]
+                const cells: { day: number; iso: string; checked: boolean; isToday: boolean }[] = []
+                for (let i = 0; i < startWeekday; i++) {
+                  cells.push({ day: 0, iso: '', checked: false, isToday: false })
+                }
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const iso = new Date(Date.UTC(year, month, d)).toISOString().split('T')[0]
+                  cells.push({
+                    day: d,
+                    iso,
+                    checked: set.has(iso),
+                    isToday: iso === todayStr,
+                  })
+                }
+                return cells.map((c, i) => (
+                  <div
+                    key={i}
+                    className={
+                      'aspect-square rounded-md flex items-center justify-center text-[11px] font-medium ' +
+                      (c.day === 0
+                        ? ''
+                        : c.checked
+                          ? 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
+                          : c.isToday
+                            ? 'bg-blue-500/15 text-blue-200 border border-blue-400/40'
+                            : 'bg-white/[0.03] text-white/30 border border-white/5')
+                    }
+                  >
+                    {c.day === 0 ? '' : c.checked ? '✓' : c.day}
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 친구 초대 */}
       <div className='mx-4 mt-3 bg-white/5 border border-white/10 rounded-2xl p-4'>

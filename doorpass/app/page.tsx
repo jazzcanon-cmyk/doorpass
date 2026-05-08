@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Board } from "@/components/board"
 import { DeliveryBoard } from "@/components/delivery/DeliveryBoard"
 import { WelcomeDialog } from "@/components/WelcomeDialog"
+import { AttendanceRouletteModal } from "@/components/AttendanceRouletteModal"
 import { KakaoChannelButton } from "@/components/KakaoChannelButton"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
@@ -71,6 +72,8 @@ export default function Home() {
     return 50
   })
   const [autoOpenBuildingId, setAutoOpenBuildingId] = useState<string | undefined>()
+  const [attendanceOpen, setAttendanceOpen] = useState(false)
+  const [attendanceConsecutive, setAttendanceConsecutive] = useState(0)
 
   const error = locationError ?? buildingsError
 
@@ -175,6 +178,37 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [authStatus])
 
+  // 출석 체크 상태 조회 + 자동 모달 표시 (당일 1회)
+  useEffect(() => {
+    if (authStatus !== "ok") return
+    if (showWelcome) return // 신규 가입자는 환영 팝업이 닫힌 다음에
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch("/api/attendance/status")
+        if (!res.ok) return
+        const data = (await res.json()) as { todayChecked?: boolean; consecutiveDays?: number }
+        if (cancelled) return
+        if (data.todayChecked) return
+        const dismissedKey = "attendance:dismissed"
+        const dismissed = sessionStorage.getItem(dismissedKey)
+        if (dismissed) return
+        setAttendanceConsecutive(data.consecutiveDays ?? 0)
+        setAttendanceOpen(true)
+      } catch {
+        // 조용히 무시
+      }
+    })()
+    return () => { cancelled = true }
+  }, [authStatus, showWelcome])
+
+  const handleAttendanceClose = useCallback(() => {
+    setAttendanceOpen(false)
+    try {
+      sessionStorage.setItem("attendance:dismissed", "1")
+    } catch {}
+  }, [])
+
   // 다른 앱에서 돌아왔을 때(visibilitychange) 캐시 나이에 따라 스마트 갱신
   // - 캐시 < 5분: 갱신 생략 (이미 충분히 신선함)
   // - 캐시 ≥ 5분: 백그라운드에서 조용히 갱신
@@ -207,6 +241,13 @@ export default function Home() {
         open={showWelcome}
         userName={currentUser?.userName ?? ""}
         onClose={handleWelcomeClose}
+      />
+
+      <AttendanceRouletteModal
+        open={attendanceOpen}
+        consecutiveDays={attendanceConsecutive}
+        onClose={handleAttendanceClose}
+        onChecked={() => { void refreshPoints() }}
       />
 
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
