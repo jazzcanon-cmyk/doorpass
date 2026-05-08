@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "create-template": "node scripts/create-template.mjs",
     "icons:render": "node scripts/render-icons.mjs",
+    "backfill:chosung": "node scripts/backfill-chosung.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -32,6 +33,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
     "date-fns": "4.1.0",
+    "dotenv": "^17.4.2",
     "embla-carousel-react": "8.6.0",
     "exceljs": "^4.4.0",
     "input-otp": "1.4.2",
