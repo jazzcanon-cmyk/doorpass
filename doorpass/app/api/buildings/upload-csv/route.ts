@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { encryptPassword } from "@/lib/encryption"
 import { generalLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
+import { buildSearchChosung } from "@/lib/korean-search"
 
 const supabase = supabaseAdmin
 const MAX_BATCH = 200
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
       branch_id: approver?.branch_id ?? null,
       uploaded_by: user!.email,
       access_type: accessType,
+      search_chosung: buildSearchChosung(name, address),
     })
   }
 

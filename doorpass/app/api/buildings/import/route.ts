@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAdminApi } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { buildSearchChosung } from "@/lib/korean-search"
 
 const supabase = supabaseAdmin
 
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
             password: null,
             password_encrypted: password ? encryptPassword(password) : null,
             memo,
+            search_chosung: buildSearchChosung(buildingName, address),
           })
           .eq("id", existingId)
         if (error) {
@@ -164,6 +166,7 @@ export async function POST(request: Request) {
         lat: coords.lat,
         lng: coords.lng,
         memo,
+        search_chosung: buildSearchChosung(buildingName, address),
       })
 
       if (error) {

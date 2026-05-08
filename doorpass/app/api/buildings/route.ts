@@ -8,6 +8,11 @@ import { normalizeAddress } from "@/lib/geo-utils"
 import { addPoints } from "@/lib/points"
 import { lookupAddress } from "@/lib/address-convert"
 import { passwordLimiter, checkRateLimit, getClientIp } from "@/lib/ratelimit"
+import {
+  buildSearchChosung,
+  isChosungOnly,
+  normalizeForSearch,
+} from "@/lib/korean-search"
 
 const RATE_LIMIT_RESPONSE = NextResponse.json(
   { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
@@ -198,25 +203,54 @@ export async function GET(request: Request) {
 
       const makeQuoted = (term: string) => `"%${escapeIlikePattern(term).replace(/"/g, "")}%"`
 
-      // Step 1: 정확한 ilike 검색
-      const { data: step1Data, error: step1Error } = await supabase
-        .from("buildings")
-        .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
-        .or(`name.ilike.${makeQuoted(searchTerm)},address.ilike.${makeQuoted(searchTerm)}`)
-        .order("address", { ascending: true })
-        .limit(100)
-
-      if (step1Error) throw new Error(step1Error.message)
-      let rows = (step1Data ?? []) as BuildingRow[]
+      let rows: BuildingRow[] = []
       let searchNote: string | undefined
 
-      // Step 2: 공백 제거 정규화 검색 (0건일 때)
+      // Step 0: 초성만 입력된 경우 (예: "ㅇㅈ" → "옥정...")
+      if (isChosungOnly(searchTerm)) {
+        const { data: chosungData, error: chosungError } = await supabase.rpc(
+          "search_buildings_chosung",
+          { chosung_query: searchTerm, max_results: 50 }
+        )
+        if (chosungError) {
+          console.warn("[buildings:search] chosung RPC 실패, fallback:", chosungError.message)
+        } else if (chosungData) {
+          rows = chosungData as BuildingRow[]
+        }
+      }
+
+      // Step 1: 정확한 ilike 검색
       if (rows.length === 0) {
-        const { data: normData } = await supabase.rpc("search_buildings_normalized", {
-          search_text: searchTerm,
-        })
-        if (normData && (normData as BuildingRow[]).length > 0) {
-          rows = normData as BuildingRow[]
+        const { data: step1Data, error: step1Error } = await supabase
+          .from("buildings")
+          .select("id, name, address, password, password_encrypted, lat, lng, memo, access_type")
+          .or(`name.ilike.${makeQuoted(searchTerm)},address.ilike.${makeQuoted(searchTerm)}`)
+          .order("address", { ascending: true })
+          .limit(100)
+
+        if (step1Error) throw new Error(step1Error.message)
+        rows = (step1Data ?? []) as BuildingRow[]
+      }
+
+      // Step 2: 정규화 + trigram 유사도 검색 (오타/띄어쓰기 허용)
+      if (rows.length === 0) {
+        const normalized = normalizeForSearch(searchTerm)
+        if (normalized.length >= 2) {
+          const { data: fuzzyData, error: fuzzyError } = await supabase.rpc(
+            "search_buildings_fuzzy",
+            { search_term: normalized, similarity_threshold: 0.3, max_results: 50 }
+          )
+          if (fuzzyError) {
+            console.warn("[buildings:search] fuzzy RPC 실패, legacy fallback:", fuzzyError.message)
+            const { data: normData } = await supabase.rpc("search_buildings_normalized", {
+              search_text: searchTerm,
+            })
+            if (normData && (normData as BuildingRow[]).length > 0) {
+              rows = normData as BuildingRow[]
+            }
+          } else if (fuzzyData && (fuzzyData as BuildingRow[]).length > 0) {
+            rows = fuzzyData as BuildingRow[]
+          }
         }
       }
 
@@ -498,6 +532,7 @@ export async function POST(request: Request) {
         region: region || null,
         branch_id,
         access_type,
+        search_chosung: buildSearchChosung(trimmedName, normalizedAddress),
       })
       .select()
       .single()

@@ -5,6 +5,7 @@ import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/li
 import { sendTelegramMessage } from "@/lib/telegram"
 import { addPoints } from "@/lib/points"
 import { generalLimiter, checkRateLimit, rateLimitIdentifier } from "@/lib/ratelimit"
+import { buildSearchChosung } from "@/lib/korean-search"
 
 const RATE_LIMIT_RESPONSE = NextResponse.json(
   { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
@@ -151,7 +152,10 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   }
 
   const updateData: Record<string, string | null> = {}
-  if (typeof name === "string") updateData.name = name
+  if (typeof name === "string") {
+    updateData.name = name
+    updateData.search_chosung = buildSearchChosung(name, existingBuilding.address)
+  }
   if (memo !== undefined) updateData.memo = memo === null ? null : String(memo)
   if (password !== undefined) {
     const p = password

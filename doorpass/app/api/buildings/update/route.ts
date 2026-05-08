@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireAuth, canEditBuilding } from "@/lib/auth"
 import { encryptPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { buildSearchChosung } from "@/lib/korean-search"
 
 const supabase = supabaseAdmin
 
@@ -35,6 +36,15 @@ export async function POST(request: Request) {
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "수정할 항목이 없습니다." }, { status: 400 })
+    }
+
+    if (name !== undefined) {
+      const { data: existing } = await supabase
+        .from("buildings")
+        .select("address")
+        .eq("id", Number(buildingId))
+        .maybeSingle()
+      updateData.search_chosung = buildSearchChosung(name, existing?.address ?? null)
     }
 
     const { error } = await supabase

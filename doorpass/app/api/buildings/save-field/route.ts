@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { addPoints, type PointAction } from '@/lib/points'
 import { encryptPassword } from '@/lib/encryption'
+import { buildSearchChosung } from '@/lib/korean-search'
 
 const ALLOWED_FIELDS = ['name', 'password', 'memo', 'access_type', 'has_elevator'] as const
 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabaseAdmin
       .from('buildings')
-      .select('name, password, password_encrypted, memo, has_elevator')
+      .select('name, address, password, password_encrypted, memo, has_elevator')
       .eq('id', buildingId)
       .maybeSingle()
 
@@ -66,6 +67,10 @@ export async function POST(request: Request) {
           ? { password: null, password_encrypted: null }
           : { password: null, password_encrypted: encryptPassword(value) }
         : { [field]: value }
+
+    if (field === 'name') {
+      updatePayload.search_chosung = buildSearchChosung(value, existing.address)
+    }
 
     const { error: updateError } = await supabaseAdmin
       .from('buildings')
