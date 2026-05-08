@@ -325,7 +325,7 @@ export default function BranchDetailPage() {
         {isEditing ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">대표 이메일 (참조용)</label>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">대표 이메일 (참조용)</label>
               <input
                 type="email"
                 value={editForm.manager_email}

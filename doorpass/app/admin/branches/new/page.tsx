@@ -60,8 +60,9 @@ export default function NewBranchPage() {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  대리점 ID <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  대리점 ID
+                  <span className="text-red-500 dark:text-red-400 ml-1">*</span>
                 </label>
                 <input
                   type="text"
@@ -71,12 +72,13 @@ export default function NewBranchPage() {
                   placeholder="예: donggu"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">영문 소문자와 숫자만 사용 (예: donggu, junggu)</p>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">영문 소문자와 숫자만 사용 (예: donggu, junggu)</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  대리점 이름 <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  대리점 이름
+                  <span className="text-red-500 dark:text-red-400 ml-1">*</span>
                 </label>
                 <input
                   type="text"
@@ -89,8 +91,9 @@ export default function NewBranchPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  지역 <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  지역
+                  <span className="text-red-500 dark:text-red-400 ml-1">*</span>
                 </label>
                 <select
                   value={form.region}
@@ -109,7 +112,7 @@ export default function NewBranchPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">부관리자 이메일 (선택)</label>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">부관리자 이메일 (선택)</label>
                 <input
                   type="email"
                   value={form.manager_email}
@@ -117,7 +120,7 @@ export default function NewBranchPage() {
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder="manager@example.com"
                 />
-                <p className="text-sm text-gray-500 mt-1">부관리자로 지정할 사용자 이메일 (나중에 변경 가능)</p>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">부관리자로 지정할 사용자 이메일 (나중에 변경 가능)</p>
               </div>
             </div>
           </div>
