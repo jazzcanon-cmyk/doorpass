@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 /** 카카오 연동 시 JWT/identities에 들어올 수 있는 후보 ID를 모두 모은다 (DB kakao_id와 하나라도 맞으면 승인) */
 export function collectKakaoIdCandidates(user: User): string[] {
@@ -69,13 +69,6 @@ function projectApprovedRow(row: Record<string, unknown>, columns: string): Reco
     if (k in row) out[k] = row[k]
   }
   return out
-}
-
-function createServiceRoleClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url?.trim() || !key?.trim()) return null
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
 /** JWT에서 온 식별자만 사용 (클라이언트 입력 없음). service_role로 RLS 없이 조회. */
@@ -161,11 +154,8 @@ export async function fetchApprovedUserForAuth<T extends Record<string, unknown>
   user: User,
   columns: string
 ): Promise<T | null> {
-  const svc = createServiceRoleClient()
-  if (svc) {
-    const row = await queryApprovedWithClient<T>(svc, user, columns)
-    if (row) return row
-  }
+  const row = await queryApprovedWithClient<T>(supabaseAdmin, user, columns)
+  if (row) return row
 
   const { data: rpcData, error: rpcErr } = await supabase.rpc("resolve_approved_user_for_me")
   if (
