@@ -28,9 +28,9 @@ export default function DeliveryPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-sm font-bold text-white">🚚 대체배송</h1>
-          {currentUser?.email && (
+          {currentUser && (
             <div className="ml-auto">
-              <RatingDisplay email={currentUser.email} />
+              <RatingDisplay email={currentUser.email ?? ""} />
             </div>
           )}
         </div>

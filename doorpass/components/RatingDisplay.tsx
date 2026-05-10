@@ -24,8 +24,8 @@ export function RatingDisplay({ email }: Props) {
       .finally(() => setLoading(false))
   }, [email])
 
-  if (loading) return <span className="text-white/40 text-sm">평점 로딩 중...</span>
-  if (!data || data.count === 0) return <span className="text-white/40 text-sm">평점 없음</span>
+  if (loading) return <span className="text-white/50 text-sm">···</span>
+  if (!data || data.count === 0) return <span className="text-white/70 text-sm">평점 없음</span>
 
   return (
     <span className="inline-flex items-center gap-1 text-sm text-white/80">
