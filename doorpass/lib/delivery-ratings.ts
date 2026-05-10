@@ -15,7 +15,7 @@ export async function createRating(params: {
   ratedEmail: string
   raterEmail: string
   deliveryRequestId?: number | null
-  raterRole: "requester" | "helper"
+  raterRole: "requester" | "applicant"
   rating: number
   comment?: string | null
 }): Promise<DeliveryRating> {
