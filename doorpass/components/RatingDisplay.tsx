@@ -12,25 +12,42 @@ interface RatingData {
 }
 
 export function RatingDisplay({ email }: Props) {
+  const [mounted, setMounted] = useState(false)
   const [data, setData] = useState<RatingData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+
+  console.log("[RatingDisplay] render — email:", email, typeof email)
 
   useEffect(() => {
+    console.log("[RatingDisplay] mounted — email:", email, typeof email)
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     if (!email) {
       setLoading(false)
       return
     }
+    setLoading(true)
     fetch(`/api/delivery/ratings/average?email=${encodeURIComponent(email)}`)
       .then((r) => r.json())
       .then((d: RatingData) => {
         console.log("[RatingDisplay] fetch 결과:", { email, data: d })
         setData(d)
       })
-      .catch(() => setData(null))
+      .catch((err: unknown) => {
+        if ((err as Error).name !== "AbortError") {
+          console.error("[RatingDisplay] fetch 오류:", err)
+        }
+        setData(null)
+      })
       .finally(() => setLoading(false))
-  }, [email])
+  }, [mounted, email])
 
-  if (loading) return <span className="text-white/50 text-sm">···</span>
+  // 서버/클라이언트 hydration 일치 — 마운트 전 고정 placeholder
+  if (!mounted || loading) return <span className="text-white/50 text-sm">···</span>
+
   if (!email || !data || data.count === 0) {
     return (
       <span className="text-white/70 text-sm bg-white/5 px-2 py-0.5 rounded">

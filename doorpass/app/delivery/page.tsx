@@ -15,6 +15,10 @@ export default function DeliveryPage() {
     trackPageView("/delivery")
   }, [])
 
+  useEffect(() => {
+    console.log("[delivery page] currentUser:", currentUser)
+  }, [currentUser])
+
   if (authStatus === "loading") return <LoadingScreen />
 
   return (
@@ -28,11 +32,9 @@ export default function DeliveryPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-sm font-bold text-white">🚚 대체배송</h1>
-          {currentUser && (
-            <div className="ml-auto">
-              <RatingDisplay email={currentUser.email ?? ""} />
-            </div>
-          )}
+          <div className="ml-auto">
+            <RatingDisplay email={currentUser?.email || ""} />
+          </div>
         </div>
       </header>
 
