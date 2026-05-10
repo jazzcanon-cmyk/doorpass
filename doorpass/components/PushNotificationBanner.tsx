@@ -8,6 +8,9 @@ function PushNotificationBanner() {
   const { supported, subscribed, subscribe } = usePushNotification()
   const [dismissed, setDismissed] = useState(false)
 
+  // 임시 비활성화 — 카카오 채널 알림에 집중
+  return null
+
   if (dismissed) return null
   if (!supported || subscribed) return null
 
