@@ -60,7 +60,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
         const { data: ratingRow } = await supabaseAdmin
           .from("delivery_ratings")
           .select("rating, comment")
-          .eq("delivery_request_id", id)
+          .eq("delivery_id", id)
           .eq("rater_email", resolveUserEmail(user!))
           .maybeSingle()
         if (ratingRow) {

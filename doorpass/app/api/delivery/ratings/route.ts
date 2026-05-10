@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const { data: existingRating } = await supabaseAdmin
       .from("delivery_ratings")
       .select("id")
-      .eq("delivery_request_id", deliveryRequestId)
+      .eq("delivery_id", deliveryRequestId)
       .eq("rater_email", resolveUserEmail(user!))
       .maybeSingle()
 

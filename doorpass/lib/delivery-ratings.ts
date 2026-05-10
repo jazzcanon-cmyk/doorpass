@@ -5,7 +5,7 @@ export interface DeliveryRating {
   id: string
   rated_email: string
   rater_email: string
-  delivery_request_id: number | null
+  delivery_id: number | null
   rating: number
   comment: string | null
   created_at: string
@@ -26,7 +26,7 @@ export async function createRating(params: {
     .insert({
       rated_email: params.ratedEmail,
       rater_email: params.raterEmail,
-      delivery_request_id: params.deliveryRequestId ?? null,
+      delivery_id: params.deliveryRequestId ?? null,
       rating: params.rating,
       comment: params.comment?.trim() || null,
     })
