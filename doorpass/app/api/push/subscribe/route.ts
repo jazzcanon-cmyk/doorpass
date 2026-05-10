@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '유효하지 않은 구독 정보' }, { status: 400 })
     }
 
-    const identifier = user!.email ?? user!.id
+    const identifier = resolveUserEmail(user!)
 
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
