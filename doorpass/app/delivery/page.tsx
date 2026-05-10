@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { DeliveryBoard } from "@/components/delivery/DeliveryBoard"
+import { RatingDisplay } from "@/components/RatingDisplay"
 import { trackPageView } from "@/lib/analytics"
 
 export default function DeliveryPage() {
@@ -27,6 +28,11 @@ export default function DeliveryPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-sm font-bold text-white">🚚 대체배송</h1>
+          {currentUser?.email && (
+            <div className="ml-auto">
+              <RatingDisplay email={currentUser.email} />
+            </div>
+          )}
         </div>
       </header>
 
