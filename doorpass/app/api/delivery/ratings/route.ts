@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { createRating, getRatingsByEmail } from "@/lib/delivery-ratings"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
@@ -39,8 +39,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "거래완료된 배송에만 평점을 입력할 수 있습니다." }, { status: 400 })
     }
 
-    const isRequester = row.requester_email === user!.email!
-    const isDriver = row.matched_email === user!.email!
+    const isRequester = row.requester_email === resolveUserEmail(user!)
+    const isDriver = row.matched_email === resolveUserEmail(user!)
 
     if (!isRequester && !isDriver) {
       return NextResponse.json({ error: "해당 거래의 당사자만 평점을 입력할 수 있습니다." }, { status: 403 })
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       .from("delivery_ratings")
       .select("id")
       .eq("delivery_request_id", deliveryRequestId)
-      .eq("rater_email", user!.email!)
+      .eq("rater_email", resolveUserEmail(user!))
       .maybeSingle()
 
     if (existingRating) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     const created = await createRating({
       ratedEmail: determinedRatedEmail,
-      raterEmail: user!.email!,
+      raterEmail: resolveUserEmail(user!),
       deliveryRequestId,
       rating,
       comment,

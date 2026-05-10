@@ -66,7 +66,11 @@ export function useAuth() {
         return
       }
       const userId = user.user_metadata?.provider_id ?? user.user_metadata?.sub ?? user.id
-      const email = user.email ?? ""
+      const email =
+        user.email?.trim() ||
+        (user.user_metadata?.email as string | undefined)?.trim() ||
+        (user.user_metadata?.email_address as string | undefined)?.trim() ||
+        ""
       const userName =
         user.user_metadata?.name ??
         user.user_metadata?.full_name ??

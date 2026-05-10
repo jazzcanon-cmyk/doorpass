@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { sendAlimtalk } from "@/lib/solapi"
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const { data: myApps } = await supabaseAdmin
       .from("delivery_applications")
       .select("request_id, status")
-      .eq("applicant_email", user!.email!)
+      .eq("applicant_email", resolveUserEmail(user!))
     const myAppMap = new Map<string | number, string>()
     const appliedIds: (number | string)[] = []
     ;(myApps ?? []).forEach((a) => {
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       const { data: me } = await supabaseAdmin
         .from("approved_users")
         .select("branch_id")
-        .eq("email", user!.email!)
+        .eq("email", resolveUserEmail(user!))
         .maybeSingle()
       resolvedBranchId = (me as { branch_id?: string } | null)?.branch_id ?? null
     }
@@ -193,12 +193,12 @@ export async function POST(request: Request) {
     const requesterName =
       (user!.user_metadata?.name as string | undefined) ||
       (user!.user_metadata?.full_name as string | undefined) ||
-      user!.email!
+      resolveUserEmail(user!)
 
     const { data, error } = await supabaseAdmin
       .from("delivery_requests")
       .insert({
-        requester_email: user!.email!,
+        requester_email: resolveUserEmail(user!),
         requester_name: requesterName,
         branch_id: resolvedBranchId,
         request_date: resolvedRequestDate,
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
         .select("name, phone")
         .eq("branch_id", resolvedBranchId)
         .not("phone", "is", null)
-        .neq("email", user!.email!)
+        .neq("email", resolveUserEmail(user!))
       for (const member of members ?? []) {
         const m = member as { name: string; phone: string }
         sendAlimtalk(m.phone, "RvYMgIY5P6", {

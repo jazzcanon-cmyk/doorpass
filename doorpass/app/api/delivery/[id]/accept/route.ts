@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
@@ -31,7 +31,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       area: string | null
     }
 
-    if (reqRow.requester_email !== user!.email!) {
+    if (reqRow.requester_email !== resolveUserEmail(user!)) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 

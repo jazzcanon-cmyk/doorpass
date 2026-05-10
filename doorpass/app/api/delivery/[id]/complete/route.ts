@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export async function PATCH(_request: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -19,7 +19,7 @@ export async function PATCH(_request: Request, ctx: { params: Promise<{ id: stri
 
     const row = req as { requester_email: string; status: string }
 
-    if (row.requester_email !== user!.email!) {
+    if (row.requester_email !== resolveUserEmail(user!)) {
       return NextResponse.json({ error: "의뢰자만 거래완료 처리할 수 있습니다." }, { status: 403 })
     }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
@@ -28,7 +28,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       area: string | null
     }
 
-    if (reqRow.requester_email === user!.email!) {
+    if (reqRow.requester_email === resolveUserEmail(user!)) {
       return NextResponse.json({ error: "본인 요청에는 신청할 수 없습니다." }, { status: 400 })
     }
     if (reqRow.status !== "open") {
@@ -39,7 +39,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       .from("delivery_applications")
       .select("id")
       .eq("request_id", id)
-      .eq("applicant_email", user!.email!)
+      .eq("applicant_email", resolveUserEmail(user!))
       .maybeSingle()
     if (existing) {
       return NextResponse.json({ error: "이미 신청했습니다.", alreadyApplied: true }, { status: 400 })
@@ -48,13 +48,13 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const applicantName =
       (user!.user_metadata?.name as string | undefined) ||
       (user!.user_metadata?.full_name as string | undefined) ||
-      user!.email!
+      resolveUserEmail(user!)
 
     const { data, error } = await supabaseAdmin
       .from("delivery_applications")
       .insert({
         request_id: id,
-        applicant_email: user!.email!,
+        applicant_email: resolveUserEmail(user!),
         applicant_name: applicantName,
         message: (message ?? "").toString().trim() || null,
         applicant_real_name: applicantRealName,
@@ -99,7 +99,7 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
       .from("delivery_applications")
       .delete()
       .eq("request_id", id)
-      .eq("applicant_email", user!.email!)
+      .eq("applicant_email", resolveUserEmail(user!))
       .eq("status", "pending")
 
     if (error) throw error

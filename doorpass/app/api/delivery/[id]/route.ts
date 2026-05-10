@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -29,7 +29,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       branch_name = (b as { name?: string } | null)?.name ?? null
     }
 
-    const isOwner = (req as { requester_email: string }).requester_email === user!.email!
+    const isOwner = (req as { requester_email: string }).requester_email === resolveUserEmail(user!)
     let myRating: { rating: number; comment: string | null } | null = null
     let applications: Array<Record<string, unknown>> = []
 
@@ -45,23 +45,23 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
         .from("delivery_applications")
         .select("*")
         .eq("request_id", id)
-        .eq("applicant_email", user!.email!)
+        .eq("applicant_email", resolveUserEmail(user!))
         .maybeSingle()
       if (data) applications = [data as Record<string, unknown>]
     }
 
     const matchedEmail = (req as { matched_email: string | null }).matched_email
     const status = (req as { status: string }).status
-    const canSeeContact = isOwner || (matchedEmail && matchedEmail === user!.email!)
+    const canSeeContact = isOwner || (matchedEmail && matchedEmail === resolveUserEmail(user!))
 
     if (status === "closed") {
-      const isParticipant = isOwner || matchedEmail === user!.email!
+      const isParticipant = isOwner || matchedEmail === resolveUserEmail(user!)
       if (isParticipant) {
         const { data: ratingRow } = await supabaseAdmin
           .from("delivery_ratings")
           .select("rating, comment")
           .eq("delivery_request_id", id)
-          .eq("rater_email", user!.email!)
+          .eq("rater_email", resolveUserEmail(user!))
           .maybeSingle()
         if (ratingRow) {
           const r = ratingRow as { rating: number; comment: string | null }
@@ -102,7 +102,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
       .eq("id", id)
       .maybeSingle()
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
-    if ((existing as { requester_email: string }).requester_email !== user!.email!) {
+    if ((existing as { requester_email: string }).requester_email !== resolveUserEmail(user!)) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 
@@ -140,7 +140,7 @@ export async function DELETE(_request: Request, ctx: { params: Promise<{ id: str
       .eq("id", id)
       .maybeSingle()
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 })
-    if ((existing as { requester_email: string }).requester_email !== user!.email!) {
+    if ((existing as { requester_email: string }).requester_email !== resolveUserEmail(user!)) {
       return NextResponse.json({ error: "권한 없음" }, { status: 403 })
     }
 

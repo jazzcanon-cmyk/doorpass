@@ -8,6 +8,20 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export type UserRole = "admin" | "sub_admin" | "editor" | "driver"
 
+/**
+ * 카카오 등 OAuth 로그인 시 user.email이 null/"" 일 수 있음.
+ * user_metadata.email → user_metadata.email_address → user.id 순으로 fallback.
+ * API route와 서버 전용 코드에서 user.email! 대신 이 함수를 사용할 것.
+ */
+export function resolveUserEmail(user: User): string {
+  return (
+    user.email?.trim() ||
+    (user.user_metadata?.email as string | undefined)?.trim() ||
+    (user.user_metadata?.email_address as string | undefined)?.trim() ||
+    user.id
+  )
+}
+
 function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
