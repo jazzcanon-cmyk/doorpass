@@ -2,6 +2,7 @@ export type DeliveryVolume = "v50" | "v100" | "v200" | "v300" | "v400" | "v500"
 export type DeliveryPayType = "per_item" | "per_day" | "negotiable"
 export type DeliveryStatus = "open" | "matched" | "closed"
 export type ApplicationStatus = "pending" | "accepted" | "rejected"
+export type PostType = "request" | "offer"
 
 export interface DeliveryRequest {
   id: number | string
@@ -23,6 +24,10 @@ export interface DeliveryRequest {
   updated_at?: string
   application_count?: number
   my_application_status?: ApplicationStatus | null
+  post_type?: PostType
+  available_date?: string | null
+  available_area?: string | null
+  available_volume?: number | null
 }
 
 export interface DeliveryApplication {

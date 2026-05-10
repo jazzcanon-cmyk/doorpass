@@ -9,6 +9,7 @@ import { DeliveryApplyModal } from "./DeliveryApplyModal"
 import { DeliveryDetailModal } from "./DeliveryDetailModal"
 import {
   type DeliveryRequest,
+  type PostType,
   VOLUME_LABEL,
   PAY_TYPE_LABEL,
   STATUS_LABEL,
@@ -32,6 +33,7 @@ interface Props {
 type Tab = "all" | "mine" | "applied"
 
 export function DeliveryBoard({ currentEmail, branchId }: Props) {
+  const [postTypeTab, setPostTypeTab] = useState<PostType>("request")
   const [tab, setTab] = useState<Tab>("all")
   const [statusFilter, setStatusFilter] = useState<"" | DeliveryStatus>("")
   const [dateFilter, setDateFilter] = useState("")
@@ -48,6 +50,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
   const fetchList = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
+    params.set("post_type", postTypeTab)
     if (tab === "mine") params.set("mine", "1")
     if (tab === "applied") params.set("applied", "1")
     if (statusFilter) params.set("status", statusFilter)
@@ -74,7 +77,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [tab, statusFilter, dateFilter, currentEmail])
+  }, [postTypeTab, tab, statusFilter, dateFilter, currentEmail])
 
   useEffect(() => {
     void fetchList()
@@ -113,9 +116,37 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
 
   return (
     <div>
+      {/* 구해요 / 할게요 주 탭 */}
+      <div className="grid grid-cols-2 rounded-xl bg-white/5 border border-white/10 p-1 mb-3">
+        {(
+          [
+            { key: "request" as const, label: "🚚 구해요" },
+            { key: "offer" as const, label: "🙋 할게요" },
+          ] satisfies { key: PostType; label: string }[]
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => {
+              setPostTypeTab(t.key)
+              setTab("all")
+              setStatusFilter("")
+              setDateFilter("")
+            }}
+            className={`px-3 py-2 text-sm font-semibold rounded-lg transition ${
+              postTypeTab === t.key
+                ? "bg-blue-600 text-white shadow"
+                : "text-white/50 hover:text-white/80"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Truck className="h-4 w-4 text-blue-400" /> 대체배송
+          <Truck className="h-4 w-4 text-blue-400" />
+          {postTypeTab === "offer" ? "할게요 게시판" : "구해요 게시판"}
         </h2>
         <Button
           size="sm"
@@ -123,7 +154,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
           className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="h-3.5 w-3.5" />
-          요청하기
+          {postTypeTab === "offer" ? "할게요 등록" : "구해요 등록"}
         </Button>
       </div>
 
@@ -284,7 +315,9 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
                 ? "내가 등록한 공고가 없습니다"
                 : tab === "applied"
                 ? "내가 지원한 공고가 없습니다"
-                : "대체배송 요청이 없습니다"}
+                : postTypeTab === "offer"
+                ? "등록된 할게요 게시물이 없습니다"
+                : "등록된 구해요 게시물이 없습니다"}
             </p>
           </CardContent>
         </Card>
@@ -307,6 +340,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
         onClose={() => setRequestModalOpen(false)}
         onCreated={fetchList}
         branchId={branchId ?? null}
+        postType={postTypeTab}
       />
 
       <DeliveryApplyModal
@@ -381,12 +415,27 @@ function DeliveryCard({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-2 text-xs text-white/70 mb-2">
-            <div>📦 {VOLUME_LABEL[request.volume]}</div>
-            <div>💰 {priceLabel}</div>
-          </div>
+          {request.post_type === "offer" ? (
+            <div className="space-y-0.5 text-xs text-white/70 mb-2">
+              {request.available_date && (
+                <div>📅 {request.available_date}</div>
+              )}
+              {request.available_area && (
+                <div>📍 {request.available_area}</div>
+              )}
+              {request.available_volume != null && (
+                <div>📦 가능 물량 {request.available_volume}건</div>
+              )}
+              <div>💰 {priceLabel}</div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-2 text-xs text-white/70 mb-2">
+              <div>📦 {VOLUME_LABEL[request.volume]}</div>
+              <div>💰 {priceLabel}</div>
+            </div>
+          )}
 
-          {request.area && (
+          {request.post_type !== "offer" && request.area && (
             <div className="text-xs text-white/60 line-clamp-1 mb-1">{request.area}</div>
           )}
           {typeof request.application_count === "number" && (

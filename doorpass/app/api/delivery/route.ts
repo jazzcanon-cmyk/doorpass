@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   const status = searchParams.get("status")
   const branchId = searchParams.get("branchId")
   const date = searchParams.get("date")
+  const postType = searchParams.get("post_type")
   const mine = searchParams.get("mine") === "1"
   const applied = searchParams.get("applied") === "1"
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
     if (status) q = q.eq("status", status)
     if (branchId) q = q.eq("branch_id", branchId)
     if (date) q = q.eq("request_date", date)
+    if (postType) q = q.eq("post_type", postType)
     if (applied) q = q.in("id", appliedIds)
 
     const {
@@ -140,6 +142,10 @@ export async function POST(request: Request) {
       area,
       memo,
       contact,
+      postType,
+      availableDate,
+      availableArea,
+      availableVolume,
     } = body as {
       branchId?: string
       requestDate?: string
@@ -149,9 +155,16 @@ export async function POST(request: Request) {
       area?: string
       memo?: string
       contact?: string
+      postType?: string
+      availableDate?: string | null
+      availableArea?: string | null
+      availableVolume?: number | null
     }
 
-    if (!requestDate) return NextResponse.json({ error: "날짜 필요" }, { status: 400 })
+    const resolvedPostType = postType === "offer" ? "offer" : "request"
+    const resolvedRequestDate = requestDate ?? availableDate ?? null
+
+    if (!resolvedRequestDate) return NextResponse.json({ error: "날짜 필요" }, { status: 400 })
     if (!volume || !VOLUMES.includes(volume as (typeof VOLUMES)[number])) {
       return NextResponse.json({ error: "물량 선택 필요" }, { status: 400 })
     }
@@ -188,7 +201,7 @@ export async function POST(request: Request) {
         requester_email: user!.email!,
         requester_name: requesterName,
         branch_id: resolvedBranchId,
-        request_date: requestDate,
+        request_date: resolvedRequestDate,
         volume,
         pay_type: payType,
         pay_amount: amount,
@@ -196,6 +209,10 @@ export async function POST(request: Request) {
         memo: memo?.trim() || null,
         contact: contact.trim(),
         status: "open",
+        post_type: resolvedPostType,
+        available_date: resolvedPostType === "offer" ? (availableDate ?? resolvedRequestDate) : null,
+        available_area: resolvedPostType === "offer" ? (availableArea?.trim() || null) : null,
+        available_volume: resolvedPostType === "offer" ? (availableVolume ?? null) : null,
       })
       .select()
       .single()

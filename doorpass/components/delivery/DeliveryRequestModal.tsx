@@ -5,16 +5,19 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { type DeliveryVolume, type DeliveryPayType, VOLUME_OPTIONS } from "@/types/delivery"
+import { type DeliveryVolume, type DeliveryPayType, type PostType, VOLUME_OPTIONS } from "@/types/delivery"
 
 interface Props {
   open: boolean
   onClose: () => void
   onCreated: () => void
   branchId?: string | null
+  postType?: PostType
 }
 
-export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Props) {
+export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postType = "request" }: Props) {
+  const isOffer = postType === "offer"
+
   const [requestDate, setRequestDate] = useState("")
   const [volume, setVolume] = useState<DeliveryVolume>("v50")
   const [payType, setPayType] = useState<DeliveryPayType>("per_item")
@@ -22,6 +25,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
   const [area, setArea] = useState("")
   const [memo, setMemo] = useState("")
   const [contact, setContact] = useState("")
+  const [availableVolume, setAvailableVolume] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   if (!open) return null
@@ -34,6 +38,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
     setArea("")
     setMemo("")
     setContact("")
+    setAvailableVolume("")
   }
 
   const submit = async () => {
@@ -55,11 +60,17 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
           area,
           memo,
           contact,
+          postType,
+          ...(isOffer && {
+            availableDate: requestDate,
+            availableArea: area,
+            availableVolume: availableVolume ? Number(availableVolume) : null,
+          }),
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "등록 실패")
-      toast.success("대체배송 요청 등록 완료")
+      toast.success(isOffer ? "할게요 등록 완료" : "대체배송 요청 등록 완료")
       reset()
       onCreated()
       onClose()
@@ -74,7 +85,9 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="w-full sm:max-w-md bg-slate-900 border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">🚚 대체배송 요청</h2>
+          <h2 className="text-base font-bold text-white">
+            {isOffer ? "🙋 대체배송 할게요" : "🚚 대체배송 구해요"}
+          </h2>
           <button onClick={onClose} className="text-white/60 hover:text-white p-1">
             <X className="h-5 w-5" />
           </button>
@@ -82,7 +95,9 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
 
         <div className="p-4 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-white/70 mb-1.5">날짜 *</label>
+            <label className="block text-xs font-medium text-white/70 mb-1.5">
+              {isOffer ? "가능 날짜 *" : "날짜 *"}
+            </label>
             <Input
               type="date"
               value={requestDate}
@@ -148,15 +163,31 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId }: Pro
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-white/70 mb-1.5">구역 설명</label>
+            <label className="block text-xs font-medium text-white/70 mb-1.5">
+              {isOffer ? "가능 지역" : "구역 설명"}
+            </label>
             <Input
               type="text"
-              placeholder="예: 남구 신정동 일대"
+              placeholder={isOffer ? "예: 남구 일대 가능" : "예: 남구 신정동 일대"}
               value={area}
               onChange={(e) => setArea(e.target.value)}
               className="bg-white/5 border-white/10 text-white"
             />
           </div>
+
+          {isOffer && (
+            <div>
+              <label className="block text-xs font-medium text-white/70 mb-1.5">가능 물량 (건)</label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder="예: 100"
+                value={availableVolume}
+                onChange={(e) => setAvailableVolume(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-white/70 mb-1.5">메모</label>
