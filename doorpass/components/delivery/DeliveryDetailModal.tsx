@@ -1,8 +1,9 @@
 "use client"
 import { useEffect, useState } from "react"
-import { X, Loader2, Phone, Trash2 } from "lucide-react"
+import { X, Loader2, Phone, Trash2, Star } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { RatingForm } from "@/components/RatingForm"
 import {
   type DeliveryRequest,
   type DeliveryApplication,
@@ -11,6 +12,8 @@ import {
   STATUS_LABEL,
   STATUS_COLOR,
 } from "@/types/delivery"
+
+type MyRating = { rating: number; comment: string | null } | null
 
 interface Props {
   open: boolean
@@ -26,6 +29,8 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
   const [applications, setApplications] = useState<DeliveryApplication[]>([])
   const [isOwner, setIsOwner] = useState(false)
   const [actingId, setActingId] = useState<string | number | null>(null)
+  const [completing, setCompleting] = useState(false)
+  const [myRating, setMyRating] = useState<MyRating>(null)
 
   useEffect(() => {
     if (!open || requestId == null) return
@@ -41,6 +46,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
         setRequest(d.request as DeliveryRequest)
         setApplications((d.applications ?? []) as DeliveryApplication[])
         setIsOwner(Boolean(d.isOwner))
+        setMyRating((d.myRating as MyRating) ?? null)
       })
       .catch(() => toast.error("불러오기 실패"))
       .finally(() => setLoading(false))
@@ -79,6 +85,34 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
     } finally {
       setActingId(null)
     }
+  }
+
+  const handleComplete = async () => {
+    if (!confirm("거래를 완료 처리하시겠습니까? 완료 후 평점 입력이 가능합니다.")) return
+    setCompleting(true)
+    try {
+      const res = await fetch(`/api/delivery/${requestId}/complete`, { method: "PATCH" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data?.error || "처리 실패")
+        return
+      }
+      toast.success("거래완료 처리되었습니다.")
+      onChanged()
+      const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
+      setRequest(r2.request)
+      setApplications(r2.applications ?? [])
+      setMyRating(r2.myRating ?? null)
+    } catch {
+      toast.error("처리 실패")
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  const handleRatingSuccess = async () => {
+    const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json()).catch(() => null)
+    if (r2) setMyRating(r2.myRating ?? null)
   }
 
   const handleDelete = async () => {
@@ -240,6 +274,77 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
                 </div>
               </div>
             )}
+
+            {/* 거래완료 버튼 — 의뢰자 + matched 상태 */}
+            {isOwner && request.status === "matched" && (
+              <Button
+                onClick={handleComplete}
+                disabled={completing}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {completing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  "✅ 거래완료"
+                )}
+              </Button>
+            )}
+
+            {/* 거래완료 배지 + 완료 시각 */}
+            {request.status === "closed" && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
+                <span className="text-emerald-300 text-sm font-medium">✅ 거래완료</span>
+                {request.completed_at && (
+                  <span className="text-white/40 text-xs ml-auto">
+                    {new Date(request.completed_at).toLocaleDateString("ko-KR", {
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* 평점 입력 영역 — closed + 당사자 */}
+            {request.status === "closed" &&
+              (isOwner || request.matched_email === currentEmail) && (
+                <div className="border-t border-white/10 pt-4">
+                  <div className="text-xs font-medium text-white/70 mb-3">
+                    {isOwner ? "매칭 기사님 평점" : "의뢰자 평점"}
+                  </div>
+                  {myRating ? (
+                    <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2.5">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            className={`h-4 w-4 ${
+                              n <= myRating.rating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "fill-transparent text-white/20"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-yellow-300 font-medium">
+                        {myRating.rating}점 등록 완료
+                      </span>
+                    </div>
+                  ) : (
+                    <RatingForm
+                      ratedEmail={
+                        isOwner
+                          ? (request.matched_email ?? "")
+                          : request.requester_email
+                      }
+                      deliveryRequestId={request.id as number}
+                      onSuccess={handleRatingSuccess}
+                    />
+                  )}
+                </div>
+              )}
           </div>
         )}
       </div>

@@ -380,8 +380,10 @@ function DeliveryCard({
     return request.pay_amount ? `${t} ${request.pay_amount.toLocaleString()}원` : t
   }, [request.pay_type, request.pay_amount])
 
+  const isClosed = request.status === "closed"
+
   return (
-    <Card className="bg-white/5 border-white/10 hover:border-blue-500/40 transition-all">
+    <Card className={`border-white/10 transition-all ${isClosed ? "bg-white/[0.02] opacity-70" : "bg-white/5 hover:border-blue-500/40"}`}>
       <CardContent className="p-3.5">
         <button onClick={onOpen} className="text-left w-full">
           <div className="flex items-center justify-between mb-1.5">
@@ -438,8 +440,19 @@ function DeliveryCard({
           {request.post_type !== "offer" && request.area && (
             <div className="text-xs text-white/60 line-clamp-1 mb-1">{request.area}</div>
           )}
-          {typeof request.application_count === "number" && (
+          {typeof request.application_count === "number" && request.status !== "closed" && (
             <div className="text-[11px] text-white/40">신청자 {request.application_count}명</div>
+          )}
+          {request.status === "closed" && (
+            <div className="text-[11px] text-emerald-400/70">
+              ✅ 거래완료
+              {request.completed_at &&
+                " · " +
+                  new Date(request.completed_at).toLocaleDateString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+            </div>
           )}
         </button>
 

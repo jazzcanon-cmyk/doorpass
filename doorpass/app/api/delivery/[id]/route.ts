@@ -30,6 +30,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
     }
 
     const isOwner = (req as { requester_email: string }).requester_email === user!.email!
+    let myRating: { rating: number; comment: string | null } | null = null
     let applications: Array<Record<string, unknown>> = []
 
     if (isOwner) {
@@ -50,7 +51,24 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
     }
 
     const matchedEmail = (req as { matched_email: string | null }).matched_email
+    const status = (req as { status: string }).status
     const canSeeContact = isOwner || (matchedEmail && matchedEmail === user!.email!)
+
+    if (status === "closed") {
+      const isParticipant = isOwner || matchedEmail === user!.email!
+      if (isParticipant) {
+        const { data: ratingRow } = await supabaseAdmin
+          .from("delivery_ratings")
+          .select("rating, comment")
+          .eq("delivery_request_id", id)
+          .eq("rater_email", user!.email!)
+          .maybeSingle()
+        if (ratingRow) {
+          const r = ratingRow as { rating: number; comment: string | null }
+          myRating = { rating: r.rating, comment: r.comment }
+        }
+      }
+    }
 
     const responseRequest = {
       ...(req as Record<string, unknown>),
@@ -62,6 +80,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
       request: responseRequest,
       applications,
       isOwner,
+      myRating,
     })
   } catch (error) {
     console.error("[delivery:detail] 조회 실패:", (error as Error).message)

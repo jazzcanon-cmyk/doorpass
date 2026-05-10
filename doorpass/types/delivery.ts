@@ -28,6 +28,7 @@ export interface DeliveryRequest {
   available_date?: string | null
   available_area?: string | null
   available_volume?: number | null
+  completed_at?: string | null
 }
 
 export interface DeliveryApplication {
