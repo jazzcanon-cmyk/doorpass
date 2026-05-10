@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       ratedEmail: determinedRatedEmail,
       raterEmail: resolveUserEmail(user!),
       deliveryRequestId,
+      raterRole: isRequester ? "requester" : "helper",
       rating,
       comment,
     })
