@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 interface ExchangeRow {
   id: number
   user_email: string
-  user_name: string | null
+  name: string | null
   points_used: number
   reward_type: string
   reward_name: string
@@ -138,7 +138,7 @@ export default function AdminExchangesPage() {
                 <div className='flex items-start justify-between gap-2 mb-2'>
                   <div className='min-w-0 flex-1'>
                     <div className='text-sm font-bold text-white truncate'>
-                      {r.user_name ?? '-'} <span className='text-white/40 font-normal'>({r.user_email})</span>
+                      {r.name ?? '-'} <span className='text-white/40 font-normal'>({r.user_email})</span>
                     </div>
                     <div className='text-xs text-white/50 mt-0.5'>
                       {r.reward_name} · {METHOD_LABEL[r.receive_method]} · -{r.points_used.toLocaleString()}P

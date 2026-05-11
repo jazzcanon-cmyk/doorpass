@@ -28,7 +28,7 @@ interface RankData {
 interface ExchangeRow {
   id: number
   user_email: string
-  user_name: string | null
+  name: string | null
   points_used: number
   reward_type: string
   reward_name: string
