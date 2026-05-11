@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { ArrowLeft, Eye, Send, Loader2, Pencil, Trash2, Check, Heart } from "lucide-react"
+import { ArrowLeft, Eye, Send, Loader2, Pencil, Trash2, Check, Heart, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [likingIds, setLikingIds] = useState<Set<number>>(new Set())
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!postId || isNaN(postId)) { setError("잘못된 ID"); setLoading(false); return }
@@ -143,6 +144,17 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
     }
   }
 
+  const handleCopy = async () => {
+    if (!post) return
+    try {
+      await navigator.clipboard.writeText(`${post.title}\n\n${post.content}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error("복사 실패")
+    }
+  }
+
   const handleDelete = async () => {
     if (!confirmDelete) { setConfirmDelete(true); return }
     setDeleting(true)
@@ -175,6 +187,9 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
       <div className="flex items-center justify-between mb-4">
         <button onClick={goToList} className="flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"><ArrowLeft className="h-4 w-4" />목록으로</button>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => void handleCopy()} className="h-8 gap-1.5 text-xs">
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}복사
+          </Button>
           <Button variant="outline" size="sm" onClick={() => goToEdit(post)} className="h-8 gap-1.5 text-xs"><Pencil className="h-3.5 w-3.5" />수정</Button>
           <Button variant={confirmDelete ? "destructive" : "outline"} size="sm" onClick={handleDelete} disabled={deleting} className="h-8 gap-1.5 text-xs">
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : confirmDelete ? <><Check className="h-3.5 w-3.5" />확인</> : <><Trash2 className="h-3.5 w-3.5" />삭제</>}
