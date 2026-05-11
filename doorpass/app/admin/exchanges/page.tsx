@@ -6,7 +6,7 @@ interface ExchangeRow {
   id: number
   user_email: string
   name: string | null
-  points_used: number
+  points: number
   reward_type: string
   reward_name: string
   receive_method: 'visit' | 'mobile'
@@ -141,7 +141,7 @@ export default function AdminExchangesPage() {
                       {r.name ?? '-'} <span className='text-white/40 font-normal'>({r.user_email})</span>
                     </div>
                     <div className='text-xs text-white/50 mt-0.5'>
-                      {r.reward_name} · {METHOD_LABEL[r.receive_method]} · -{r.points_used.toLocaleString()}P
+                      {r.reward_name} · {METHOD_LABEL[r.receive_method]} · -{r.points.toLocaleString()}P
                     </div>
                   </div>
                   <span className={

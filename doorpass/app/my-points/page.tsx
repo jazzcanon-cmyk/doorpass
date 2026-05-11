@@ -29,7 +29,7 @@ interface ExchangeRow {
   id: number
   user_email: string
   name: string | null
-  points_used: number
+  points: number
   reward_type: string
   reward_name: string
   receive_method: 'visit' | 'mobile'
@@ -617,7 +617,7 @@ export default function MyPointsPage() {
                   <div className='min-w-0 flex-1'>
                     <div className='text-xs text-white'>{ex.reward_name}</div>
                     <div className='text-[11px] text-white/40 mt-0.5'>
-                      {date} · {methodLabel} · -{ex.points_used.toLocaleString()}P
+                      {date} · {methodLabel} · -{ex.points.toLocaleString()}P
                     </div>
                     {ex.status === 'rejected' && (
                       <div className='text-[11px] text-emerald-400/80 mt-0.5'>

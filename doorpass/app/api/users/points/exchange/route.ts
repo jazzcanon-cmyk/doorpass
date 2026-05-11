@@ -15,7 +15,7 @@ interface ExchangeRow {
   id: number
   email: string
   name: string | null
-  points_used: number
+  points: number
   reward_type: string
   reward_name: string
   receive_method: ReceiveMethod
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     success: boolean
     reason?: string
     id?: number
-    points_used?: number
+    points?: number
     remaining?: number
     current?: number
   }
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     id: result.id,
-    pointsUsed: result.points_used ?? 10000,
+    pointsUsed: result.points ?? 10000,
     remainingPoints: result.remaining ?? 0,
   })
 }
@@ -135,7 +135,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("point_exchanges")
     .select(
-      "id, email, name, points_used, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
+      "id, email, name, points, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
     )
     .eq("email", email)
     .order("requested_at", { ascending: false })
