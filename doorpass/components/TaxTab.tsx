@@ -27,7 +27,7 @@ interface Income {
   incentive: number
   vat_amount: number
   total_amount: number
-  receipt_image_url: string | null
+  statement_image_url: string | null  // income 테이블 실제 컬럼명
 }
 
 interface ManualExpenseForm {
@@ -180,7 +180,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       // 최근 수입 6개
       const { data: incRecentData } = await supabase
         .from("income")
-        .select("id, income_date, delivery_fee, pickup_fee, incentive, vat_amount, total_amount, receipt_image_url")
+        .select("id, income_date, delivery_fee, pickup_fee, incentive, vat_amount, total_amount, statement_image_url")
         .eq("user_id", uid)
         .order("income_date", { ascending: false })
         .limit(6)
@@ -228,7 +228,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         .single()
       if (insertError) throw insertError
 
-      setUploading(false)
+      // uploading 상태는 OCR 완료 후 finally에서만 해제 (중복 클릭 방지)
       await fetchData(approvedUserId)
 
       const expenseId = inserted.id as string
@@ -273,7 +273,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       if (!uploadRes.ok) throw new Error("업로드 실패")
       const { incomeId, imageUrl } = (await uploadRes.json()) as { incomeId: string; imageUrl: string }
 
-      setUploadingIncome(false)
+      // uploadingIncome 상태는 OCR 완료 후 finally에서만 해제 (중복 클릭 방지)
       await fetchData(approvedUserId)
 
       setAnalyzingIncomeId(incomeId)
@@ -363,7 +363,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         incentive,
         vat_amount: vat,
         total_amount: total,
-        receipt_image_url: null,
+        statement_image_url: null,  // income 테이블 실제 컬럼명
       })
       if (error) throw error
       toast.success("✅ 저장되었습니다!")
@@ -470,7 +470,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
-        <input ref={incomeFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleIncomeFileChange} />
+        {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
+        <input ref={incomeFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+          disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
+          onChange={handleIncomeFileChange} />
 
         {/* 수입 목록 */}
         {loading ? (
@@ -579,7 +582,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
-        <input ref={expenseFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleExpenseFileChange} />
+        {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
+        <input ref={expenseFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+          disabled={uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
+          onChange={handleExpenseFileChange} />
 
         {/* 지출 목록 */}
         <div className="space-y-2">

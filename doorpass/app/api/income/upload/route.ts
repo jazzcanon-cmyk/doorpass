@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       .from("income")
       .insert({
         user_id: Number(userId),  // int8 컬럼에 맞게 숫자로 변환
-        receipt_image_url: urlData.publicUrl,
+        statement_image_url: urlData.publicUrl,  // income 테이블 실제 컬럼명
         income_date: thisMonth,
         delivery_fee: 0,
         pickup_fee: 0,
