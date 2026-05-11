@@ -67,6 +67,24 @@ interface TaxTabProps {
   currentUser: CurrentUser | null
 }
 
+// 카드명세서에서 추출된 개별 거래
+interface StatementTransaction {
+  receipt_date: string
+  amount: number
+  vendor_name: string
+  category: string
+  is_deductible: boolean
+  is_expense: boolean
+  deduction_reason: string
+}
+
+// 카드명세서 분석 결과 (중복 / 신규 분류)
+interface StatementResult {
+  total: number
+  duplicates: StatementTransaction[]
+  newItems: StatementTransaction[]
+}
+
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -117,6 +135,16 @@ const EMPTY_INCOME_FORM: ManualIncomeForm = {
   vat_amount: "",
 }
 
+// ─── SHA-256 해시 헬퍼 (중복 영수증 감지용) ──────────────────────────────────
+// 브라우저 내장 crypto.subtle 사용 — 서버 fetch 없이 클라이언트에서 계산
+async function computeImageHash(file: File): Promise<string> {
+  const buf      = await file.arrayBuffer()
+  const hashBuf  = await crypto.subtle.digest("SHA-256", buf)
+  return Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export function TaxTab({ currentUser }: TaxTabProps) {
@@ -132,7 +160,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [expenseForm, setExpenseForm] = useState<ManualExpenseForm>(EMPTY_EXPENSE_FORM)
   const [savingExpense, setSavingExpense] = useState(false)
-  const expenseFileRef = useRef<HTMLInputElement>(null)
+  const expenseFileRef   = useRef<HTMLInputElement>(null)
+  const statementFileRef = useRef<HTMLInputElement>(null)  // 카드명세서 전용
 
   // 사업자 상태
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
@@ -166,6 +195,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
   // 카카오 공유 상태
   const [sharingKakao, setSharingKakao] = useState(false)
+
+  // 카드명세서 일괄 업로드 상태
+  const [importingStatement, setImportingStatement]   = useState(false)
+  const [statementModalOpen, setStatementModalOpen]   = useState(false)
+  const [statementResult,    setStatementResult]      = useState<StatementResult | null>(null)
+  const [insertingStatement, setInsertingStatement]   = useState(false)
 
   // ─── approved_users.id 조회 ──────────────────────────────────────────────
   // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
@@ -329,23 +364,52 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     if (!file || !currentUser || !approvedUserId) return
     setUploading(true)
     try {
-      // Storage 경로는 카카오 ID 기반 유지 (단순 폴더명, 타입 제약 없음)
+      // ① SHA-256 해시로 중복 영수증 사전 체크 (실패 시 업로드 계속 진행)
+      let imageHash: string | null = null
+      try {
+        imageHash = await computeImageHash(file)
+        const dupRes = await fetch("/api/expenses/check-duplicate", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ user_id: String(approvedUserId), image_hash: imageHash }),
+        })
+        if (dupRes.ok) {
+          const dupJson = (await dupRes.json()) as {
+            isDuplicate: boolean
+            existing?: { vendor_name: string | null; receipt_date: string; amount: number }
+          }
+          if (dupJson.isDuplicate && dupJson.existing) {
+            const { vendor_name, receipt_date, amount } = dupJson.existing
+            toast.warning(
+              `이미 등록된 영수증입니다\n업체: ${vendor_name ?? "미확인"} / 날짜: ${receipt_date} / 금액: ${amount.toLocaleString()}원`,
+              { duration: 5000 }
+            )
+            return  // finally → setUploading(false) 실행됨
+          }
+        }
+      } catch {
+        console.warn("중복 확인 실패, 업로드 계속 진행")
+      }
+
+      // ② Storage 업로드 (카카오 ID 기반 경로 유지)
       const ext = file.name.split(".").pop() ?? "jpg"
       const filename = `${currentUser.userId}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage.from("receipts").upload(filename, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(filename)
 
-      // INSERT 시 approved_users.id를 user_id로 사용 (카카오 ID 아님)
+      // ③ INSERT — image_hash, import_source 포함 (approved_users.id 사용)
       const { data: inserted, error: insertError } = await supabase
         .from("expenses")
         .insert({
-          user_id: approvedUserId,
+          user_id:           approvedUserId,
           receipt_image_url: urlData.publicUrl,
-          amount: 0,
-          category: "기타",
-          is_deductible: false,
-          receipt_date: todayStr(),
+          amount:            0,
+          category:          "기타",
+          is_deductible:     false,
+          receipt_date:      todayStr(),
+          image_hash:        imageHash,   // null if hash failed
+          import_source:     "ocr",
         })
         .select("id")
         .single()
@@ -620,6 +684,60 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       toast.error("❌ 발송 실패. 이메일을 확인해주세요.")
     } finally {
       setSendingEmail(false)
+    }
+  }
+
+  // ─── 카드명세서 분석 ─────────────────────────────────────────────────────
+
+  const handleStatementFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !approvedUserId) return
+    setImportingStatement(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("user_id", String(approvedUserId))
+
+      const res = await fetch("/api/expenses/import-statement", { method: "POST", body: fd })
+      const json = (await res.json()) as StatementResult & { error?: string }
+      if (!res.ok) {
+        toast.error(json.error ?? "명세서 분석에 실패했습니다.")
+        return
+      }
+      // 분석 완료 → 결과 모달 표시
+      setStatementResult(json)
+      setStatementModalOpen(true)
+    } catch (err) {
+      console.error("카드명세서 업로드 오류:", err)
+      toast.error("명세서 분석에 실패했습니다.")
+    } finally {
+      setImportingStatement(false)
+      e.target.value = ""
+    }
+  }
+
+  // ─── 카드명세서 신규 항목 일괄 추가 ──────────────────────────────────────
+
+  const handleStatementInsert = async () => {
+    if (!approvedUserId || !statementResult?.newItems.length) return
+    setInsertingStatement(true)
+    try {
+      const res = await fetch("/api/expenses/bulk-insert", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ user_id: String(approvedUserId), items: statementResult.newItems }),
+      })
+      const json = (await res.json()) as { inserted?: number; error?: string }
+      if (!res.ok) throw new Error(json.error ?? "추가 실패")
+      toast.success(`✅ ${json.inserted}건이 추가됐습니다!`)
+      setStatementModalOpen(false)
+      setStatementResult(null)
+      await fetchData(approvedUserId)
+    } catch (err) {
+      console.error("일괄 추가 오류:", err)
+      toast.error("추가에 실패했습니다.")
+    } finally {
+      setInsertingStatement(false)
     }
   }
 
@@ -988,11 +1106,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
         </div>
 
-        {/* 영수증 업로드 + 직접 입력 */}
+        {/* 영수증 업로드 + 카드명세서 + 직접 입력 */}
         <div className="flex gap-2">
+          {/* 영수증 단건 업로드 (OCR) */}
           <button
             onClick={() => expenseFileRef.current?.click()}
-            disabled={uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
+            disabled={uploading || isAnalyzingExpense || importingStatement || !currentUser || !approvedUserId}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed py-5 text-base font-semibold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
           >
             {uploading ? (
@@ -1003,19 +1122,39 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               <><span className="text-xl">📸</span>영수증 업로드</>
             )}
           </button>
+
+          {/* 카드명세서 일괄 업로드 */}
+          <button
+            onClick={() => statementFileRef.current?.click()}
+            disabled={importingStatement || uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-5 text-sm font-semibold text-teal-300 transition-all duration-200"
+          >
+            {importingStatement ? (
+              <><span>⏳</span><span className="whitespace-nowrap text-xs">분석 중...</span></>
+            ) : (
+              <><span>📋</span><span className="whitespace-nowrap">카드명세서</span></>
+            )}
+          </button>
+
+          {/* 직접 입력 */}
           <button
             onClick={() => { setExpenseForm({ ...EMPTY_EXPENSE_FORM, receipt_date: todayStr() }); setExpenseModalOpen(true) }}
             disabled={!currentUser || !approvedUserId}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-5 text-sm font-semibold text-white/80 transition-all duration-200"
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-5 text-sm font-semibold text-white/80 transition-all duration-200"
           >
             <span className="text-base">✏️</span>
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
-        {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
+
+        {/* 파일 입력 (숨김) — disabled로 중복 업로드 방지 */}
         <input ref={expenseFileRef} type="file" accept="image/*" capture="environment" className="hidden"
           disabled={uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
           onChange={handleExpenseFileChange} />
+        {/* 카드명세서 전용 파일 입력 (숨김) */}
+        <input ref={statementFileRef} type="file" accept="image/*" className="hidden"
+          disabled={importingStatement || !currentUser || !approvedUserId}
+          onChange={handleStatementFileChange} />
 
         {/* 지출 목록 */}
         <div className="space-y-2">
@@ -1291,6 +1430,96 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             >
               {sendingEmail ? <><span>⏳</span>발송 중...</> : <><span>📧</span>발송하기</>}
             </button>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════════════════
+          카드명세서 분석 결과 모달
+      ══════════════════════════════════════════════ */}
+      {statementModalOpen && statementResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
+        >
+          <div
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">📊 카드명세서 분석 결과</h2>
+              <button
+                onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
+                className="text-white/40 hover:text-white text-xl leading-none"
+              >×</button>
+            </div>
+
+            <p className="text-sm text-white/60">전체 {statementResult.total}건 발견</p>
+
+            {/* 중복 항목 (회색) */}
+            {statementResult.duplicates.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-white/40">
+                  ⚠️ 중복 {statementResult.duplicates.length}건 (자동 제외)
+                </p>
+                <ul className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                  {statementResult.duplicates.map((t, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5">
+                      <span className="text-xs text-white/40 truncate">
+                        {t.receipt_date} {t.vendor_name}
+                      </span>
+                      <span className="text-xs text-white/30 shrink-0 ml-2">
+                        {t.amount.toLocaleString()}원
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 신규 항목 (초록) */}
+            {statementResult.newItems.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-emerald-400">
+                  ✅ 신규 추가될 {statementResult.newItems.length}건
+                </p>
+                <ul className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                  {statementResult.newItems.map((t, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
+                      <span className="text-xs text-emerald-300 truncate">
+                        {t.receipt_date} {t.vendor_name}
+                      </span>
+                      <span className="text-xs text-emerald-400 shrink-0 ml-2">
+                        {t.amount.toLocaleString()}원
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-white/40 text-center py-2">신규 추가할 항목이 없습니다.</p>
+            )}
+
+            {/* 하단 버튼 */}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setStatementModalOpen(false); setStatementResult(null) }}
+                disabled={insertingStatement}
+                className="flex-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 py-3 text-sm font-semibold text-white/70 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => void handleStatementInsert()}
+                disabled={insertingStatement || statementResult.newItems.length === 0}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
+              >
+                {insertingStatement
+                  ? <><span>⏳</span>추가 중...</>
+                  : `${statementResult.newItems.length}건 추가하기`
+                }
+              </button>
+            </div>
           </div>
         </div>
       )}
