@@ -127,6 +127,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [monthlyExpense, setMonthlyExpense] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [analyzingExpenseId, setAnalyzingExpenseId] = useState<string | null>(null)
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)  // 삭제 중인 지출 항목 id
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [expenseForm, setExpenseForm] = useState<ManualExpenseForm>(EMPTY_EXPENSE_FORM)
   const [savingExpense, setSavingExpense] = useState(false)
@@ -144,6 +145,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [monthlyIncome, setMonthlyIncome] = useState(0)
   const [uploadingIncome, setUploadingIncome] = useState(false)
   const [analyzingIncomeId, setAnalyzingIncomeId] = useState<string | null>(null)
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null)    // 삭제 중인 수입 항목 id
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
   const [incomeForm, setIncomeForm] = useState<ManualIncomeForm>(EMPTY_INCOME_FORM)
   const [savingIncome, setSavingIncome] = useState(false)
@@ -494,6 +496,64 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
+  // ─── Storage 경로 추출 ────────────────────────────────────────────────────
+  // Supabase 공개 URL에서 버킷 이하 경로만 추출 (storage.remove에 사용)
+  function getStoragePath(publicUrl: string): string | null {
+    const marker = "/object/public/receipts/"
+    const idx = publicUrl.indexOf(marker)
+    return idx === -1 ? null : publicUrl.slice(idx + marker.length)
+  }
+
+  // ─── 지출 삭제 ────────────────────────────────────────────────────────────
+  const handleDeleteExpense = async (expense: Expense) => {
+    const confirmed = window.confirm(
+      `이 지출 항목을 삭제할까요?\n업체명: ${expense.vendor_name ?? "미확인"} / 금액: ${(expense.amount ?? 0).toLocaleString()}원`
+    )
+    if (!confirmed || !approvedUserId) return
+    setDeletingExpenseId(expense.id)
+    try {
+      // 영수증 이미지 삭제 (Storage에 있는 경우)
+      if (expense.receipt_image_url) {
+        const storagePath = getStoragePath(expense.receipt_image_url)
+        if (storagePath) await supabase.storage.from("receipts").remove([storagePath])
+      }
+      const { error } = await supabase.from("expenses").delete().eq("id", expense.id)
+      if (error) throw error
+      toast.success("✅ 삭제됐습니다")
+      await fetchData(approvedUserId)
+    } catch (err) {
+      console.error("지출 삭제 오류:", err)
+      toast.error("삭제에 실패했습니다.")
+    } finally {
+      setDeletingExpenseId(null)
+    }
+  }
+
+  // ─── 수입 삭제 ────────────────────────────────────────────────────────────
+  const handleDeleteIncome = async (inc: Income) => {
+    const confirmed = window.confirm(
+      `이 수입 항목을 삭제할까요?\n정산월: ${inc.income_date.slice(0, 7)} / 합계: ${(inc.total_amount ?? 0).toLocaleString()}원`
+    )
+    if (!confirmed || !approvedUserId) return
+    setDeletingIncomeId(inc.id)
+    try {
+      // 명세표 이미지 삭제 (Storage에 있는 경우)
+      if (inc.statement_image_url) {
+        const storagePath = getStoragePath(inc.statement_image_url)
+        if (storagePath) await supabase.storage.from("receipts").remove([storagePath])
+      }
+      const { error } = await supabase.from("income").delete().eq("id", inc.id)
+      if (error) throw error
+      toast.success("✅ 삭제됐습니다")
+      await fetchData(approvedUserId)
+    } catch (err) {
+      console.error("수입 삭제 오류:", err)
+      toast.error("삭제에 실패했습니다.")
+    } finally {
+      setDeletingIncomeId(null)
+    }
+  }
+
   // ─── PDF 다운로드 ───────────────────────────────────────────────────────
 
   const handlePdfDownload = async () => {
@@ -779,9 +839,20 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                   <>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-white/50">{inc.income_date.slice(0, 7)}</span>
-                      <span className="text-sm font-bold text-emerald-400">
-                        {(inc.total_amount ?? 0).toLocaleString()}원
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-emerald-400">
+                          {(inc.total_amount ?? 0).toLocaleString()}원
+                        </span>
+                        {/* 다른 항목 삭제 중이면 비활성화 */}
+                        <button
+                          onClick={() => void handleDeleteIncome(inc)}
+                          disabled={deletingIncomeId !== null}
+                          className="text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base leading-none"
+                          title="삭제"
+                        >
+                          {deletingIncomeId === inc.id ? "⏳" : "🗑️"}
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/40">
                       <span>배송 {(inc.delivery_fee ?? 0).toLocaleString()}</span>
@@ -951,9 +1022,21 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                       </p>
                     )}
                   </div>
-                  <span className="text-sm font-bold text-white shrink-0 self-start mt-0.5">
-                    {(expense.amount ?? 0).toLocaleString()}원
-                  </span>
+                  {/* 금액 + 삭제 버튼 */}
+                  <div className="flex items-start gap-1.5 shrink-0 mt-0.5">
+                    <span className="text-sm font-bold text-white">
+                      {(expense.amount ?? 0).toLocaleString()}원
+                    </span>
+                    {/* 분석 중이거나 다른 항목 삭제 중이면 비활성화 */}
+                    <button
+                      onClick={() => void handleDeleteExpense(expense)}
+                      disabled={expense.id === analyzingExpenseId || deletingExpenseId !== null}
+                      className="text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base leading-none"
+                      title="삭제"
+                    >
+                      {deletingExpenseId === expense.id ? "⏳" : "🗑️"}
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
