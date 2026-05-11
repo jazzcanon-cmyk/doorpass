@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CurrentUser } from "@/types/building"
+import { isKakaoShareReady, shareExpensePdf } from "@/lib/kakao-share"
 
 // approved_users.id 타입 (int8이지만 JS에서는 number로 취급)
 type ApprovedUserId = number
@@ -162,6 +163,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [emailForm, setEmailForm] = useState({ name: "", email: "" })
   const [sendingEmail, setSendingEmail] = useState(false)
+
+  // 카카오 공유 상태
+  const [sharingKakao, setSharingKakao] = useState(false)
 
   // ─── approved_users.id 조회 ──────────────────────────────────────────────
   // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
@@ -619,6 +623,50 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
+  // ─── 카카오톡 공유 ──────────────────────────────────────────────────────
+
+  const handleKakaoShare = async () => {
+    if (!approvedUserId) return
+    // 카카오 SDK 초기화 여부 확인 (SDK 로드 전이거나 키 미설정 시)
+    if (!isKakaoShareReady()) {
+      toast.warning("카카오 앱 설정을 확인해주세요.")
+      return
+    }
+    setSharingKakao(true)
+    try {
+      const params = new URLSearchParams({
+        user_id: String(approvedUserId),
+        year:    String(selectedYear),
+        period:  selectedPeriod,
+      })
+      const res = await fetch(`/api/expenses/share?${params.toString()}`)
+      if (res.status === 404) { toast.warning("공유할 지출 내역이 없습니다."); return }
+      if (!res.ok) throw new Error("공유 링크 생성 실패")
+
+      const json = (await res.json()) as {
+        url: string
+        periodLabel: string
+        totalAmount: number
+        deductibleAmount: number
+      }
+
+      // 카카오톡 공유창 열기 (모바일: 앱, PC: 팝업)
+      const shared = shareExpensePdf({
+        pdfUrl:           json.url,
+        year:             String(selectedYear),
+        periodLabel:      json.periodLabel,
+        totalAmount:      json.totalAmount,
+        deductibleAmount: json.deductibleAmount,
+      })
+      if (!shared) toast.warning("카카오 앱 설정을 확인해주세요.")
+    } catch (err) {
+      console.error("카카오 공유 오류:", err)
+      toast.error("공유에 실패했습니다.")
+    } finally {
+      setSharingKakao(false)
+    }
+  }
+
   // ─── 엑셀 다운로드 ──────────────────────────────────────────────────────
 
   const handleDownload = async () => {
@@ -899,13 +947,13 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               ))}
             </select>
           </div>
-          {/* 다운로드 버튼 3개: 엑셀 / PDF / 이메일 */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* 다운로드 버튼 4개: 엑셀 / PDF / 이메일 / 카카오톡 */}
+          <div className="grid grid-cols-4 gap-2">
             {/* 엑셀 */}
             <button
               onClick={() => void handleDownload()}
               disabled={downloading || !currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-emerald-300 transition-all duration-200"
+              className="flex items-center justify-center gap-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-emerald-300 transition-all duration-200"
             >
               {downloading ? <><span>⏳</span>저장 중</> : <><span>📥</span>엑셀</>}
             </button>
@@ -914,7 +962,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <button
               onClick={() => void handlePdfDownload()}
               disabled={downloadingPdf || !currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-blue-300 transition-all duration-200"
+              className="flex items-center justify-center gap-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-blue-300 transition-all duration-200"
             >
               {downloadingPdf ? <><span>⏳</span>생성 중</> : <><span>📄</span>PDF</>}
             </button>
@@ -923,9 +971,19 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <button
               onClick={() => setEmailModalOpen(true)}
               disabled={!currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-purple-300 transition-all duration-200"
+              className="flex items-center justify-center gap-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-purple-300 transition-all duration-200"
             >
               <span>📧</span>이메일
+            </button>
+
+            {/* 카카오톡 공유 — 카카오 노란색 */}
+            <button
+              onClick={() => void handleKakaoShare()}
+              disabled={sharingKakao || !currentUser || !approvedUserId}
+              style={{ backgroundColor: "#FEE500", borderColor: "#E6CE00" }}
+              className="flex items-center justify-center gap-1 rounded-xl border disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-gray-900 transition-all duration-200 hover:brightness-95"
+            >
+              {sharingKakao ? <><span>⏳</span>생성 중</> : <><span>💬</span>카카오</>}
             </button>
           </div>
         </div>

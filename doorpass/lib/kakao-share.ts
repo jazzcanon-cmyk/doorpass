@@ -35,7 +35,10 @@ function ensureInitialized(): boolean {
   const Kakao = window.Kakao
   if (!Kakao) return false
   if (!Kakao.isInitialized()) {
-    const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY
+    // NEXT_PUBLIC_KAKAO_JS_KEY 우선, 없으면 NEXT_PUBLIC_KAKAO_REST_API_KEY 폴백
+    const key =
+      process.env.NEXT_PUBLIC_KAKAO_JS_KEY ??
+      process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY
     if (!key) return false
     try {
       Kakao.init(key)
@@ -87,6 +90,52 @@ export function shareToKakao(opts: ShareToKakaoOptions): boolean {
         link,
       },
       buttons: [{ title: "가입하기", link }],
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ─── 지출내역서 PDF 카카오 공유 ───────────────────────────────────────────────
+
+export interface ShareExpensePdfOptions {
+  pdfUrl: string
+  year: string
+  periodLabel: string
+  totalAmount: number
+  deductibleAmount: number
+}
+
+/**
+ * 지출내역서 PDF 링크를 카카오톡 카드형 메시지로 공유.
+ * @returns SDK sendDefault 호출 성공 시 true.
+ */
+export function shareExpensePdf(opts: ShareExpensePdfOptions): boolean {
+  if (!ensureInitialized()) return false
+  const Kakao = window.Kakao
+  if (!Kakao?.Share?.sendDefault) return false
+
+  const imageUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/icon-512x512.png`
+      : ""
+
+  const link: KakaoShareLink = {
+    mobileWebUrl: opts.pdfUrl,
+    webUrl:       opts.pdfUrl,
+  }
+
+  try {
+    Kakao.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title:       `${opts.year}년 ${opts.periodLabel} 지출내역서`,
+        description: `총 지출: ${opts.totalAmount.toLocaleString("ko-KR")}원 | 부가세공제: ${opts.deductibleAmount.toLocaleString("ko-KR")}원`,
+        imageUrl,
+        link,
+      },
+      buttons: [{ title: "지출내역서 다운로드", link }],
     })
     return true
   } catch {
