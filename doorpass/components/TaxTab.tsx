@@ -91,6 +91,9 @@ const EMPTY_INCOME_FORM: ManualIncomeForm = {
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export function TaxTab({ currentUser }: TaxTabProps) {
+  // approved_users.id — expenses/income의 user_id 외래키 (카카오 ID와 다름)
+  const [approvedUserId, setApprovedUserId] = useState<ApprovedUserId | null>(null)
+
   // 지출 상태
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [monthlyExpense, setMonthlyExpense] = useState(0)
@@ -117,21 +120,41 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [selectedYear, setSelectedYear] = useState(THIS_YEAR)
   const [selectedMonth, setSelectedMonth] = useState("")
 
+  // ─── approved_users.id 조회 ──────────────────────────────────────────────
+  // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
+  // currentUser.userId는 카카오 ID(매우 큰 숫자)라 직접 사용하면 bigint 범위 초과 오류 발생.
+
+  useEffect(() => {
+    if (!currentUser?.email) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from("approved_users")
+        .select("id")
+        .eq("email", currentUser.email)
+        .maybeSingle()
+      if (cancelled) return
+      if (data?.id) {
+        setApprovedUserId(data.id as ApprovedUserId)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentUser?.email])
+
   // ─── 데이터 조회 ─────────────────────────────────────────────────────────
 
-  const fetchData = async () => {
-    if (!currentUser) return
+  const fetchData = async (uid: ApprovedUserId) => {
     setLoading(true)
     try {
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]
 
-      // 이번 달 지출 합계
+      // 이번 달 지출 합계 (approved_users.id 기준)
       const { data: expMonthData } = await supabase
         .from("expenses")
         .select("amount")
-        .eq("user_id", currentUser.userId)
+        .eq("user_id", uid)
         .gte("receipt_date", startOfMonth)
         .lte("receipt_date", endOfMonth)
       setMonthlyExpense((expMonthData ?? []).reduce((s, e) => s + (e.amount ?? 0), 0))
@@ -140,7 +163,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const { data: expRecentData } = await supabase
         .from("expenses")
         .select("id, receipt_date, amount, vendor_name, category, is_deductible, receipt_image_url")
-        .eq("user_id", currentUser.userId)
+        .eq("user_id", uid)
         .order("receipt_date", { ascending: false })
         .limit(10)
       setExpenses(expRecentData ?? [])
@@ -149,7 +172,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const { data: incMonthData } = await supabase
         .from("income")
         .select("total_amount")
-        .eq("user_id", currentUser.userId)
+        .eq("user_id", uid)
         .gte("income_date", startOfMonth)
         .lte("income_date", endOfMonth)
       setMonthlyIncome((incMonthData ?? []).reduce((s, e) => s + (e.total_amount ?? 0), 0))
@@ -158,7 +181,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const { data: incRecentData } = await supabase
         .from("income")
         .select("id, income_date, delivery_fee, pickup_fee, incentive, vat_amount, total_amount, receipt_image_url")
-        .eq("user_id", currentUser.userId)
+        .eq("user_id", uid)
         .order("income_date", { ascending: false })
         .limit(6)
       setIncomes(incRecentData ?? [])
@@ -169,28 +192,32 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
+  // approvedUserId가 확정된 후에만 데이터 조회
   useEffect(() => {
-    void fetchData()
+    if (!approvedUserId) return
+    void fetchData(approvedUserId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser])
+  }, [approvedUserId])
 
   // ─── 영수증 OCR (지출) ──────────────────────────────────────────────────
 
   const handleExpenseFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !currentUser) return
+    if (!file || !currentUser || !approvedUserId) return
     setUploading(true)
     try {
+      // Storage 경로는 카카오 ID 기반 유지 (단순 폴더명, 타입 제약 없음)
       const ext = file.name.split(".").pop() ?? "jpg"
       const filename = `${currentUser.userId}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage.from("receipts").upload(filename, file)
       if (uploadError) throw uploadError
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(filename)
 
+      // INSERT 시 approved_users.id를 user_id로 사용 (카카오 ID 아님)
       const { data: inserted, error: insertError } = await supabase
         .from("expenses")
         .insert({
-          user_id: currentUser.userId,
+          user_id: approvedUserId,
           receipt_image_url: urlData.publicUrl,
           amount: 0,
           category: "기타",
@@ -202,7 +229,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       if (insertError) throw insertError
 
       setUploading(false)
-      await fetchData()
+      await fetchData(approvedUserId)
 
       const expenseId = inserted.id as string
       setAnalyzingExpenseId(expenseId)
@@ -218,7 +245,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       } else {
         toast.warning("금액을 직접 입력해주세요.")
       }
-      await fetchData()
+      await fetchData(approvedUserId)
     } catch (err) {
       console.error("영수증 업로드 오류:", err)
       toast.error("업로드에 실패했습니다.")
@@ -233,20 +260,21 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
   const handleIncomeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !currentUser) return
+    if (!file || !currentUser || !approvedUserId) return
     setUploadingIncome(true)
     try {
-      // FormData로 서버 업로드 API 호출
+      // approved_users.id를 업로드 API에 전달 (income.user_id 외래키로 사용)
       const fd = new FormData()
       fd.append("file", file)
-      fd.append("userId", currentUser.userId)
+      fd.append("userId", String(approvedUserId))
+      fd.append("storagePrefix", currentUser.userId) // Storage 폴더는 카카오 ID 유지
 
       const uploadRes = await fetch("/api/income/upload", { method: "POST", body: fd })
       if (!uploadRes.ok) throw new Error("업로드 실패")
       const { incomeId, imageUrl } = (await uploadRes.json()) as { incomeId: string; imageUrl: string }
 
       setUploadingIncome(false)
-      await fetchData()
+      await fetchData(approvedUserId)
 
       setAnalyzingIncomeId(incomeId)
 
@@ -261,7 +289,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       } else {
         toast.warning("내용을 직접 입력해주세요.")
       }
-      await fetchData()
+      await fetchData(approvedUserId)
     } catch (err) {
       console.error("명세표 업로드 오류:", err)
       toast.error("업로드에 실패했습니다.")
@@ -275,15 +303,16 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // ─── 직접 입력 저장 (지출) ──────────────────────────────────────────────
 
   const handleExpenseSave = async () => {
-    if (!currentUser) return
+    if (!approvedUserId) return
     if (!expenseForm.amount || Number(expenseForm.amount) <= 0) {
       toast.warning("금액을 올바르게 입력해주세요.")
       return
     }
     setSavingExpense(true)
     try {
+      // approved_users.id를 user_id로 사용 (카카오 ID 아님)
       const { error } = await supabase.from("expenses").insert({
-        user_id: currentUser.userId,
+        user_id: approvedUserId,
         receipt_date: expenseForm.receipt_date,
         vendor_name: expenseForm.vendor_name.trim() || null,
         amount: Number(expenseForm.amount),
@@ -295,7 +324,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       if (error) throw error
       toast.success("✅ 저장되었습니다!")
       setExpenseModalOpen(false)
-      await fetchData()
+      await fetchData(approvedUserId)
     } catch (err) {
       console.error("지출 저장 오류:", err)
       toast.error("저장에 실패했습니다.")
@@ -307,12 +336,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // ─── 직접 입력 저장 (수입) ──────────────────────────────────────────────
 
   const handleIncomeSave = async () => {
-    if (!currentUser) return
-    const delivery = Number(incomeForm.delivery_fee) || 0
-    const pickup   = Number(incomeForm.pickup_fee)   || 0
-    const incentive = Number(incomeForm.incentive)   || 0
-    const vat      = Number(incomeForm.vat_amount)   || 0
-    const total    = delivery + pickup + incentive + vat
+    if (!approvedUserId) return
+    const delivery  = Number(incomeForm.delivery_fee) || 0
+    const pickup    = Number(incomeForm.pickup_fee)   || 0
+    const incentive = Number(incomeForm.incentive)    || 0
+    const vat       = Number(incomeForm.vat_amount)   || 0
+    const total     = delivery + pickup + incentive + vat
 
     if (delivery <= 0) {
       toast.warning("배송수수료를 입력해주세요.")
@@ -325,8 +354,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         ? `${incomeForm.income_date}-01`
         : new Date().toISOString().slice(0, 7) + "-01"
 
+      // approved_users.id를 user_id로 사용 (카카오 ID 아님)
       const { error } = await supabase.from("income").insert({
-        user_id: currentUser.userId,
+        user_id: approvedUserId,
         income_date: incomeDate,
         delivery_fee: delivery,
         pickup_fee: pickup,
@@ -338,7 +368,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       if (error) throw error
       toast.success("✅ 저장되었습니다!")
       setIncomeModalOpen(false)
-      await fetchData()
+      await fetchData(approvedUserId)
     } catch (err) {
       console.error("수입 저장 오류:", err)
       toast.error("저장에 실패했습니다.")
@@ -350,10 +380,11 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // ─── 엑셀 다운로드 ──────────────────────────────────────────────────────
 
   const handleDownload = async () => {
-    if (!currentUser) return
+    if (!approvedUserId) return
     setDownloading(true)
     try {
-      const params = new URLSearchParams({ user_id: currentUser.userId, year: String(selectedYear) })
+      // 엑셀 API에도 approved_users.id 전달
+      const params = new URLSearchParams({ user_id: String(approvedUserId), year: String(selectedYear) })
       if (selectedMonth) params.set("month", selectedMonth)
       const res = await fetch(`/api/expenses/download?${params.toString()}`)
       if (res.status === 404) { toast.warning("다운로드할 지출 내역이 없습니다."); return }
@@ -419,7 +450,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         <div className="flex gap-2">
           <button
             onClick={() => incomeFileRef.current?.click()}
-            disabled={uploadingIncome || isAnalyzingIncome || !currentUser}
+            disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed py-4 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
           >
             {uploadingIncome ? (
@@ -432,7 +463,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </button>
           <button
             onClick={() => { setIncomeForm({ ...EMPTY_INCOME_FORM, income_date: thisMonthStr() }); setIncomeModalOpen(true) }}
-            disabled={!currentUser}
+            disabled={!currentUser || !approvedUserId}
             className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-4 text-sm font-semibold text-white/80 transition-all duration-200"
           >
             <span>✏️</span>
@@ -517,7 +548,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
           <button
             onClick={() => void handleDownload()}
-            disabled={downloading || !currentUser}
+            disabled={downloading || !currentUser || !approvedUserId}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-emerald-300 transition-all duration-200"
           >
             {downloading ? <><span>⏳</span>다운로드 중...</> : <><span>📥</span>회계자료 다운로드 (엑셀)</>}
@@ -528,7 +559,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         <div className="flex gap-2">
           <button
             onClick={() => expenseFileRef.current?.click()}
-            disabled={uploading || isAnalyzingExpense || !currentUser}
+            disabled={uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed py-5 text-base font-semibold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
           >
             {uploading ? (
@@ -541,7 +572,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </button>
           <button
             onClick={() => { setExpenseForm({ ...EMPTY_EXPENSE_FORM, receipt_date: todayStr() }); setExpenseModalOpen(true) }}
-            disabled={!currentUser}
+            disabled={!currentUser || !approvedUserId}
             className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-5 text-sm font-semibold text-white/80 transition-all duration-200"
           >
             <span className="text-base">✏️</span>

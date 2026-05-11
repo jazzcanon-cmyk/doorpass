@@ -9,20 +9,25 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    // FormData로 이미지 파일 + userId 수신
+    // FormData로 이미지 파일 + 두 가지 ID 수신:
+    //   userId       = approved_users.id (소형 정수) → income.user_id 외래키
+    //   storagePrefix = 카카오 ID (큰 숫자) → Storage 폴더 이름용
     const formData = await req.formData()
-    const file = formData.get("file") as File | null
-    const userId = formData.get("userId") as string | null
+    const file          = formData.get("file")          as File | null
+    const userId        = formData.get("userId")        as string | null
+    const storagePrefix = formData.get("storagePrefix") as string | null
 
     if (!file || !userId) {
       return NextResponse.json({ error: "file, userId 필수" }, { status: 400 })
     }
 
-    // 1) Supabase Storage "receipts" 버킷에 업로드
+    // Storage 폴더: storagePrefix(카카오 ID)가 있으면 사용, 없으면 userId로 폴백
+    const folder = storagePrefix ?? userId
     const ext = file.name.split(".").pop() ?? "jpg"
-    const filename = `${userId}/income_${Date.now()}.${ext}`
+    const filename = `${folder}/income_${Date.now()}.${ext}`
     const arrayBuffer = await file.arrayBuffer()
 
+    // 1) Supabase Storage "receipts" 버킷에 업로드
     const { error: uploadError } = await supabaseAdmin.storage
       .from("receipts")
       .upload(filename, arrayBuffer, { contentType: file.type })
@@ -33,12 +38,13 @@ export async function POST(req: NextRequest) {
       .from("receipts")
       .getPublicUrl(filename)
 
-    // 2) income 테이블에 임시 행 추가 (OCR가 채우기 전 기본값)
+    // 2) income 테이블에 임시 행 추가
+    //    user_id는 approved_users.id(소형 정수) 사용 — 카카오 ID 아님
     const thisMonth = new Date().toISOString().slice(0, 7) + "-01"
     const { data: insertData, error: insertError } = await supabaseAdmin
       .from("income")
       .insert({
-        user_id: userId,
+        user_id: Number(userId),  // int8 컬럼에 맞게 숫자로 변환
         receipt_image_url: urlData.publicUrl,
         income_date: thisMonth,
         delivery_fee: 0,
