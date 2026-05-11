@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth } from "@/lib/auth"
+import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth, resolveUserEmail } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
@@ -282,9 +282,9 @@ export async function GET(request: Request) {
         }
       }
 
-      if (user?.email) {
+      if (user) {
         logActivity(
-          user.email,
+          resolveUserEmail(user!),
           "search",
           { keyword: searchTerm, count: rows.length, searchNote },
           getIp(request)
@@ -545,9 +545,9 @@ export async function POST(request: Request) {
       "comment_notification"
     ).catch(console.error)
 
-    if (user?.email && ["editor", "sub_admin", "admin"].includes(approvedUser.role ?? "")) {
+    if (user && ["editor", "sub_admin", "admin"].includes(approvedUser.role ?? "")) {
       addPoints({
-        email: user.email,
+        email: resolveUserEmail(user!),
         action: "building_new",
         buildingId: data?.id,
         buildingName: name,

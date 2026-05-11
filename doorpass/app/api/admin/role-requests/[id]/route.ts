@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireManagerApi } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
@@ -36,11 +36,11 @@ export async function POST(request: Request, { params }: { params: Params }) {
       return NextResponse.json({ error: "Request already processed" }, { status: 400 })
     }
 
-    if (role === "sub_admin" && user?.email) {
+    if (role === "sub_admin" && user) {
       const { data: me } = await supabase
         .from("approved_users")
         .select("branch_id")
-        .eq("email", user.email)
+        .eq("email", resolveUserEmail(user!))
         .maybeSingle()
       const { data: target } = await supabase
         .from("approved_users")

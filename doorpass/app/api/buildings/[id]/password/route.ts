@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, canEditBuilding } from '@/lib/auth';
+import { requireAuth, canEditBuilding, resolveUserEmail } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
 import { encryptPassword } from '@/lib/encryption';
@@ -58,9 +58,9 @@ export async function POST(
       return NextResponse.json({ error: '비밀번호 업데이트에 실패했습니다.' }, { status: 500 });
     }
 
-    if (user?.email) {
+    if (user) {
       void trackActivity({
-        userEmail: user.email,
+        userEmail: resolveUserEmail(user!),
         actionType: 'password_update',
         targetInfo: {
           building_id: buildingId,

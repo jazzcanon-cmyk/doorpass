@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireManagerApi } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase-route"
 
 type Role = "admin" | "driver"
@@ -20,11 +20,11 @@ export async function POST(request: Request) {
     is_active: false,
   }
   if (body.email?.toString().trim()) row.email = body.email.toString().trim()
-  if (role === "sub_admin" && user?.email) {
+  if (role === "sub_admin" && user) {
     const { data: current } = await supabase
       .from("approved_users")
       .select("branch_id")
-      .eq("email", user.email)
+      .eq("email", resolveUserEmail(user!))
       .maybeSingle()
     row.branch_id = current?.branch_id ?? null
   }
@@ -57,11 +57,11 @@ export async function GET(request: Request) {
     `)
     .order("created_at", { ascending: false })
 
-  if (role === "sub_admin" && user?.email) {
+  if (role === "sub_admin" && user) {
     const { data: current } = await supabase
       .from("approved_users")
       .select("branch_id")
-      .eq("email", user.email)
+      .eq("email", resolveUserEmail(user!))
       .maybeSingle()
     if (!current?.branch_id) {
       return NextResponse.json({ users: [] })

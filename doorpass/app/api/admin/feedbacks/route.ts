@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireManagerApi } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 const ALLOWED_STATUS = new Set(["new", "reading", "resolved", "rejected"])
@@ -43,11 +43,11 @@ export async function GET(request: Request) {
     let rows = data ?? []
 
     // sub_admin 의 building_id 별 branch 매칭 필터
-    if (role === "sub_admin" && user?.email) {
+    if (role === "sub_admin" && user) {
       const { data: me } = await supabaseAdmin
         .from("approved_users")
         .select("branch_id")
-        .eq("email", user.email)
+        .eq("email", resolveUserEmail(user!))
         .maybeSingle()
       const myBranch = me?.branch_id as string | null | undefined
       if (!myBranch) {

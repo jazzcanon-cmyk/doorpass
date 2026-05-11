@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth, canEditBuilding } from "@/lib/auth"
+import { requireAuth, canEditBuilding, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
@@ -186,24 +186,25 @@ export async function PUT(request: Request, { params }: { params: Params }) {
       "comment_notification"
     ).catch(console.error)
 
-    if (user?.email && ["editor", "sub_admin", "admin"].includes(userRole ?? "")) {
+    if (user && ["editor", "sub_admin", "admin"].includes(userRole ?? "")) {
+      const userEmail = resolveUserEmail(user!)
       const existingPassword = plaintextPassword(existingBuilding.password_encrypted ?? existingBuilding.password)
       const tasks: Promise<unknown>[] = []
       if (name !== undefined && name !== existingBuilding.name) {
-        tasks.push(addPoints({ email: user.email, action: "building_name", buildingId: Number(id), buildingName: name }))
+        tasks.push(addPoints({ email: userEmail, action: "building_name", buildingId: Number(id), buildingName: name }))
       }
       if (password !== undefined && password !== "자유출입" && password !== existingPassword) {
-        tasks.push(addPoints({ email: user.email, action: "building_password", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+        tasks.push(addPoints({ email: userEmail, action: "building_password", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
       }
       if (password === "자유출입" && existingPassword !== "자유출입") {
-        tasks.push(addPoints({ email: user.email, action: "building_free_access", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+        tasks.push(addPoints({ email: userEmail, action: "building_free_access", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
       }
       if (memo !== undefined && memo !== existingBuilding.memo) {
         const hasElevator = memo?.includes("엘리베이터")
         if (hasElevator) {
-          tasks.push(addPoints({ email: user.email, action: "building_elevator", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+          tasks.push(addPoints({ email: userEmail, action: "building_elevator", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
         } else {
-          tasks.push(addPoints({ email: user.email, action: "building_memo", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
+          tasks.push(addPoints({ email: userEmail, action: "building_memo", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
         }
       }
       Promise.allSettled(tasks).catch(console.error)

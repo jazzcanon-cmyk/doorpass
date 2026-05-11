@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireManagerApi } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 const supabase = supabaseAdmin
@@ -23,11 +23,11 @@ export async function GET(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    if (role === "sub_admin" && user?.email) {
+    if (role === "sub_admin" && user) {
       const { data: me } = await supabase
         .from("approved_users")
         .select("branch_id")
-        .eq("email", user.email)
+        .eq("email", resolveUserEmail(user!))
         .maybeSingle()
       const myBranch = me?.branch_id
       if (!myBranch) return NextResponse.json({ requests: [] })

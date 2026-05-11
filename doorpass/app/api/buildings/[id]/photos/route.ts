@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { addPoints } from "@/lib/points"
 
@@ -126,9 +126,9 @@ export async function POST(
   let pointResult: { success: boolean; points?: number; newTotal?: number; reason?: string } = {
     success: false,
   }
-  if (user?.email) {
+  if (user) {
     const r = await addPoints({
-      email: user.email,
+      email: resolveUserEmail(user!),
       action: "building_photo",
       buildingId: Number(buildingId),
       buildingName: (building as { name?: string } | null)?.name ?? undefined,
