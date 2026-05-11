@@ -49,7 +49,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
                   </Link>
                 ) : "공동현관 비밀번호"}
                 {currentUser && (currentUser.total_points ?? 0) > 0 && (
-                  <Link href="/my-points" className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5 hover:opacity-80 transition-opacity" style={{ transform: animate ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'inline-block' }}>
+                  <Link href="/my-points" className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5 hover:opacity-80 transition-opacity" style={{ opacity: animate ? 0.6 : 1, transition: 'opacity 0.3s ease', display: 'inline-block' }}>
                     🏆 {(currentUser.total_points ?? 0).toLocaleString()}P
                   </Link>
                 )}

@@ -179,7 +179,7 @@ export function useAuth() {
           if (data?.welcomeShown === false) {
             welcomeTimer = setTimeout(() => {
               if (!cancelled) setShowWelcome(true)
-            }, 500)
+            }, 2000)
           }
         })
         .catch(() => {})

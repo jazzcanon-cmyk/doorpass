@@ -87,6 +87,7 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>달력 ›</span>
       </div>
 
+      <div style={{ minHeight: 24 }}>
       {weather && (
         <div
           onClick={async (e) => {
@@ -114,6 +115,7 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
           <ExternalLink style={{ width: 12, height: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
         </div>
       )}
+      </div>
     </button>
   )
 }
