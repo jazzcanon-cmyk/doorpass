@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
 
     const timestamp = Date.now()
     // 공유용 파일 경로 — 영문/숫자/언더스코어만 사용 (shares 버킷은 public)
-    const storagePath = `expense_report_${userId}_${year}_${periodKey}_${timestamp}.pdf`
+    const shareId     = `expense_report_${userId}_${year}_${periodKey}_${timestamp}`
+    const storagePath = `${shareId}.pdf`
 
     // 7일 이상 된 같은 사용자의 기존 공유 파일 정리
     const sevenDaysAgo = timestamp - 7 * 24 * 60 * 60 * 1000
@@ -71,6 +72,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       url:              urlData.publicUrl,
+      shareId,          // .pdf 제외 파일명 — 카카오 공유 리다이렉트 경로에 사용
       filename,
       periodLabel,
       totalAmount,

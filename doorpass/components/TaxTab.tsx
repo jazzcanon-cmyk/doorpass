@@ -805,6 +805,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
       const json = (await res.json()) as {
         url: string
+        shareId?: string
         periodLabel: string
         totalAmount: number
         deductibleAmount: number
@@ -814,6 +815,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       // 카카오톡 공유창 열기 (모바일: 앱, PC: 팝업)
       const shared = shareExpensePdf({
         pdfUrl:           json.url,
+        shareId:          json.shareId,
         year:             String(selectedYear),
         periodLabel:      json.periodLabel,
         totalAmount:      json.totalAmount,
