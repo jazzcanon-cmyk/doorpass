@@ -31,14 +31,12 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
   const isSat = today.getDay() === 6
 
   const [weather, setWeather] = useState<WeatherInfo | null>(null)
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
         const { latitude: lat, longitude: lon } = pos.coords
-        setCoords({ lat, lon })
         const res = await fetch(
           'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
           '&current=temperature_2m,weathercode,windspeed_10m&timezone=Asia%2FSeoul'
@@ -91,10 +89,7 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
         <div
           onClick={(e) => {
             e.stopPropagation()
-            const url = coords
-              ? `https://weather.naver.com/today/${coords.lat},${coords.lon}`
-              : 'https://www.weather.go.kr'
-            window.open(url, '_blank')
+            window.open('https://search.naver.com/search.naver?query=날씨', '_blank')
           }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
         >
