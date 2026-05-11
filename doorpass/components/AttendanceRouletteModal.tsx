@@ -29,6 +29,59 @@ interface Props {
   onChecked?: (result: CheckResponse) => void
 }
 
+// 날짜 시드 기반 결정론적 랜덤 (같은 날 = 같은 운세)
+function seededRand(seed: number): number {
+  return Math.abs(Math.sin(seed) * 10000) % 1
+}
+
+function getDailyFortune() {
+  const now = new Date()
+  const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()
+
+  const deliveryTexts = ["최고의 배송일!", "순조로운 하루", "보통의 하루", "집중력이 필요한 날", "인내가 필요한 날"]
+  const zones = ["삼산동", "신정동", "달동", "옥동", "남구", "중구", "북구", "동구"]
+  const quotes = [
+    "빠른 배송보다 안전한 배송이 먼저입니다.",
+    "고객의 작은 미소가 오늘의 원동력입니다.",
+    "잠깐의 휴식이 더 나은 배송을 만듭니다.",
+    "한 개 한 개 정성껏, 그게 프로입니다.",
+    "오늘 수고한 나 자신에게 박수를 보내세요.",
+  ]
+
+  const textIdx = Math.floor(seededRand(seed + 1) * deliveryTexts.length)
+  const stars = 3 + Math.floor(seededRand(seed + 2) * 3) // 3~5
+  const zoneIdx = Math.floor(seededRand(seed + 3) * zones.length)
+  const quoteIdx = Math.floor(seededRand(seed + 4) * quotes.length)
+
+  return {
+    stars,
+    deliveryText: deliveryTexts[textIdx],
+    zone: zones[zoneIdx],
+    quote: quotes[quoteIdx],
+  }
+}
+
+function DailyFortune() {
+  const { stars, deliveryText, zone, quote } = getDailyFortune()
+  return (
+    <div className="border-t border-white/10 pt-4 space-y-2">
+      <p className="text-xs text-white/40 text-center uppercase tracking-wider">오늘의 배송운</p>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-white/70">배송운</span>
+        <span className="text-sm">
+          {"⭐".repeat(stars)}{" "}
+          <span className="text-white/80">{deliveryText}</span>
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-white/70">행운의 구역</span>
+        <span className="text-sm text-white/90">📍 {zone}</span>
+      </div>
+      <p className="text-xs text-white/50 italic text-center pt-1">"{quote}"</p>
+    </div>
+  )
+}
+
 // 룰렛 칸 정의 (12시 방향에서 시계방향 0~7)
 interface Sector {
   label: string
@@ -270,34 +323,40 @@ export function AttendanceRouletteModal({
 
           {/* 보너스 일자 축하 화면 */}
           {isBonus && result && (
-            <div className="text-center py-6">
-              <div className="text-6xl mb-3">
-                {result.rewardType === "bonus_30day" ? "🏆" : "🎉"}
+            <>
+              <div className="text-center py-6">
+                <div className="text-6xl mb-3">
+                  {result.rewardType === "bonus_30day" ? "🏆" : "🎉"}
+                </div>
+                <p className="text-2xl font-extrabold text-amber-400">
+                  {result.rewardPoints?.toLocaleString()}P 보너스!
+                </p>
+                <p className="mt-2 text-sm text-white/70">
+                  {result.rewardType === "bonus_30day"
+                    ? "30일 연속 출석을 달성하셨습니다!"
+                    : "7일 연속 출석 보너스입니다!"}
+                </p>
               </div>
-              <p className="text-2xl font-extrabold text-amber-400">
-                {result.rewardPoints?.toLocaleString()}P 보너스!
-              </p>
-              <p className="mt-2 text-sm text-white/70">
-                {result.rewardType === "bonus_30day"
-                  ? "30일 연속 출석을 달성하셨습니다!"
-                  : "7일 연속 출석 보너스입니다!"}
-              </p>
-            </div>
+              <DailyFortune />
+            </>
           )}
 
           {/* 결과 메시지 */}
           {phase === "result" && result && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-              <p className="text-sm text-white/60 mb-1">획득 포인트</p>
-              <p className="text-3xl font-extrabold text-amber-400">
-                +{result.rewardPoints?.toLocaleString() ?? 0}P
-              </p>
-              {typeof result.newTotal === "number" && (
-                <p className="mt-2 text-xs text-white/50">
-                  누적 {result.newTotal.toLocaleString()}P
+            <>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                <p className="text-sm text-white/60 mb-1">획득 포인트</p>
+                <p className="text-3xl font-extrabold text-amber-400">
+                  +{result.rewardPoints?.toLocaleString() ?? 0}P
                 </p>
-              )}
-            </div>
+                {typeof result.newTotal === "number" && (
+                  <p className="mt-2 text-xs text-white/50">
+                    누적 {result.newTotal.toLocaleString()}P
+                  </p>
+                )}
+              </div>
+              <DailyFortune />
+            </>
           )}
 
           {phase === "error" && (
