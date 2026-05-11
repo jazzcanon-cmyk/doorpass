@@ -12,7 +12,7 @@ export default function TermsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <h1 className="text-sm font-bold">이용약관</h1>
-          <span className="ml-auto text-xs text-white/30">v1.0 · 2026.04.30 시행</span>
+          <span className="ml-auto text-xs text-white/30">v1.1 · 2026.05.11 시행</span>
         </div>
       </header>
 
@@ -86,6 +86,10 @@ export default function TermsPage() {
             <li className="flex items-start gap-2">
               <span className="text-yellow-400 shrink-0 mt-0.5">•</span>
               데이터 보존 기간: 마지막 로그인으로부터 <span className="text-white font-medium">1년</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-yellow-400 shrink-0 mt-0.5">•</span>
+              본 서비스는 서비스 품질 개선을 위해 <span className="text-white font-medium">Microsoft Clarity</span>를 통해 사용자 행동 데이터(클릭, 스크롤, 페이지 이동 경로)를 수집합니다. 수집된 데이터는 서비스 개선 목적으로만 사용되며 제3자에게 제공되지 않습니다.
             </li>
           </ul>
         </section>
