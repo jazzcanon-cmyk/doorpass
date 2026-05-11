@@ -11,7 +11,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("point_exchanges")
       .select(
-        "id, email, name, points, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
+        "id, email, name, points, status, created_at, method"
       )
       // pending(0) → completed/rejected(1) 순서 정렬을 위해 created 시간으로 보조 정렬
       .order("status", { ascending: true })

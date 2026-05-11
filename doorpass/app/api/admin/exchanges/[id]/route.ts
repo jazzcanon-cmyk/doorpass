@@ -16,7 +16,6 @@ interface ProcessRpcResult {
 
 interface ExchangeContext {
   name: string | null
-  reward_name: string
   points: number
 }
 
@@ -48,7 +47,7 @@ export async function POST(
   // 알림 메시지 구성용 컨텍스트 (RPC 호출 전 미리 조회)
   const { data: ctxData } = await supabaseAdmin
     .from("point_exchanges")
-    .select("name, reward_name, points")
+    .select("name, points")
     .eq("id", id)
     .maybeSingle()
   const ctx = (ctxData ?? null) as ExchangeContext | null
@@ -82,7 +81,7 @@ export async function POST(
   }
 
   const targetEmail = result.email ?? ""
-  const rewardName = ctx?.reward_name ?? "GS상품권 1만원"
+  const rewardName = "GS상품권 1만원"
 
   if (action === "approve") {
     if (targetEmail) {

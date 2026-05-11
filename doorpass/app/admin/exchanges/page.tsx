@@ -4,28 +4,18 @@ import { toast } from 'sonner'
 
 interface ExchangeRow {
   id: number
-  user_email: string
+  email: string
   name: string | null
   points: number
-  reward_type: string
-  reward_name: string
-  receive_method: 'visit' | 'mobile'
   status: 'pending' | 'completed' | 'rejected'
-  admin_memo: string | null
-  requested_at: string
-  processed_at: string | null
-  processed_by: string | null
+  created_at: string
+  method: string
 }
 
 const STATUS_LABEL: Record<ExchangeRow['status'], string> = {
   pending: '⏳ 처리 중',
   completed: '✅ 지급 완료',
   rejected: '❌ 반려',
-}
-
-const METHOD_LABEL: Record<ExchangeRow['receive_method'], string> = {
-  visit: '사무실 방문',
-  mobile: '모바일 상품권',
 }
 
 export default function AdminExchangesPage() {
@@ -128,8 +118,7 @@ export default function AdminExchangesPage() {
           <div className='text-center py-12 text-white/30 text-sm'>해당 상태의 신청이 없습니다.</div>
         ) : (
           filtered.map((r) => {
-            const requested = new Date(r.requested_at).toLocaleString('ko-KR')
-            const processed = r.processed_at ? new Date(r.processed_at).toLocaleString('ko-KR') : null
+            const requested = new Date(r.created_at).toLocaleString('ko-KR')
             return (
               <div
                 key={r.id}
@@ -138,10 +127,10 @@ export default function AdminExchangesPage() {
                 <div className='flex items-start justify-between gap-2 mb-2'>
                   <div className='min-w-0 flex-1'>
                     <div className='text-sm font-bold text-white truncate'>
-                      {r.name ?? '-'} <span className='text-white/40 font-normal'>({r.user_email})</span>
+                      {r.name ?? '-'} <span className='text-white/40 font-normal'>({r.email})</span>
                     </div>
                     <div className='text-xs text-white/50 mt-0.5'>
-                      {r.reward_name} · {METHOD_LABEL[r.receive_method]} · -{r.points.toLocaleString()}P
+                      📱 모바일 상품권 · -{r.points.toLocaleString()}P
                     </div>
                   </div>
                   <span className={
@@ -156,13 +145,7 @@ export default function AdminExchangesPage() {
 
                 <div className='text-[11px] text-white/40'>
                   신청: {requested}
-                  {processed && <> · 처리: {processed}{r.processed_by ? ` (${r.processed_by})` : ''}</>}
                 </div>
-                {r.admin_memo && (
-                  <div className='mt-2 text-[11px] text-white/60 bg-white/5 rounded-md px-2 py-1'>
-                    메모: {r.admin_memo}
-                  </div>
-                )}
 
                 {r.status === 'pending' && (
                   <div className='mt-3'>
