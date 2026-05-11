@@ -15,7 +15,7 @@ export async function GET() {
       )
       // pending(0) → completed/rejected(1) 순서 정렬을 위해 created 시간으로 보조 정렬
       .order("status", { ascending: true })
-      .order("requested_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(200)
 
     if (error) {
