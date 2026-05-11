@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { generateExpensePdf, getRange } from "../_pdf-generator"
+import { generateExpensePdf } from "../_pdf-generator"
 
 // 서비스 롤 키로 Storage 업로드 (RLS 우회)
 const supabaseAdmin = createClient(
@@ -23,9 +23,15 @@ export async function GET(req: NextRequest) {
     const { buffer, filename, periodLabel, totalAmount, deductibleAmount } =
       await generateExpensePdf(userId, year, period)
 
-    // receipts 버킷에 임시 업로드 (24시간 공유용)
+    // period → 영문 키 변환 (한글 파일명은 Supabase Storage Invalid key 오류 발생)
+    const periodKey =
+      Number(period) >= 1 && Number(period) <= 12
+        ? `month${String(Number(period)).padStart(2, "0")}`
+        : period  // all / q1~q4 / h1~h2 는 그대로 사용
+
+    // receipts 버킷에 임시 업로드 (24시간 공유용), 영문/숫자 파일명만 사용
     const timestamp   = Date.now()
-    const storagePath = `${userId}/share/지출내역_${year}_${period}_${timestamp}.pdf`
+    const storagePath = `${userId}/share/expense_report_${year}_${periodKey}_${timestamp}.pdf`
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("receipts")
