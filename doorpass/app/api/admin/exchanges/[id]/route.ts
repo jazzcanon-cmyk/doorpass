@@ -9,15 +9,15 @@ interface ProcessRpcResult {
   reason?: string
   id?: number
   status?: "completed" | "rejected"
-  user_email?: string
+  email?: string
   refunded?: number
   new_total?: number
 }
 
 interface ExchangeContext {
-  user_name: string | null
+  name: string | null
   reward_name: string
-  points_used: number
+  points: number
 }
 
 // 관리자 — 교환 신청 처리 (지급 완료 / 반려)
@@ -48,7 +48,7 @@ export async function POST(
   // 알림 메시지 구성용 컨텍스트 (RPC 호출 전 미리 조회)
   const { data: ctxData } = await supabaseAdmin
     .from("point_exchanges")
-    .select("user_name, reward_name, points_used")
+    .select("name, reward_name, points")
     .eq("id", id)
     .maybeSingle()
   const ctx = (ctxData ?? null) as ExchangeContext | null
@@ -81,7 +81,7 @@ export async function POST(
     return NextResponse.json({ error: "처리 실패" }, { status: 400 })
   }
 
-  const targetEmail = result.user_email ?? ""
+  const targetEmail = result.email ?? ""
   const rewardName = ctx?.reward_name ?? "GS상품권 1만원"
 
   if (action === "approve") {
@@ -93,19 +93,19 @@ export async function POST(
       }).catch(console.error)
     }
     void sendTelegramMessage(
-      `✅ 교환 처리 완료\n회원: ${ctx?.user_name ?? targetEmail}\n상품: ${rewardName}\n처리자: ${adminEmail}`,
+      `✅ 교환 처리 완료\n회원: ${ctx?.name ?? targetEmail}\n상품: ${rewardName}\n처리자: ${adminEmail}`,
       "new_user_notification"
     ).catch(console.error)
   } else {
     if (targetEmail) {
       void sendPushToUser(targetEmail, {
         title: "상품권 교환이 반려되었습니다",
-        body: `포인트 ${ctx?.points_used?.toLocaleString() ?? ""}P가 환불되었습니다.${memo ? ` (${memo})` : ""}`,
+        body: `포인트 ${ctx?.points?.toLocaleString() ?? ""}P가 환불되었습니다.${memo ? ` (${memo})` : ""}`,
         url: "/my-points",
       }).catch(console.error)
     }
     void sendTelegramMessage(
-      `❌ 교환 반려\n회원: ${ctx?.user_name ?? targetEmail}\n환불: ${result.refunded ?? 0}P${memo ? `\n사유: ${memo}` : ""}`,
+      `❌ 교환 반려\n회원: ${ctx?.name ?? targetEmail}\n환불: ${result.refunded ?? 0}P${memo ? `\n사유: ${memo}` : ""}`,
       "new_user_notification"
     ).catch(console.error)
   }
