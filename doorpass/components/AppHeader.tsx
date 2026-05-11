@@ -3,6 +3,7 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { RatingDisplay } from "@/components/RatingDisplay"
 import type { CurrentUser, TabType } from "@/types/building"
 
 interface AppHeaderProps {
@@ -53,6 +54,11 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
                   </Link>
                 )}
               </p>
+              {currentUser && (
+                <div className="mt-0.5 [&_span]:text-[10px] [&_svg]:h-3 [&_svg]:w-3">
+                  <RatingDisplay email={currentUser.email || ""} />
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">

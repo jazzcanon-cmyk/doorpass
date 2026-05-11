@@ -13,7 +13,6 @@ import { SearchTab } from "@/components/SearchTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
-import { RatingDisplay } from "@/components/RatingDisplay"
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"
@@ -345,9 +344,6 @@ export default function Home() {
 
       {activeTab === "delivery" && (
         <section className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-end mb-2">
-            <RatingDisplay email={currentUser?.email || ""} />
-          </div>
           <DeliveryBoard
             currentEmail={currentUser?.email}
             branchId={currentUser?.branchId ?? null}
