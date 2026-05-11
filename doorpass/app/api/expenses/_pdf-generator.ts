@@ -169,9 +169,10 @@ export async function generateExpensePdf(
     },
     footStyles: {
       font,
+      fontSize:  9.5, // bold 대신 fontSize 확대로 강조 효과
+      fontStyle: "normal",
       fillColor: [235, 235, 235] as [number, number, number],
       textColor: [30, 30, 30]    as [number, number, number],
-      fontStyle: "bold",
     },
     columnStyles: {
       0: { halign: "center", cellWidth: 12 },
