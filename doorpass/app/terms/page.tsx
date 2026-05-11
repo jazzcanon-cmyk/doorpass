@@ -143,7 +143,7 @@ export default function TermsPage() {
         </section>
 
         <p className="text-center text-xs text-white/20 pb-4">
-          본 약관은 2026년 4월 30일부터 시행됩니다.
+          본 약관은 2026년 5월 11일부터 시행됩니다.
         </p>
       </div>
     </main>
