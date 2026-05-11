@@ -31,12 +31,14 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
   const isSat = today.getDay() === 6
 
   const [weather, setWeather] = useState<WeatherInfo | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
         const { latitude: lat, longitude: lon } = pos.coords
+        setCoords({ lat, lon })
         const res = await fetch(
           'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
           '&current=temperature_2m,weathercode,windspeed_10m&timezone=Asia%2FSeoul'
@@ -87,9 +89,22 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
 
       {weather && (
         <div
-          onClick={(e) => {
+          onClick={async (e) => {
             e.stopPropagation()
-            window.open('https://search.naver.com/search.naver?query=날씨', '_blank')
+            let query = '날씨'
+            if (coords) {
+              try {
+                const r = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lon}&format=json&accept-language=ko`
+                )
+                const d = await r.json() as { address: Record<string, string> }
+                const area = d.address.city || d.address.county || d.address.town
+                if (area) query = area + ' 날씨'
+              } catch {
+                // 역지오코딩 실패 시 기본 쿼리 유지
+              }
+            }
+            window.open(`https://search.naver.com/search.naver?query=${encodeURIComponent(query)}`, '_blank')
           }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
         >
