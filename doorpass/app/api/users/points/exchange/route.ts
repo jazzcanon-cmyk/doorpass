@@ -13,7 +13,7 @@ const RECEIVE_LABEL: Record<ReceiveMethod, string> = {
 
 interface ExchangeRow {
   id: number
-  user_email: string
+  email: string
   user_name: string | null
   points_used: number
   reward_type: string
@@ -135,9 +135,9 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("point_exchanges")
     .select(
-      "id, user_email, user_name, points_used, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
+      "id, email, user_name, points_used, reward_type, reward_name, receive_method, status, admin_memo, requested_at, processed_at, processed_by"
     )
-    .eq("user_email", email)
+    .eq("email", email)
     .order("requested_at", { ascending: false })
     .limit(20)
 
