@@ -64,10 +64,23 @@ const CATEGORIES = ["유류비", "수리비", "식비", "통신비", "기타"]
 
 const THIS_YEAR = new Date().getFullYear()
 const YEARS = [THIS_YEAR, THIS_YEAR - 1, THIS_YEAR - 2]
-const MONTHS = [
-  { value: "", label: "전체" },
+// 회계자료 다운로드 기간 옵션 (전체 / 분기 / 반기 / 개별 월)
+const PERIODS = [
+  { value: "all", label: "전체" },
+  { value: "q1",  label: "1분기 (1~3월)" },
+  { value: "q2",  label: "2분기 (4~6월)" },
+  { value: "q3",  label: "3분기 (7~9월)" },
+  { value: "q4",  label: "4분기 (10~12월)" },
+  { value: "h1",  label: "상반기 (1~6월)" },
+  { value: "h2",  label: "하반기 (7~12월)" },
   ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `${i + 1}월` })),
 ]
+
+// period 값 → 파일명 라벨 매핑
+const PERIOD_LABELS: Record<string, string> = {
+  all: "전체", q1: "1분기", q2: "2분기", q3: "3분기", q4: "4분기",
+  h1: "상반기", h2: "하반기",
+}
 
 const todayStr = () => new Date().toISOString().split("T")[0]
 const thisMonthStr = () => new Date().toISOString().slice(0, 7) // YYYY-MM
@@ -118,7 +131,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [selectedYear, setSelectedYear] = useState(THIS_YEAR)
-  const [selectedMonth, setSelectedMonth] = useState("")
+  const [selectedPeriod, setSelectedPeriod] = useState("all") // 기간 옵션 (all/q1~q4/h1~h2/1~12)
 
   // ─── approved_users.id 조회 ──────────────────────────────────────────────
   // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
@@ -383,18 +396,22 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     if (!approvedUserId) return
     setDownloading(true)
     try {
-      // 엑셀 API에도 approved_users.id 전달
-      const params = new URLSearchParams({ user_id: String(approvedUserId), year: String(selectedYear) })
-      if (selectedMonth) params.set("month", selectedMonth)
+      // period 파라미터로 분기/반기/개별 월 전달
+      const params = new URLSearchParams({
+        user_id: String(approvedUserId),
+        year:    String(selectedYear),
+        period:  selectedPeriod,
+      })
       const res = await fetch(`/api/expenses/download?${params.toString()}`)
       if (res.status === 404) { toast.warning("다운로드할 지출 내역이 없습니다."); return }
       if (!res.ok) throw new Error("다운로드 실패")
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
-      const monthSuffix = selectedMonth ? `_${selectedMonth}월` : ""
+      // 파일명 라벨: 분기/반기는 매핑 테이블, 숫자면 "N월"
+      const periodLabel = PERIOD_LABELS[selectedPeriod] ?? `${selectedPeriod}월`
       a.href = url
-      a.download = `지출내역_${selectedYear}년${monthSuffix}.xlsx`
+      a.download = `지출내역_${selectedYear}년_${periodLabel}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -540,12 +557,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               ))}
             </select>
             <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
               className="flex-1 rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-blue-500/50"
             >
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value} className="bg-slate-900">{m.label}</option>
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value} className="bg-slate-900">{p.label}</option>
               ))}
             </select>
           </div>
