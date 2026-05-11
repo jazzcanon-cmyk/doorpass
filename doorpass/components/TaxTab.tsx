@@ -30,6 +30,19 @@ interface Income {
   statement_image_url: string | null  // income 테이블 실제 컬럼명
 }
 
+interface BusinessInfo {
+  id: string
+  business_number: string | null
+  business_name: string | null
+  owner_name: string | null
+  open_date: string | null
+  business_type: string | null
+  business_item: string | null
+  tax_type: string | null
+  registration_image_url: string | null
+  is_verified: boolean
+}
+
 interface ManualExpenseForm {
   receipt_date: string
   vendor_name: string
@@ -117,6 +130,13 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [savingExpense, setSavingExpense] = useState(false)
   const expenseFileRef = useRef<HTMLInputElement>(null)
 
+  // 사업자 상태
+  const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
+  const [uploadingBusiness, setUploadingBusiness] = useState(false)
+  const [analyzingBusiness, setAnalyzingBusiness] = useState(false)
+  const [savingTaxType, setSavingTaxType] = useState(false)
+  const businessFileRef = useRef<HTMLInputElement>(null)
+
   // 수입 상태
   const [incomes, setIncomes] = useState<Income[]>([])
   const [monthlyIncome, setMonthlyIncome] = useState(0)
@@ -153,6 +173,17 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     })()
     return () => { cancelled = true }
   }, [currentUser?.email])
+
+  // ─── 사업자 정보 조회 ────────────────────────────────────────────────────
+
+  const fetchBusinessInfo = async (uid: ApprovedUserId) => {
+    const { data } = await supabase
+      .from("business_info")
+      .select("id, business_number, business_name, owner_name, open_date, business_type, business_item, tax_type, registration_image_url, is_verified")
+      .eq("user_id", uid)
+      .maybeSingle()
+    setBusinessInfo(data ?? null)
+  }
 
   // ─── 데이터 조회 ─────────────────────────────────────────────────────────
 
@@ -205,12 +236,77 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
-  // approvedUserId가 확정된 후에만 데이터 조회
+  // approvedUserId가 확정된 후 데이터 조회 (사업자 정보 + 수입/지출)
   useEffect(() => {
     if (!approvedUserId) return
+    void fetchBusinessInfo(approvedUserId)
     void fetchData(approvedUserId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [approvedUserId])
+
+  // ─── 사업자등록증 업로드 + OCR ──────────────────────────────────────────
+
+  const handleBusinessFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !approvedUserId) return
+    setUploadingBusiness(true)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("userId", String(approvedUserId))
+
+      const uploadRes = await fetch("/api/business/upload", { method: "POST", body: fd })
+      if (!uploadRes.ok) throw new Error("업로드 실패")
+      const { businessId, imageUrl } = (await uploadRes.json()) as { businessId: string; imageUrl: string }
+
+      // 업로드 완료 후 즉시 화면 갱신
+      await fetchBusinessInfo(approvedUserId)
+      setAnalyzingBusiness(true)
+
+      // OCR 분석 (uploadingBusiness는 finally에서 해제 — 중복 업로드 방지)
+      const ocrRes = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl, businessId, type: "business" }),
+      })
+      const ocrJson = (await ocrRes.json()) as { success?: boolean; data?: { business_name: string } }
+      if (ocrJson.success && ocrJson.data) {
+        toast.success(`✅ 사업자 정보가 등록됐습니다! 상호: ${ocrJson.data.business_name ?? ""}`)
+      } else {
+        toast.warning("사업자 정보를 확인해주세요.")
+      }
+      await fetchBusinessInfo(approvedUserId)
+    } catch (err) {
+      console.error("사업자등록증 업로드 오류:", err)
+      toast.error("업로드에 실패했습니다.")
+    } finally {
+      setUploadingBusiness(false)
+      setAnalyzingBusiness(false)
+      e.target.value = ""
+    }
+  }
+
+  // ─── 과세유형 수동 변경 ──────────────────────────────────────────────────
+
+  const handleTaxTypeChange = async (taxType: string) => {
+    if (!approvedUserId || !businessInfo) return
+    setSavingTaxType(true)
+    try {
+      const { error } = await supabase
+        .from("business_info")
+        .update({ tax_type: taxType })
+        .eq("user_id", approvedUserId)
+      if (error) throw error
+      // 로컬 상태만 업데이트해 리패치 없이 즉시 반영
+      setBusinessInfo((prev) => prev ? { ...prev, tax_type: taxType } : prev)
+      toast.success("과세유형이 변경됐습니다.")
+    } catch (err) {
+      console.error("과세유형 변경 오류:", err)
+      toast.error("변경에 실패했습니다.")
+    } finally {
+      setSavingTaxType(false)
+    }
+  }
 
   // ─── 영수증 OCR (지출) ──────────────────────────────────────────────────
 
@@ -453,6 +549,99 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             {loading ? "..." : `${netProfit.toLocaleString()}원`}
           </p>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          사업자 섹션 (수입 섹션 위)
+      ══════════════════════════════════════════════ */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
+          <span>🏢</span> 사업자 정보
+        </h2>
+
+        {analyzingBusiness ? (
+          /* OCR 분석 중 */
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex items-center gap-3">
+            <span className="text-xl">🔍</span>
+            <p className="text-sm text-white/60">사업자등록증 분석 중...</p>
+          </div>
+        ) : businessInfo?.business_name ? (
+          /* 등록 완료 상태 */
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">✅ {businessInfo.business_name}</p>
+                {businessInfo.business_number && (
+                  <p className="text-xs text-white/50">{businessInfo.business_number}</p>
+                )}
+                {businessInfo.owner_name && (
+                  <p className="text-xs text-white/40">대표자: {businessInfo.owner_name}</p>
+                )}
+              </div>
+              {/* 수정 버튼 = 재업로드 */}
+              <button
+                onClick={() => businessFileRef.current?.click()}
+                disabled={uploadingBusiness || !approvedUserId}
+                className="shrink-0 text-xs text-white/40 hover:text-white/70 underline disabled:opacity-50 transition-colors"
+              >
+                {uploadingBusiness ? "업로드 중..." : "수정하기"}
+              </button>
+            </div>
+
+            {/* 과세유형 수동 변경 토글 */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-white/40">과세유형</p>
+              <div className="flex gap-2">
+                {(["일반과세자", "간이과세자"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => void handleTaxTypeChange(t)}
+                    disabled={savingTaxType}
+                    className={`flex-1 rounded-xl border py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+                      businessInfo.tax_type === t
+                        ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+                        : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                    }`}
+                  >
+                    {t}{businessInfo.tax_type === t ? " 🏷️" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* 미등록 상태 */
+          <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400 shrink-0 mt-0.5">⚠️</span>
+              <div>
+                <p className="text-sm font-medium text-amber-300">사업자등록증을 먼저 등록해주세요</p>
+                <p className="text-xs text-white/40 mt-0.5">정확한 세금 계산을 위해 필요합니다</p>
+              </div>
+            </div>
+            <button
+              onClick={() => businessFileRef.current?.click()}
+              disabled={uploadingBusiness || !currentUser || !approvedUserId}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-amber-300 transition-all duration-200"
+            >
+              {uploadingBusiness
+                ? <><span>⏳</span>업로드 중...</>
+                : <><span>📸</span>사업자등록증 업로드</>
+              }
+            </button>
+          </div>
+        )}
+
+        {/* 사업자등록증 파일 input (숨김) — disabled로 중복 업로드 차단 */}
+        <input
+          ref={businessFileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          disabled={uploadingBusiness || analyzingBusiness || !currentUser || !approvedUserId}
+          onChange={handleBusinessFileChange}
+        />
       </div>
 
       {/* ══════════════════════════════════════════════

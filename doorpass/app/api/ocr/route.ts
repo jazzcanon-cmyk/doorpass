@@ -27,6 +27,16 @@ interface IncomeOcrResult {
   total_amount: number
 }
 
+interface BusinessOcrResult {
+  business_number: string
+  business_name: string
+  owner_name: string
+  open_date: string
+  business_type: string
+  business_item: string
+  tax_type: string
+}
+
 // 이미지 URL → base64 변환
 async function fetchImageBase64(url: string): Promise<{ base64: string; mediaType: string }> {
   const res = await fetch(url)
@@ -44,11 +54,15 @@ export async function POST(req: NextRequest) {
       imageUrl: string
       expenseId?: string
       incomeId?: string
-      type?: "expense" | "income"
+      businessId?: string
+      type?: "expense" | "income" | "business"
     }
 
     const { imageUrl, type = "expense" } = body
-    const recordId = type === "income" ? body.incomeId : body.expenseId
+    const recordId =
+      type === "income"   ? body.incomeId   :
+      type === "business" ? body.businessId :
+      body.expenseId
 
     if (!imageUrl || !recordId) {
       return NextResponse.json({ error: "imageUrl과 id 필수" }, { status: 400 })
@@ -62,9 +76,9 @@ export async function POST(req: NextRequest) {
 
     // 2) 타입별 프롬프트 설정
     const systemPrompt =
-      type === "income"
-        ? "한국 택배 정산명세서 분석 전문가입니다. JSON만 반환하세요."
-        : "당신은 한국 영수증 분석 전문가입니다. 영수증 이미지에서 정보를 추출해 JSON만 반환하세요. 다른 말은 하지 마세요."
+      type === "income"   ? "한국 택배 정산명세서 분석 전문가입니다. JSON만 반환하세요."
+    : type === "business" ? "한국 사업자등록증 분석 전문가입니다. JSON만 반환하세요."
+    : "당신은 한국 영수증 분석 전문가입니다. 영수증 이미지에서 정보를 추출해 JSON만 반환하세요. 다른 말은 하지 마세요."
 
     const userPrompt =
       type === "income"
@@ -77,7 +91,18 @@ export async function POST(req: NextRequest) {
   "vat_amount": 부가세액 숫자만 (없으면 0),
   "total_amount": 합계금액 숫자만
 }`
-        : `이 영수증에서 다음을 추출해 JSON으로만 답해:
+      : type === "business"
+        ? `이 사업자등록증에서 추출해 JSON으로만 답해:
+{
+  "business_number": "사업자등록번호 (000-00-00000 형식)",
+  "business_name": "상호명",
+  "owner_name": "대표자명",
+  "open_date": "개업일 (YYYY-MM-DD)",
+  "business_type": "업태",
+  "business_item": "종목",
+  "tax_type": "과세유형 (문서에 간이과세자 명시되면 간이과세자, 아니면 일반과세자)"
+}`
+      : `이 영수증에서 다음을 추출해 JSON으로만 답해:
 {
   "receipt_date": "날짜 (YYYY-MM-DD, 없으면 ${today})",
   "amount": 합계금액 숫자만 (원 단위),
@@ -121,7 +146,24 @@ export async function POST(req: NextRequest) {
     }
 
     // 5) 타입별 테이블 업데이트
-    if (type === "income") {
+    if (type === "business") {
+      const parsed = JSON.parse(jsonMatch[0]) as BusinessOcrResult
+      const { error } = await supabaseAdmin
+        .from("business_info")
+        .update({
+          business_number: parsed.business_number ?? null,
+          business_name:   parsed.business_name   ?? null,
+          owner_name:      parsed.owner_name       ?? null,
+          open_date:       parsed.open_date        ?? null,
+          business_type:   parsed.business_type    ?? null,
+          business_item:   parsed.business_item    ?? null,
+          tax_type:        parsed.tax_type         ?? "일반과세자",
+          is_verified:     true,
+        })
+        .eq("id", recordId)
+      if (error) throw error
+      return NextResponse.json({ success: true, data: parsed })
+    } else if (type === "income") {
       const parsed = JSON.parse(jsonMatch[0]) as IncomeOcrResult
       const { error } = await supabaseAdmin
         .from("income")
