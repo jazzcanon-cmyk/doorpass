@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
+import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RatingDisplay } from "@/components/RatingDisplay"
 import type { CurrentUser, TabType } from "@/types/building"
@@ -20,6 +20,7 @@ const TABS: { key: TabType; label: string; icon: React.ReactNode }[] = [
   { key: "delivery", label: "대체배송", icon: <Truck className="h-4 w-4" /> },
   { key: "board", label: "게시판", icon: <MessageSquare className="h-4 w-4" /> },
   { key: "nearby", label: "내 주변", icon: <Navigation className="h-4 w-4" /> },
+  { key: "tax", label: "세무관리", icon: <Receipt className="h-4 w-4" /> },
 ]
 
 export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefresh, onLogout }: AppHeaderProps) {
@@ -62,7 +63,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {activeTab !== "board" && activeTab !== "delivery" && (
+            {activeTab !== "board" && activeTab !== "delivery" && activeTab !== "tax" && (
               <Button
                 variant="ghost"
                 size="icon"

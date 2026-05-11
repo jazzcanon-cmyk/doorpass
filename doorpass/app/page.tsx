@@ -10,6 +10,7 @@ import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
 import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
+import { TaxTab } from "@/components/TaxTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
@@ -48,7 +49,7 @@ export default function Home() {
       const saved = loadAppState()
       if (saved.lastVisited && Date.now() - saved.lastVisited < STATE_TTL) {
         const tab = saved.activeTab as TabType
-        if (tab === "nearby" || tab === "search" || tab === "board" || tab === "delivery") {
+        if (tab === "nearby" || tab === "search" || tab === "board" || tab === "delivery" || tab === "tax") {
           return tab
         }
       }
@@ -349,6 +350,10 @@ export default function Home() {
             branchId={currentUser?.branchId ?? null}
           />
         </section>
+      )}
+
+      {activeTab === "tax" && (
+        <TaxTab currentUser={currentUser} />
       )}
 
       <footer className="relative border-t border-white/[0.08] py-6">

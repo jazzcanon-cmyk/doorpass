@@ -22,4 +22,4 @@ export interface CurrentUser {
   total_points?: number
 }
 
-export type TabType = "nearby" | "search" | "board" | "delivery"
+export type TabType = "nearby" | "search" | "board" | "delivery" | "tax"
