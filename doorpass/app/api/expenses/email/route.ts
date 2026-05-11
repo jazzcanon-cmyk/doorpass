@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { generateExpensePdf } from "../_pdf-generator"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(req: NextRequest) {
+  // 빌드 시 환경변수 미확정 문제 방지 — 함수 안에서 초기화
+  const resend = new Resend(process.env.RESEND_API_KEY)
   try {
     const body = (await req.json()) as {
       user_id:         string

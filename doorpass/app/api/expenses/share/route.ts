@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { generateExpensePdf } from "../_pdf-generator"
 
-// 서비스 롤 키로 Storage 업로드 (RLS 우회)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(req: NextRequest) {
+  // 빌드 시 환경변수 미확정 문제 방지 — 함수 안에서 초기화
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   try {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get("user_id")
