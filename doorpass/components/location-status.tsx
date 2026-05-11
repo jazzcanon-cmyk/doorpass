@@ -1,7 +1,6 @@
 "use client"
 
 import { MapPin, Radio } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 interface LocationStatusProps {
   loading: boolean

@@ -1,12 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import LeafletPreloader from '@/components/LeafletPreloader'
 import { Toaster } from 'sonner'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
   themeColor: '#2E3192',

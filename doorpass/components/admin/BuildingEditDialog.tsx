@@ -39,7 +39,7 @@ export function BuildingEditDialog({
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
   const [password, setPassword] = useState("")
-  const [memo, setMemo] = useState("")
+  const [, setMemo] = useState("")
   const [createdAt, setCreatedAt] = useState("")
   const [accessType, setAccessType] = useState<"free" | "password">("password")
   const [elevatorStatus, setElevatorStatus] = useState<"" | "yes" | "no" | "other">("")

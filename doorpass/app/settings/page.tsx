@@ -107,7 +107,6 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
       })
-      const data = await res.json()
       if (!res.ok) {
         toast.error("요청 실패")
         return

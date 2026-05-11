@@ -57,7 +57,6 @@ export default function AdminRoleRequestsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       })
-      const data = await res.json()
       if (!res.ok) {
         toast.error("처리 실패")
         return

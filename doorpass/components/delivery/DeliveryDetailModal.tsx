@@ -118,7 +118,6 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
   const handleDelete = async () => {
     if (!confirm("이 대체배송 요청을 삭제하시겠습니까?")) return
     const res = await fetch(`/api/delivery/${requestId}`, { method: "DELETE" })
-    const data = await res.json()
     if (!res.ok) {
       toast.error("삭제 실패")
       return

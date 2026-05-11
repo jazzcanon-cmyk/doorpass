@@ -45,8 +45,6 @@ function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   )
 }
 
-type SupabaseServer = ReturnType<typeof makeSupabaseServer>
-
 /**
  * API 라우트에서 세션 + 차단 여부를 검증하는 헬퍼.
  * - 미인증: 401
