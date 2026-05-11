@@ -78,7 +78,7 @@ export default function MyPointsPage() {
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null)
   const [referrerName, setReferrerName] = useState<string>('친구')
   const [exchangeOpen, setExchangeOpen] = useState(false)
-  const [exchangeMethod, setExchangeMethod] = useState<'visit' | 'mobile'>('visit')
+  const exchangeMethod = 'mobile' as const
   const [myExchanges, setMyExchanges] = useState<ExchangeRow[]>([])
   const [attendance, setAttendance] = useState<AttendanceStats | null>(null)
 
@@ -704,37 +704,14 @@ export default function MyPointsPage() {
               GS상품권 1만원권 (10,000P 차감)
             </div>
 
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              수령 방법
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-              {([
-                ['visit', '🏢 사무실 방문 수령'],
-                ['mobile', '📱 모바일 상품권 (카카오)'],
-              ] as const).map(([val, label]) => (
-                <label
-                  key={val}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid ' + (exchangeMethod === val ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.1)'),
-                    background: exchangeMethod === val ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                  }}
-                >
-                  <input
-                    type='radio'
-                    name='exchangeMethod'
-                    value={val}
-                    checked={exchangeMethod === val}
-                    onChange={() => setExchangeMethod(val)}
-                    style={{ accentColor: '#f59e0b' }}
-                  />
-                  {label}
-                </label>
-              ))}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '12px 14px', borderRadius: '10px', marginBottom: '20px',
+              border: '1px solid rgba(245,158,11,0.4)',
+              background: 'rgba(245,158,11,0.08)',
+              fontSize: '14px', color: 'rgba(255,255,255,0.85)',
+            }}>
+              📱 모바일 상품권 (카카오)으로 발송됩니다
             </div>
 
             <div style={{
