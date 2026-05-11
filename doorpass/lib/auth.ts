@@ -5,22 +5,13 @@ import { NextResponse } from "next/server"
 import { redirect } from "next/navigation"
 import { fetchApprovedUserForAuth } from "@/lib/approved-user-match"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { resolveUserEmail } from "@/lib/resolve-email"
 
 export type UserRole = "admin" | "sub_admin" | "editor" | "driver"
 
-/**
- * 카카오 등 OAuth 로그인 시 user.email이 null/"" 일 수 있음.
- * user_metadata.email → user_metadata.email_address → user.id 순으로 fallback.
- * API route와 서버 전용 코드에서 user.email! 대신 이 함수를 사용할 것.
- */
-export function resolveUserEmail(user: User): string {
-  return (
-    user.email?.trim() ||
-    (user.user_metadata?.email as string | undefined)?.trim() ||
-    (user.user_metadata?.email_address as string | undefined)?.trim() ||
-    user.id
-  )
-}
+// 서버(API route)와 클라이언트(useAuth)가 동일한 식별자를 쓰도록 공유 유틸로 분리.
+// 기존 import 경로 유지를 위해 re-export.
+export { resolveUserEmail }
 
 function makeSupabaseServer(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(

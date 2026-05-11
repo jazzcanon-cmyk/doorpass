@@ -9,6 +9,7 @@ import {
   clearUserCache,
   clearBuildingsCache,
 } from "@/lib/app-state"
+import { resolveUserEmail } from "@/lib/resolve-email"
 import type { CurrentUser } from "@/types/building"
 
 type MeResponse = {
@@ -66,15 +67,13 @@ export function useAuth() {
         return
       }
       const userId = user.user_metadata?.provider_id ?? user.user_metadata?.sub ?? user.id
-      const email =
-        user.email?.trim() ||
-        (user.user_metadata?.email as string | undefined)?.trim() ||
-        (user.user_metadata?.email_address as string | undefined)?.trim() ||
-        ""
+      const email = resolveUserEmail(user)
+      // resolveUserEmail은 폴백 최종값으로 user.id를 반환하므로 email이 UUID일 수 있음.
+      // 표시용 이름은 @ 없는 UUID라면 "익명"으로 폴백.
       const userName =
         user.user_metadata?.name ??
         user.user_metadata?.full_name ??
-        (email ? email.split("@")[0] : "익명")
+        (email.includes("@") ? email.split("@")[0] : "익명")
 
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
