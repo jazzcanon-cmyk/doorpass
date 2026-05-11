@@ -214,6 +214,21 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
 
+  // 개인정보 보호 안내 팝업 (최초 진입 시 1회만)
+  const [securityPopupOpen, setSecurityPopupOpen] = useState(false)
+
+  // ─── 보안 안내 팝업 초기화 (마운트 후 localStorage 확인) ─────────────────────
+  useEffect(() => {
+    if (!localStorage.getItem("taxpass_security_agreed")) {
+      setSecurityPopupOpen(true)
+    }
+  }, [])
+
+  const handleSecurityAgree = () => {
+    localStorage.setItem("taxpass_security_agreed", "1")
+    setSecurityPopupOpen(false)
+  }
+
   // ─── approved_users.id 조회 ──────────────────────────────────────────────
   // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
   // currentUser.userId는 카카오 ID(매우 큰 숫자)라 직접 사용하면 bigint 범위 초과 오류 발생.
@@ -855,6 +870,52 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   return (
     <section className="container mx-auto px-4 py-4 space-y-4">
 
+      {/* ══════════════════════════════════════════════
+          개인정보 보호 안내 팝업 (최초 진입 시 1회)
+      ══════════════════════════════════════════════ */}
+      {securityPopupOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl px-6 py-7 space-y-5 shadow-2xl">
+            {/* 헤더 */}
+            <div className="text-center space-y-1">
+              <p className="text-2xl">🔒</p>
+              <h2 className="text-base font-bold text-white">개인정보 보호 안내</h2>
+            </div>
+
+            {/* 보안 항목 */}
+            <ul className="space-y-2.5">
+              {[
+                "AES-256 암호화 저장",
+                "본인 외 열람 완전 차단",
+                "HTTPS 암호화 전송",
+                "만료되는 임시 URL 사용",
+                "언제든지 삭제 가능",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-sm text-white/80">
+                  <span className="text-green-400 text-base shrink-0">✅</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* 설명 */}
+            <p className="text-xs text-white/50 text-center leading-relaxed">
+              귀하의 사업자등록증, 영수증, 수입명세표는
+              <br />
+              철저하게 보호되며 본인만 열람할 수 있습니다.
+            </p>
+
+            {/* 확인 버튼 */}
+            <button
+              onClick={handleSecurityAgree}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
+            >
+              <span>🔒</span> 확인했습니다
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 상단 요약 카드 3개 ── */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
@@ -955,6 +1016,11 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                 : <><span>📸</span>사업자등록증 업로드</>
               }
             </button>
+            {/* 보안 안내 문구 */}
+            <p className="text-[11px] text-white/30 flex items-center gap-1 justify-center pt-0.5">
+              <span>🔐</span>
+              업로드된 사업자등록증은 암호화되어 본인만 열람 가능합니다
+            </p>
           </div>
         )}
 
@@ -976,6 +1042,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
           <span>💰</span> 이번 달 수입
+          <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full">
+            🔒 나만 볼 수 있음
+          </span>
         </h2>
 
         {/* 명세표 업로드 + 직접 입력 */}
@@ -1002,6 +1071,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
+        {/* 업로드 버튼 하단 보안 문구 */}
+        <p className="text-xs text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
         {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
         <input ref={incomeFileRef} type="file" accept="image/*" capture="environment" className="hidden"
           disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
@@ -1174,6 +1245,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </button>
         </div>
 
+        {/* 업로드 버튼 하단 보안 문구 */}
+        <p className="text-xs text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
+
         {/* 파일 입력 (숨김) — disabled로 중복 업로드 방지 */}
         <input ref={expenseFileRef} type="file" accept="image/*" capture="environment" className="hidden"
           disabled={uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
@@ -1185,7 +1259,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
         {/* 지출 목록 */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-white/60">최근 지출</h3>
+          <h3 className="text-sm font-medium text-white/60 flex items-center gap-1.5">
+            최근 지출
+            <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full">
+              🔒 나만 볼 수 있음
+            </span>
+          </h3>
           {loading ? (
             <div className="text-center py-8 text-white/30 text-sm">불러오는 중...</div>
           ) : expenses.length === 0 ? (
