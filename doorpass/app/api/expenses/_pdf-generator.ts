@@ -1,4 +1,6 @@
 // 공유 PDF 생성 유틸리티 — pdf/route.ts, email/route.ts에서 import
+import fs   from "fs"
+import path from "path"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { createClient } from "@supabase/supabase-js"
@@ -8,24 +10,21 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ─── 한국어 폰트 캐시 ────────────────────────────────────────────────────────
-// NanumGothic TTF를 GitHub Raw에서 1회 로드 후 인스턴스 메모리에 캐시.
-// Vercel 콜드 스타트 시 재로드되나, 웜 인스턴스에서는 즉시 재사용.
+// ─── 한국어 폰트 (로컬 파일) ──────────────────────────────────────────────────
+// public/fonts/NanumGothic.ttf 를 서버 파일시스템에서 직접 읽음.
+// 네트워크 fetch를 제거해 Vercel 서버에서의 실패를 방지.
+// 인스턴스당 1회 읽어 모듈 캐시에 보관.
 let _cachedFontB64: string | null = null
 
-async function loadKoreanFont(): Promise<string | null> {
+function loadKoreanFont(): string | null {
   if (_cachedFontB64) return _cachedFontB64
   try {
-    const res = await fetch(
-      "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-Regular.ttf",
-      { signal: AbortSignal.timeout(6000) }
-    )
-    if (!res.ok) return null
-    const buf = await res.arrayBuffer()
-    _cachedFontB64 = Buffer.from(buf).toString("base64")
+    const fontPath = path.join(process.cwd(), "public", "fonts", "NanumGothic.ttf")
+    const buf = fs.readFileSync(fontPath)
+    _cachedFontB64 = buf.toString("base64")
     return _cachedFontB64
   } catch {
-    // 네트워크 오류 시 기본 폰트(helvetica) 폴백 — 한글이 박스로 표시될 수 있음
+    // 파일이 없으면 helvetica 폴백 (한글이 박스로 표시될 수 있음)
     return null
   }
 }
@@ -36,13 +35,13 @@ export function getRange(year: string, period: string) {
     new Date(Number(year), m, 0).toISOString().split("T")[0]
 
   const fixed: Record<string, { start: string; end: string; label: string }> = {
-    all: { start: `${year}-01-01`, end: `${year}-12-31`,      label: "전체"  },
-    q1:  { start: `${year}-01-01`, end: lastDay(3),           label: "1분기" },
-    q2:  { start: `${year}-04-01`, end: lastDay(6),           label: "2분기" },
-    q3:  { start: `${year}-07-01`, end: lastDay(9),           label: "3분기" },
-    q4:  { start: `${year}-10-01`, end: `${year}-12-31`,      label: "4분기" },
-    h1:  { start: `${year}-01-01`, end: lastDay(6),           label: "상반기" },
-    h2:  { start: `${year}-07-01`, end: `${year}-12-31`,      label: "하반기" },
+    all: { start: `${year}-01-01`, end: `${year}-12-31`,     label: "전체"   },
+    q1:  { start: `${year}-01-01`, end: lastDay(3),          label: "1분기"  },
+    q2:  { start: `${year}-04-01`, end: lastDay(6),          label: "2분기"  },
+    q3:  { start: `${year}-07-01`, end: lastDay(9),          label: "3분기"  },
+    q4:  { start: `${year}-10-01`, end: `${year}-12-31`,     label: "4분기"  },
+    h1:  { start: `${year}-01-01`, end: lastDay(6),          label: "상반기" },
+    h2:  { start: `${year}-07-01`, end: `${year}-12-31`,     label: "하반기" },
   }
   if (fixed[period]) return fixed[period]
 
@@ -96,19 +95,19 @@ export async function generateExpensePdf(
     .reduce((s, r) => s + (r.amount ?? 0), 0)
 
   // ─── jsPDF 초기화 ────────────────────────────────────────────────────────
-  const doc  = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const doc   = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   const pageW = doc.internal.pageSize.getWidth()
   const L     = 15 // 좌측 여백 (mm)
 
-  // 한국어 폰트 적용 (실패 시 helvetica 폴백)
-  const fontB64 = await loadKoreanFont()
+  // 로컬 TTF에서 한국어 폰트 로드 (동기, 실패 시 helvetica 폴백)
+  const fontB64 = loadKoreanFont()
   let font = "helvetica"
   if (fontB64) {
     try {
       doc.addFileToVFS("NanumGothic.ttf", fontB64)
       doc.addFont("NanumGothic.ttf", "NanumGothic", "normal")
       font = "NanumGothic"
-    } catch { /* 폰트 추가 실패 시 기본 폰트 사용 */ }
+    } catch { /* 폰트 등록 실패 시 기본 폰트 사용 */ }
   }
   doc.setFont(font)
 
@@ -164,9 +163,9 @@ export async function generateExpensePdf(
     styles:     { font, fontSize: 8, cellPadding: 2 },
     headStyles: {
       font,
-      fillColor:  [41, 65, 148] as [number, number, number],
-      textColor:  255,
-      halign:     "center",
+      fillColor: [41, 65, 148] as [number, number, number],
+      textColor: 255,
+      halign:    "center",
     },
     footStyles: {
       font,
