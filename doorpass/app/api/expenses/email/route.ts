@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 `
 
     const { error: sendError } = await resend.emails.send({
-      from:        "TaxPass <onboarding@resend.dev>",
+      from:        "onboarding@resend.dev",
       to:          [recipient_email],
       subject,
       html:        htmlBody,
