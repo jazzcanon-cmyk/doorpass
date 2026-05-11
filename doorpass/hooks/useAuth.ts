@@ -10,6 +10,7 @@ import {
   clearBuildingsCache,
 } from "@/lib/app-state"
 import { resolveUserEmail } from "@/lib/resolve-email"
+import { identifyUser } from "@/lib/clarity"
 import type { CurrentUser } from "@/types/building"
 
 type MeResponse = {
@@ -77,6 +78,7 @@ export function useAuth() {
 
       setCurrentUser({ userId, userName, email, canRevealBuildingPassword: false })
       setAuthStatus("ok")
+      identifyUser(email, userName)
 
       // 추천인 링크 토큰 처리: autoApproved 시 즉시 권한 갱신
       // sessionStorage 우선, 없으면 localStorage 폴백 (인앱→외부브라우저 전환 대비)
