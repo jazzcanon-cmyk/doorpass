@@ -15,7 +15,9 @@ interface ExpenseOcrResult {
   amount: number
   vendor_name: string
   category: string
-  is_deductible: boolean
+  is_deductible: boolean   // 부가세 매입세액 공제 가능 여부
+  is_expense: boolean      // 사업 관련 경비처리 가능 여부
+  deduction_reason: string // 판단 이유 한 문장
 }
 
 interface IncomeOcrResult {
@@ -108,13 +110,15 @@ export async function POST(req: NextRequest) {
   "amount": 합계금액 숫자만 (원 단위),
   "vendor_name": "업체명",
   "category": "유류비|수리비|식비|통신비|기타 중 하나",
-  "is_deductible": 사업용 경비면 true 아니면 false
+  "is_deductible": 부가세 매입세액 공제 가능하면 true (세금계산서/카드매출전표 발행 사업자의 사업용 지출만 true),
+  "is_expense": 사업 관련 경비처리 가능하면 true (사업과 관련된 지출이면 대부분 true),
+  "deduction_reason": "판단이유 한 문장 (예: 사업용 차량 유류비로 부가세공제 및 경비처리 가능)"
 }`
 
     // 3) Claude Haiku Vision 호출
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
+      max_tokens: 1024, // deduction_reason 문장 포함으로 여유 확보
       system: systemPrompt,
       messages: [
         {
@@ -183,11 +187,13 @@ export async function POST(req: NextRequest) {
       const { error } = await supabaseAdmin
         .from("expenses")
         .update({
-          receipt_date: parsed.receipt_date ?? today,
-          amount: typeof parsed.amount === "number" ? parsed.amount : 0,
-          vendor_name: parsed.vendor_name ?? null,
-          category: parsed.category ?? "기타",
-          is_deductible: parsed.is_deductible === true,
+          receipt_date:     parsed.receipt_date ?? today,
+          amount:           typeof parsed.amount === "number" ? parsed.amount : 0,
+          vendor_name:      parsed.vendor_name ?? null,
+          category:         parsed.category ?? "기타",
+          is_deductible:    parsed.is_deductible === true,
+          is_expense:       parsed.is_expense !== false, // 명시적 false만 false로 처리
+          deduction_reason: parsed.deduction_reason ?? null,
         })
         .eq("id", recordId)
       if (error) throw error

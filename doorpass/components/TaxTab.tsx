@@ -16,6 +16,8 @@ interface Expense {
   vendor_name: string | null
   category: string
   is_deductible: boolean
+  is_expense: boolean | null       // 경비처리 가능 여부 (DEFAULT true)
+  deduction_reason: string | null  // OCR 판단 이유
   receipt_image_url: string | null
 }
 
@@ -206,7 +208,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       // 최근 지출 10개
       const { data: expRecentData } = await supabase
         .from("expenses")
-        .select("id, receipt_date, amount, vendor_name, category, is_deductible, receipt_image_url")
+        .select("id, receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason, receipt_image_url")
         .eq("user_id", uid)
         .order("receipt_date", { ascending: false })
         .limit(10)
@@ -828,8 +830,35 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                       </span>
                     </div>
                     <p className="text-[11px] text-white/30 mt-0.5">{expense.receipt_date}</p>
+
+                    {/* 부가세공제 / 경비처리 뱃지 (분석 완료된 항목만) */}
+                    {expense.id !== analyzingExpenseId && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                          expense.is_deductible
+                            ? "bg-green-500/15 border-green-500/30 text-green-400"
+                            : "bg-white/5 border-white/10 text-white/30"
+                        }`}>
+                          부가세공제 {expense.is_deductible ? "✅" : "❌"}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                          expense.is_expense !== false
+                            ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
+                            : "bg-white/5 border-white/10 text-white/30"
+                        }`}>
+                          경비처리 {expense.is_expense !== false ? "✅" : "❌"}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* OCR 판단 이유 */}
+                    {expense.deduction_reason && expense.id !== analyzingExpenseId && (
+                      <p className="text-[10px] text-white/25 mt-1 leading-tight">
+                        {expense.deduction_reason}
+                      </p>
+                    )}
                   </div>
-                  <span className="text-sm font-bold text-white shrink-0">
+                  <span className="text-sm font-bold text-white shrink-0 self-start mt-0.5">
                     {(expense.amount ?? 0).toLocaleString()}원
                   </span>
                 </li>
