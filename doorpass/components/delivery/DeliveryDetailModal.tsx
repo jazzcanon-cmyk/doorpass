@@ -4,6 +4,7 @@ import { X, Loader2, Phone, Trash2, Star } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { RatingForm } from "@/components/RatingForm"
+import { RatingDisplay } from "@/components/RatingDisplay"
 import {
   type DeliveryRequest,
   type DeliveryApplication,
@@ -211,8 +212,11 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
                         className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-2"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-sm text-white font-medium">
-                            {a.applicant_name || a.applicant_email}
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-white font-medium">
+                              {a.applicant_name || a.applicant_email}
+                            </div>
+                            <RatingDisplay email={a.applicant_email || ""} />
                           </div>
                           <span
                             className={`text-[10px] px-1.5 py-0.5 rounded ${
