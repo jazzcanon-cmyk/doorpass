@@ -1,5 +1,6 @@
 "use client"
-import { Trash2, ExternalLink, ChevronDown, ChevronUp, Pencil } from "lucide-react"
+import { Trash2, ExternalLink, ChevronDown, ChevronUp, Pencil, Copy, Check } from "lucide-react"
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ago } from "@/lib/date-utils"
 import { RESOURCE_TYPE_CONFIG, type ResourceItem, type ResourceType } from "@/types/resource"
@@ -25,6 +26,24 @@ export function ResourceCard({
 }: ResourceCardProps) {
   const cfg = RESOURCE_TYPE_CONFIG[res.resource_type as ResourceType] ?? RESOURCE_TYPE_CONFIG.link
   const isText = res.resource_type === "text"
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    let text = ""
+    if (isText) {
+      text = res.description ? `${res.title}\n\n${res.description}` : res.title
+    } else {
+      text = res.url ?? res.title
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (err) {
+      console.error("[ResourceCard] 복사 실패:", err)
+    }
+  }
 
   return (
     <Card
@@ -72,6 +91,13 @@ export function ResourceCard({
             )}
             <div className="text-xs text-muted-foreground mt-1">{res.author} · {ago(res.created_at)}</div>
           </div>
+          <button
+            onClick={(e) => void handleCopy(e)}
+            className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-primary"
+            title="복사"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </button>
           {(canEdit && onEdit) && (
             <button
               onClick={(e) => {
