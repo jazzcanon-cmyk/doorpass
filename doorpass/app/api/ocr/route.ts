@@ -39,7 +39,7 @@ interface BusinessOcrResult {
   tax_type: string
 }
 
-// 이미지 URL → base64 변환
+// 이미지 URL → base64 변환 (공개 URL 또는 외부 URL용)
 async function fetchImageBase64(url: string): Promise<{ base64: string; mediaType: string }> {
   const res = await fetch(url)
   if (!res.ok) throw new Error("이미지 다운로드 실패")
@@ -50,28 +50,60 @@ async function fetchImageBase64(url: string): Promise<{ base64: string; mediaTyp
   }
 }
 
+// 비공개 Storage 버킷에서 admin 권한으로 이미지 다운로드
+async function downloadFromStorage(storagePath: string): Promise<{ base64: string; mediaType: string }> {
+  const { data, error } = await supabaseAdmin.storage.from("receipts").download(storagePath)
+  if (error || !data) throw new Error("Storage 이미지 다운로드 실패")
+  const buf = await data.arrayBuffer()
+  return { base64: Buffer.from(buf).toString("base64"), mediaType: data.type || "image/jpeg" }
+}
+
+// 공개 URL에서 receipts 버킷 이하 경로 추출 (구형 데이터 호환용)
+function extractReceiptsPath(url: string): string | null {
+  const marker = "/object/public/receipts/"
+  const idx = url.indexOf(marker)
+  return idx !== -1 ? url.slice(idx + marker.length) : null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      imageUrl: string
+      imageUrl?: string    // 공개 URL 또는 외부 URL (income/business)
+      storagePath?: string // 비공개 버킷 경로 (expense)
       expenseId?: string
       incomeId?: string
       businessId?: string
       type?: "expense" | "income" | "business"
     }
 
-    const { imageUrl, type = "expense" } = body
+    const { imageUrl, storagePath, type = "expense" } = body
     const recordId =
       type === "income"   ? body.incomeId   :
       type === "business" ? body.businessId :
       body.expenseId
 
-    if (!imageUrl || !recordId) {
-      return NextResponse.json({ error: "imageUrl과 id 필수" }, { status: 400 })
+    if ((!imageUrl && !storagePath) || !recordId) {
+      return NextResponse.json({ error: "imageUrl 또는 storagePath와 id 필수" }, { status: 400 })
     }
 
-    // 1) 이미지 다운로드 → base64
-    const { base64, mediaType } = await fetchImageBase64(imageUrl)
+    // 1) 이미지 다운로드 → base64 (비공개 버킷은 admin download, 공개 URL은 fetch)
+    let base64: string
+    let mediaType: string
+    if (storagePath) {
+      // expense: Storage 경로 직접 전달 (비공개 버킷)
+      const r = await downloadFromStorage(storagePath)
+      base64 = r.base64; mediaType = r.mediaType
+    } else {
+      // income/business: URL 전달 — receipts 버킷 URL이면 admin download, 아니면 fetch
+      const path = extractReceiptsPath(imageUrl!)
+      if (path) {
+        const r = await downloadFromStorage(path)
+        base64 = r.base64; mediaType = r.mediaType
+      } else {
+        const r = await fetchImageBase64(imageUrl!)
+        base64 = r.base64; mediaType = r.mediaType
+      }
+    }
 
     const today = new Date().toISOString().split("T")[0]
     const thisMonth = today.slice(0, 7) + "-01" // YYYY-MM-01

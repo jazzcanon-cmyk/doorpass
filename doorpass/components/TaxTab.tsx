@@ -145,6 +145,15 @@ async function computeImageHash(file: File): Promise<string> {
     .join("")
 }
 
+// ─── Storage 경로 정규화 ──────────────────────────────────────────────────────
+// 공개 URL이면 receipts 버킷 이하 경로만 추출, 이미 경로면 그대로 반환
+function toStoragePath(urlOrPath: string): string {
+  if (!urlOrPath.startsWith("http")) return urlOrPath
+  const marker = "/object/public/receipts/"
+  const idx = urlOrPath.indexOf(marker)
+  return idx === -1 ? urlOrPath : urlOrPath.slice(idx + marker.length)
+}
+
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export function TaxTab({ currentUser }: TaxTabProps) {
@@ -201,6 +210,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [statementModalOpen, setStatementModalOpen]   = useState(false)
   const [statementResult,    setStatementResult]      = useState<StatementResult | null>(null)
   const [insertingStatement, setInsertingStatement]   = useState(false)
+
+  // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
 
   // ─── approved_users.id 조회 ──────────────────────────────────────────────
   // expenses/income 테이블의 user_id는 approved_users.id(소형 정수)를 외래키로 사용.
@@ -260,6 +272,20 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         .order("receipt_date", { ascending: false })
         .limit(10)
       setExpenses(expRecentData ?? [])
+
+      // 비공개 버킷 — 영수증 이미지용 서명 URL 일괄 생성 (1시간 유효)
+      const imgItems = (expRecentData ?? []).filter((e) => e.receipt_image_url)
+      if (imgItems.length > 0) {
+        const paths = imgItems.map((e) => toStoragePath(e.receipt_image_url!))
+        const { data: signedData } = await supabase.storage
+          .from("receipts")
+          .createSignedUrls(paths, 3600)
+        if (signedData) {
+          const map: Record<string, string> = {}
+          signedData.forEach((s, i) => { if (s.signedUrl) map[imgItems[i].id] = s.signedUrl })
+          setSignedUrls(map)
+        }
+      }
 
       // 이번 달 수입 합계
       const { data: incMonthData } = await supabase
@@ -396,14 +422,14 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const filename = `${currentUser.userId}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage.from("receipts").upload(filename, file)
       if (uploadError) throw uploadError
-      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(filename)
+      // 비공개 버킷 — 공개 URL 대신 Storage 경로만 DB에 저장
 
       // ③ INSERT — image_hash, import_source 포함 (approved_users.id 사용)
       const { data: inserted, error: insertError } = await supabase
         .from("expenses")
         .insert({
           user_id:           approvedUserId,
-          receipt_image_url: urlData.publicUrl,
+          receipt_image_url: filename,    // Storage 경로 저장 (공개 URL 아님)
           amount:            0,
           category:          "기타",
           is_deductible:     false,
@@ -424,7 +450,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const ocrRes = await fetch("/api/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: urlData.publicUrl, expenseId, type: "expense" }),
+        body: JSON.stringify({ storagePath: filename, expenseId, type: "expense" }),
       })
       const ocrJson = (await ocrRes.json()) as { success?: boolean; data?: { amount: number; vendor_name: string } }
       if (ocrJson.success && ocrJson.data) {
@@ -566,10 +592,11 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
   // ─── Storage 경로 추출 ────────────────────────────────────────────────────
   // Supabase 공개 URL에서 버킷 이하 경로만 추출 (storage.remove에 사용)
-  function getStoragePath(publicUrl: string): string | null {
+  function getStoragePath(urlOrPath: string): string | null {
+    if (!urlOrPath.startsWith("http")) return urlOrPath  // 이미 Storage 경로
     const marker = "/object/public/receipts/"
-    const idx = publicUrl.indexOf(marker)
-    return idx === -1 ? null : publicUrl.slice(idx + marker.length)
+    const idx = urlOrPath.indexOf(marker)
+    return idx === -1 ? null : urlOrPath.slice(idx + marker.length)
   }
 
   // ─── 지출 삭제 ────────────────────────────────────────────────────────────
@@ -1217,6 +1244,18 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                       <p className="text-[10px] text-white/25 mt-1 leading-tight">
                         {expense.deduction_reason}
                       </p>
+                    )}
+
+                    {/* 영수증 이미지 링크 (서명 URL이 있을 때만) */}
+                    {signedUrls[expense.id] && expense.id !== analyzingExpenseId && (
+                      <a
+                        href={signedUrls[expense.id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-blue-400/50 hover:text-blue-400 mt-1 inline-block transition-colors"
+                      >
+                        🖼️ 영수증 보기
+                      </a>
                     )}
                   </div>
                   {/* 금액 + 삭제 버튼 */}
