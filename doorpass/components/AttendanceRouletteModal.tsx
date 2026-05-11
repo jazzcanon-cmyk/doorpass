@@ -209,9 +209,18 @@ export function AttendanceRouletteModal({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent
         showCloseButton={false}
-        className="bg-slate-900 border-white/10 text-white max-w-sm mx-auto p-0 overflow-hidden rounded-2xl"
+        className="bg-slate-900 border-white/10 text-white max-w-sm mx-auto p-0 rounded-2xl flex flex-col max-h-[90vh]"
       >
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 pt-6 pb-4 text-center">
+        {/* 닫기 버튼 — 항상 우상단 고정 */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-20 text-white/60 hover:text-white bg-black/20 hover:bg-black/40 rounded-full p-1 transition-colors"
+          aria-label="닫기"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 pt-6 pb-4 text-center flex-shrink-0 rounded-t-2xl">
           <div className="text-4xl mb-2">🎯</div>
           <DialogTitle className="text-xl font-bold text-white">
             오늘의 출석 체크
@@ -221,7 +230,7 @@ export function AttendanceRouletteModal({
           </DialogDescription>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           {/* 연속 출석 진행바 (7일 주기) */}
           <div>
             <div className="flex justify-between text-xs text-white/50 mb-1.5">
@@ -372,7 +381,7 @@ export function AttendanceRouletteModal({
           </p>
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 flex-shrink-0">
           {phase === "idle" && (
             <Button
               onClick={() => void handleSpin()}
