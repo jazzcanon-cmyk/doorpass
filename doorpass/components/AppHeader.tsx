@@ -3,7 +3,6 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AppLogo } from "@/components/AppLogo"
 import type { CurrentUser, TabType } from "@/types/building"
 
 interface AppHeaderProps {
@@ -38,11 +37,16 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <AppLogo />
+            <button onClick={() => onTabChange("search")} className="flex-shrink-0 focus:outline-none">
+              <img src="/icon-light-32x32.png" alt="DoorPass" width={32} height={32} className="rounded-lg" />
+            </button>
             <div>
-              <h1 className="text-sm font-bold text-white leading-tight">DoorPass</h1>
               <p className="text-[11px] text-white/40 flex items-center gap-1">
-                {currentUser ? currentUser.userName : "공동현관 비밀번호"}
+                {currentUser ? (
+                  <Link href="/settings" className="hover:text-white/70 transition-colors">
+                    {currentUser.userName}
+                  </Link>
+                ) : "공동현관 비밀번호"}
                 {currentUser && (currentUser.total_points ?? 0) > 0 && (
                   <Link href="/my-points" className="text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full px-2 py-0.5 hover:opacity-80 transition-opacity" style={{ transform: animate ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', display: 'inline-block' }}>
                     🏆 {(currentUser.total_points ?? 0).toLocaleString()}P
