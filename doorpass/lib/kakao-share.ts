@@ -105,6 +105,7 @@ export interface ShareExpensePdfOptions {
   periodLabel: string
   totalAmount: number
   deductibleAmount: number
+  expiresAt?: string  // "2026년 5월 19일" 형태의 만료일 문자열
 }
 
 /**
@@ -131,7 +132,7 @@ export function shareExpensePdf(opts: ShareExpensePdfOptions): boolean {
       objectType: "feed",
       content: {
         title:       `${opts.year}년 ${opts.periodLabel} 지출내역서`,
-        description: `총 지출: ${opts.totalAmount.toLocaleString("ko-KR")}원 | 부가세공제: ${opts.deductibleAmount.toLocaleString("ko-KR")}원`,
+        description: `총 지출: ${opts.totalAmount.toLocaleString("ko-KR")}원 | 공제가능: ${opts.deductibleAmount.toLocaleString("ko-KR")}원${opts.expiresAt ? `\n⏰ ${opts.expiresAt}까지 유효` : ""}`,
         imageUrl,
         link,
       },

@@ -808,6 +808,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         periodLabel: string
         totalAmount: number
         deductibleAmount: number
+        expiresAt?: string
       }
 
       // 카카오톡 공유창 열기 (모바일: 앱, PC: 팝업)
@@ -817,6 +818,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         periodLabel:      json.periodLabel,
         totalAmount:      json.totalAmount,
         deductibleAmount: json.deductibleAmount,
+        expiresAt:        json.expiresAt,
       })
       if (!shared) toast.warning("카카오 앱 설정을 확인해주세요.")
     } catch (err) {
