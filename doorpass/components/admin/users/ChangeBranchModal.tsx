@@ -56,13 +56,11 @@ export function ChangeBranchModal({ user, onClose, onSuccess }: ChangeBranchModa
   const save = async () => {
     if (!selected) return
     setSaving(true)
-    console.log("[ChangeBranch] 저장 시도 — userId:", user.id, "branch_id:", selected)
     try {
       await adminApi(`/api/admin/users/${user.id}/branch`, {
         method: "PATCH",
         body: JSON.stringify({ branch_id: selected }),
       })
-      console.log("[ChangeBranch] 저장 성공")
       onSuccess()
       onClose()
     } catch (err) {

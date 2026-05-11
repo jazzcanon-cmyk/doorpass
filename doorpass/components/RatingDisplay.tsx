@@ -16,10 +16,7 @@ export function RatingDisplay({ email }: Props) {
   const [data, setData] = useState<RatingData | null>(null)
   const [loading, setLoading] = useState(false)
 
-  console.log("[RatingDisplay] render — email:", email, typeof email)
-
   useEffect(() => {
-    console.log("[RatingDisplay] mounted — email:", email, typeof email)
     setMounted(true)
   }, [])
 
@@ -33,7 +30,6 @@ export function RatingDisplay({ email }: Props) {
     fetch(`/api/delivery/ratings/average?email=${encodeURIComponent(email)}`)
       .then((r) => r.json())
       .then((d: RatingData) => {
-        console.log("[RatingDisplay] fetch 결과:", { email, data: d })
         setData(d)
       })
       .catch((err: unknown) => {

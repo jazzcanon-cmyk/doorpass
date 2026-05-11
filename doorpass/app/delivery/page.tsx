@@ -15,10 +15,6 @@ export default function DeliveryPage() {
     trackPageView("/delivery")
   }, [])
 
-  useEffect(() => {
-    console.log("[delivery page] currentUser:", currentUser)
-  }, [currentUser])
-
   if (authStatus === "loading") return <LoadingScreen />
 
   return (
