@@ -17,98 +17,103 @@ const ROLE_LABEL: Record<string, string> = {
 type Params = Promise<{ id: string }>
 
 export async function POST(request: Request, { params }: { params: Params }) {
-  const { unauthorized } = await requireAdminApi()
-  if (unauthorized) return unauthorized
+  try {
+    const { unauthorized } = await requireAdminApi()
+    if (unauthorized) return unauthorized
 
-  const { id } = await params
-  if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 })
+    const { id } = await params
+    if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 })
 
-  const body = (await request.json().catch(() => ({}))) as {
-    role?: string
-    managed_region?: string | null
-    email?: string | null
-    name?: string | null
-  }
-  const role = body.role
-  const managed_region = body.managed_region ?? null
-
-  if (!role || !ALLOWED_ROLES.has(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 })
-  }
-
-  const region =
-    role === "sub_admin" ? (managed_region ? String(managed_region).trim() : null) : null
-
-  // 세그먼트가 숫자면 approved_users.id, 아니면 URL-인코딩된 email로 처리
-  const decoded = decodeURIComponent(id)
-  const numericId = /^\d+$/.test(decoded) ? Number(decoded) : null
-
-  if (numericId !== null) {
-    const { data, error } = await supabase
-      .from("approved_users")
-      .update({ role, managed_region: region })
-      .eq("id", numericId)
-      .select("email, name")
-      .maybeSingle()
-    if (error) {
-      console.error("[assign-subadmin] update error:", (error as Error).message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    const body = (await request.json().catch(() => ({}))) as {
+      role?: string
+      managed_region?: string | null
+      email?: string | null
+      name?: string | null
     }
-    if (!data) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    const role = body.role
+    const managed_region = body.managed_region ?? null
+
+    if (!role || !ALLOWED_ROLES.has(role)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+    }
+
+    const region =
+      role === "sub_admin" ? (managed_region ? String(managed_region).trim() : null) : null
+
+    // 세그먼트가 숫자면 approved_users.id, 아니면 URL-인코딩된 email로 처리
+    const decoded = decodeURIComponent(id)
+    const numericId = /^\d+$/.test(decoded) ? Number(decoded) : null
+
+    if (numericId !== null) {
+      const { data, error } = await supabase
+        .from("approved_users")
+        .update({ role, managed_region: region })
+        .eq("id", numericId)
+        .select("email, name")
+        .maybeSingle()
+      if (error) {
+        console.error("[assign-subadmin] update error:", (error as Error).message)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+      if (!data) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
+      sendTelegramMessage(
+        `🔑 역할 변경\n👤 ${data.name ?? "(이름 없음)"} (${data.email ?? "-"})\n📋 새 역할: ${
+          ROLE_LABEL[role] ?? role
+        }${role === "sub_admin" && region ? `\n📍 관리 지역: ${region}` : ""}`
+      ).catch(console.error)
+      return NextResponse.json({ success: true })
+    }
+
+    const email = decoded.trim().toLowerCase()
+    if (!email || !email.includes("@")) {
+      return NextResponse.json({ error: "유효하지 않은 식별자" }, { status: 400 })
+    }
+
+    const { data: existing } = await supabase
+      .from("approved_users")
+      .select("id, name")
+      .eq("email", email)
+      .maybeSingle()
+
+    let resolvedName: string | null = existing?.name ?? body.name?.trim() ?? null
+
+    if (existing) {
+      const { error } = await supabase
+        .from("approved_users")
+        .update({ role, managed_region: region })
+        .eq("id", existing.id)
+      if (error) {
+        console.error("[assign-subadmin] update by email error:", (error as Error).message)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+    } else {
+      const insertName = body.name?.trim() || email.split("@")[0]
+      resolvedName = insertName
+      const { error } = await supabase
+        .from("approved_users")
+        .insert({
+          email,
+          name: insertName,
+          role,
+          is_active: true,
+          managed_region: region,
+        })
+      if (error) {
+        console.error("[assign-subadmin] insert error:", (error as Error).message)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+    }
 
     sendTelegramMessage(
-      `🔑 역할 변경\n👤 ${data.name ?? "(이름 없음)"} (${data.email ?? "-"})\n📋 새 역할: ${
+      `🔑 역할 변경\n👤 ${resolvedName ?? "(이름 없음)"} (${email})\n📋 새 역할: ${
         ROLE_LABEL[role] ?? role
       }${role === "sub_admin" && region ? `\n📍 관리 지역: ${region}` : ""}`
     ).catch(console.error)
+
     return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[assign-subadmin] 처리 실패:", (error as Error).message)
+    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
-
-  const email = decoded.trim().toLowerCase()
-  if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "유효하지 않은 식별자" }, { status: 400 })
-  }
-
-  const { data: existing } = await supabase
-    .from("approved_users")
-    .select("id, name")
-    .eq("email", email)
-    .maybeSingle()
-
-  let resolvedName: string | null = existing?.name ?? body.name?.trim() ?? null
-
-  if (existing) {
-    const { error } = await supabase
-      .from("approved_users")
-      .update({ role, managed_region: region })
-      .eq("id", existing.id)
-    if (error) {
-      console.error("[assign-subadmin] update by email error:", (error as Error).message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-  } else {
-    const insertName = body.name?.trim() || email.split("@")[0]
-    resolvedName = insertName
-    const { error } = await supabase
-      .from("approved_users")
-      .insert({
-        email,
-        name: insertName,
-        role,
-        is_active: true,
-        managed_region: region,
-      })
-    if (error) {
-      console.error("[assign-subadmin] insert error:", (error as Error).message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-  }
-
-  sendTelegramMessage(
-    `🔑 역할 변경\n👤 ${resolvedName ?? "(이름 없음)"} (${email})\n📋 새 역할: ${
-      ROLE_LABEL[role] ?? role
-    }${role === "sub_admin" && region ? `\n📍 관리 지역: ${region}` : ""}`
-  ).catch(console.error)
-
-  return NextResponse.json({ success: true })
 }
