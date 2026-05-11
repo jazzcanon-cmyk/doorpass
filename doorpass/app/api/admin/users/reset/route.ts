@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
@@ -7,11 +7,11 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized
 
   try {
-    // 관리자 권한 확인
+    // 관리자 권한 확인 (카카오 admin도 매칭되도록 resolveUserEmail 사용)
     const { data: me } = await supabaseAdmin
       .from('approved_users')
       .select('role')
-      .eq('email', user?.email ?? "unknown")
+      .eq('email', resolveUserEmail(user!))
       .single()
 
     if (!me || me.role !== 'admin') {
@@ -20,9 +20,13 @@ export async function POST(request: Request) {
 
     const text = await request.text()
     const body = text ? JSON.parse(text) : {}
-    const { approved_id, email } = body as { approved_id?: number | null; email?: string | null }
+    const { approved_id, email, user_id } = body as {
+      approved_id?: number | null
+      email?: string | null
+      user_id?: string | null
+    }
 
-    if (!approved_id && !email) {
+    if (!approved_id && !email && !user_id) {
       return NextResponse.json({ error: '회원 정보가 없습니다.' }, { status: 400 })
     }
 
@@ -50,6 +54,15 @@ export async function POST(request: Request) {
         .from('pending_approvals')
         .delete()
         .eq('user_email', email)
+    }
+
+    // Supabase Auth user 자체를 삭제 (이메일 없는 카카오 미등록 회원도 처리)
+    if (user_id) {
+      const { error: deleteAuthError } =
+        await supabaseAdmin.auth.admin.deleteUser(user_id)
+      if (deleteAuthError) {
+        console.error('[admin/users:reset] auth user 삭제 실패:', deleteAuthError.message)
+      }
     }
 
     return NextResponse.json({ success: true })

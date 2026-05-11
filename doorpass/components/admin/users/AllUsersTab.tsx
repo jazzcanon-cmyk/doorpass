@@ -149,7 +149,7 @@ export function AllUsersTab() {
       (u.name ?? u.email ?? '이 회원') + '을 초기화하시겠습니까?\n초기화하면 승인 정보가 삭제되고 다음 로그인 시 신규 회원으로 처음부터 시작합니다.'
     )) return
 
-    if (!u.approved_id && !u.email) {
+    if (!u.approved_id && !u.email && !u.id) {
       toast.error('초기화할 수 없는 회원입니다.')
       return
     }
@@ -161,6 +161,7 @@ export function AllUsersTab() {
         body: JSON.stringify({
           approved_id: u.approved_id ?? null,
           email: u.email ?? null,
+          user_id: u.id ?? null,
         }),
       })
       if (!res.ok) {
