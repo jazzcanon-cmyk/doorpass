@@ -180,6 +180,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [uploadingBusiness, setUploadingBusiness] = useState(false)
   const [analyzingBusiness, setAnalyzingBusiness] = useState(false)
   const [savingTaxType, setSavingTaxType] = useState(false)
+  // 사업자등록증 등록 모달 열림 여부
+  const [businessModalOpen, setBusinessModalOpen] = useState(false)
   const businessFileRef = useRef<HTMLInputElement>(null)
 
   // 수입 상태
@@ -367,6 +369,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const ocrJson = (await ocrRes.json()) as { success?: boolean; data?: { business_name: string } }
       if (ocrJson.success && ocrJson.data) {
         toast.success(`✅ 사업자 정보가 등록됐습니다! 상호: ${ocrJson.data.business_name ?? ""}`)
+        setBusinessModalOpen(false) // OCR 성공 시 모달 자동 닫기
       } else {
         toast.warning("사업자 정보를 확인해주세요.")
       }
@@ -927,6 +930,43 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         </div>
       )}
 
+      {/* ── 사업자 알림 바: 요약 카드 바로 위에 얇게 표시 ── */}
+      {analyzingBusiness ? (
+        /* OCR 분석 중 */
+        <div className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 h-11">
+          <span className="text-sm">🔍</span>
+          <p className="text-xs text-white/60 flex-1">사업자등록증 분석 중...</p>
+        </div>
+      ) : businessInfo?.business_name ? (
+        /* 등록 완료 — 작은 초록 뱃지 */
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 h-11">
+          <span className="text-xs text-emerald-300 flex-1 truncate">
+            ✅ {businessInfo.tax_type ?? "일반과세자"} · {businessInfo.business_name}
+          </span>
+          <button
+            onClick={() => setBusinessModalOpen(true)}
+            className="shrink-0 text-[11px] text-emerald-400/70 hover:text-emerald-300 underline transition-colors"
+          >
+            수정
+          </button>
+        </div>
+      ) : (
+        /* 미등록 — 노란 경고 바 */
+        <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 h-11">
+          <span className="text-sm shrink-0">⚠️</span>
+          <p className="text-xs text-amber-300 flex-1">
+            사업자등록증 미등록 · 정확한 세금계산을 위해 등록해주세요
+          </p>
+          <button
+            onClick={() => setBusinessModalOpen(true)}
+            disabled={!approvedUserId}
+            className="shrink-0 text-[11px] text-amber-400 hover:text-amber-200 font-semibold transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            등록하기 →
+          </button>
+        </div>
+      )}
+
       {/* ── 상단 요약 카드 3개 ── */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
@@ -949,103 +989,16 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════
-          사업자 섹션 (수입 섹션 위)
-      ══════════════════════════════════════════════ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
-          <span>🏢</span> 사업자 정보
-        </h2>
-
-        {analyzingBusiness ? (
-          /* OCR 분석 중 */
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 flex items-center gap-3">
-            <span className="text-xl">🔍</span>
-            <p className="text-sm text-white/60">사업자등록증 분석 중...</p>
-          </div>
-        ) : businessInfo?.business_name ? (
-          /* 등록 완료 상태 */
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-0.5 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">✅ {businessInfo.business_name}</p>
-                {businessInfo.business_number && (
-                  <p className="text-xs text-white/50">{businessInfo.business_number}</p>
-                )}
-                {businessInfo.owner_name && (
-                  <p className="text-xs text-white/40">대표자: {businessInfo.owner_name}</p>
-                )}
-              </div>
-              {/* 수정 버튼 = 재업로드 */}
-              <button
-                onClick={() => businessFileRef.current?.click()}
-                disabled={uploadingBusiness || !approvedUserId}
-                className="shrink-0 text-xs text-white/40 hover:text-white/70 underline disabled:opacity-50 transition-colors"
-              >
-                {uploadingBusiness ? "업로드 중..." : "수정하기"}
-              </button>
-            </div>
-
-            {/* 과세유형 수동 변경 토글 */}
-            <div className="space-y-1.5">
-              <p className="text-[11px] text-white/40">과세유형</p>
-              <div className="flex gap-2">
-                {(["일반과세자", "간이과세자"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => void handleTaxTypeChange(t)}
-                    disabled={savingTaxType}
-                    className={`flex-1 rounded-xl border py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
-                      businessInfo.tax_type === t
-                        ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
-                        : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
-                    }`}
-                  >
-                    {t}{businessInfo.tax_type === t ? " 🏷️" : ""}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* 미등록 상태 */
-          <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-4 space-y-3">
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400 shrink-0 mt-0.5">⚠️</span>
-              <div>
-                <p className="text-sm font-medium text-amber-300">사업자등록증을 먼저 등록해주세요</p>
-                <p className="text-xs text-white/40 mt-0.5">정확한 세금 계산을 위해 필요합니다</p>
-              </div>
-            </div>
-            <button
-              onClick={() => businessFileRef.current?.click()}
-              disabled={uploadingBusiness || !currentUser || !approvedUserId}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-amber-300 transition-all duration-200"
-            >
-              {uploadingBusiness
-                ? <><span>⏳</span>업로드 중...</>
-                : <><span>📸</span>사업자등록증 업로드</>
-              }
-            </button>
-            {/* 보안 안내 문구 */}
-            <p className="text-[11px] text-white/30 flex items-center gap-1 justify-center pt-0.5">
-              <span>🔐</span>
-              업로드된 사업자등록증은 암호화되어 본인만 열람 가능합니다
-            </p>
-          </div>
-        )}
-
-        {/* 사업자등록증 파일 input (숨김) — disabled로 중복 업로드 차단 */}
-        <input
-          ref={businessFileRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          disabled={uploadingBusiness || analyzingBusiness || !currentUser || !approvedUserId}
-          onChange={handleBusinessFileChange}
-        />
-      </div>
+      {/* 사업자등록증 파일 input (숨김) — 모달 업로드 버튼에서 트리거됨 */}
+      <input
+        ref={businessFileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        disabled={uploadingBusiness || analyzingBusiness || !currentUser || !approvedUserId}
+        onChange={handleBusinessFileChange}
+      />
 
       {/* ══════════════════════════════════════════════
           수입 섹션
@@ -1581,6 +1534,96 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
         </div>
       )}
+      {/* ══════════════════════════════════════════════
+          사업자등록증 등록 모달
+      ══════════════════════════════════════════════ */}
+      {businessModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!uploadingBusiness && !analyzingBusiness) setBusinessModalOpen(false) }}
+        >
+          <div
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">🏢 사업자등록증 등록</h2>
+              <button
+                onClick={() => { if (!uploadingBusiness && !analyzingBusiness) setBusinessModalOpen(false) }}
+                className="text-white/40 hover:text-white text-xl leading-none"
+              >×</button>
+            </div>
+
+            {/* 등록된 경우: 현재 정보 표시 */}
+            {businessInfo?.business_name && (
+              <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 space-y-0.5">
+                <p className="text-sm font-semibold text-white">✅ {businessInfo.business_name}</p>
+                {businessInfo.business_number && (
+                  <p className="text-xs text-white/50">{businessInfo.business_number}</p>
+                )}
+                {businessInfo.owner_name && (
+                  <p className="text-xs text-white/40">대표자: {businessInfo.owner_name}</p>
+                )}
+              </div>
+            )}
+
+            {/* OCR 분석 중 표시 */}
+            {analyzingBusiness && (
+              <div className="flex items-center gap-3 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3">
+                <span className="text-lg">🔍</span>
+                <p className="text-sm text-blue-300">사업자등록증 분석 중...</p>
+              </div>
+            )}
+
+            {/* 과세유형 수동 변경 (등록 완료 + 분석 완료 상태에만 표시) */}
+            {businessInfo?.business_name && !analyzingBusiness && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-white/40">과세유형</p>
+                <div className="flex gap-2">
+                  {(["일반과세자", "간이과세자"] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => void handleTaxTypeChange(t)}
+                      disabled={savingTaxType}
+                      className={`flex-1 rounded-xl border py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+                        businessInfo.tax_type === t
+                          ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+                          : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
+                      }`}
+                    >
+                      {t}{businessInfo.tax_type === t ? " 🏷️" : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 업로드 버튼 */}
+            {!analyzingBusiness && (
+              <button
+                onClick={() => businessFileRef.current?.click()}
+                disabled={uploadingBusiness || !currentUser || !approvedUserId}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-amber-300 transition-all duration-200"
+              >
+                {uploadingBusiness
+                  ? <><span>⏳</span>업로드 중...</>
+                  : businessInfo?.business_name
+                    ? <><span>📸</span>사진 다시 찍어 수정</>
+                    : <><span>📸</span>사업자등록증 촬영</>
+                }
+              </button>
+            )}
+
+            {/* 보안 안내 */}
+            <p className="text-[11px] text-white/30 flex items-center gap-1 justify-center">
+              <span>🔐</span>
+              업로드된 사업자등록증은 암호화되어 본인만 열람 가능합니다
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════
           카드명세서 분석 결과 모달 (3단계 중복 감지)
       ══════════════════════════════════════════════ */}
