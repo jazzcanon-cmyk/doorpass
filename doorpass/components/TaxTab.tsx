@@ -80,11 +80,12 @@ interface StatementTransaction {
   deduction_reason: string
 }
 
-// 카드명세서 분석 결과 (중복 / 신규 분류)
+// 카드명세서 분석 결과 (3단계 분류)
 interface StatementResult {
   total: number
-  duplicates: StatementTransaction[]
-  newItems: StatementTransaction[]
+  confirmed: StatementTransaction[]  // 확실한 중복 (자동 제외)
+  suspected: StatementTransaction[]  // 의심 중복 (사용자 확인 필요)
+  newItems:  StatementTransaction[]  // 신규 항목
 }
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
@@ -212,6 +213,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [statementModalOpen, setStatementModalOpen]   = useState(false)
   const [statementResult,    setStatementResult]      = useState<StatementResult | null>(null)
   const [insertingStatement, setInsertingStatement]   = useState(false)
+  // 의심 중복 항목 중 사용자가 "그래도 추가"를 선택한 인덱스 집합
+  const [suspectedIncluded, setSuspectedIncluded]     = useState<Set<number>>(new Set())
 
   // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -748,7 +751,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         toast.error(json.error ?? "명세서 분석에 실패했습니다.")
         return
       }
-      // 분석 완료 → 결과 모달 표시
+      // 분석 완료 → 의심 항목 선택 초기화 후 결과 모달 표시
+      setSuspectedIncluded(new Set())
       setStatementResult(json)
       setStatementModalOpen(true)
     } catch (err) {
@@ -760,22 +764,23 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
-  // ─── 카드명세서 신규 항목 일괄 추가 ──────────────────────────────────────
+  // ─── 카드명세서 항목 일괄 추가 (items 배열 직접 지정) ────────────────────
 
-  const handleStatementInsert = async () => {
-    if (!approvedUserId || !statementResult?.newItems.length) return
+  const handleStatementInsert = async (items: StatementTransaction[]) => {
+    if (!approvedUserId || !items.length) return
     setInsertingStatement(true)
     try {
       const res = await fetch("/api/expenses/bulk-insert", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ user_id: String(approvedUserId), items: statementResult.newItems }),
+        body:    JSON.stringify({ user_id: String(approvedUserId), items }),
       })
       const json = (await res.json()) as { inserted?: number; error?: string }
       if (!res.ok) throw new Error(json.error ?? "추가 실패")
       toast.success(`✅ ${json.inserted}건이 추가됐습니다!`)
       setStatementModalOpen(false)
       setStatementResult(null)
+      setSuspectedIncluded(new Set())
       await fetchData(approvedUserId)
     } catch (err) {
       console.error("일괄 추가 오류:", err)
@@ -1577,95 +1582,206 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         </div>
       )}
       {/* ══════════════════════════════════════════════
-          카드명세서 분석 결과 모달
+          카드명세서 분석 결과 모달 (3단계 중복 감지)
       ══════════════════════════════════════════════ */}
-      {statementModalOpen && statementResult && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
-        >
+      {statementModalOpen && statementResult && (() => {
+        // 의심 항목 중 사용자가 "그래도 추가" 선택한 것들
+        const includedSuspected = statementResult.suspected.filter((_, i) => suspectedIncluded.has(i))
+        // 버튼1: 의심 제외 (newItems만)
+        const countWithoutSuspected = statementResult.newItems.length
+        // 버튼2: 의심 포함 (newItems + 전체 suspected)
+        const countWithSuspected = statementResult.newItems.length + statementResult.suspected.length
+
+        const toggleSuspected = (i: number) => {
+          setSuspectedIncluded((prev) => {
+            const next = new Set(prev)
+            next.has(i) ? next.delete(i) : next.add(i)
+            return next
+          })
+        }
+
+        return (
           <div
-            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
           >
-            {/* 헤더 */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">📊 카드명세서 분석 결과</h2>
-              <button
-                onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
-                className="text-white/40 hover:text-white text-xl leading-none"
-              >×</button>
-            </div>
-
-            <p className="text-sm text-white/60">전체 {statementResult.total}건 발견</p>
-
-            {/* 중복 항목 (회색) */}
-            {statementResult.duplicates.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-white/40">
-                  ⚠️ 중복 {statementResult.duplicates.length}건 (자동 제외)
-                </p>
-                <ul className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                  {statementResult.duplicates.map((t, i) => (
-                    <li key={i} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5">
-                      <span className="text-xs text-white/40 truncate">
-                        {t.receipt_date} {t.vendor_name}
-                      </span>
-                      <span className="text-xs text-white/30 shrink-0 ml-2">
-                        {t.amount.toLocaleString()}원
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+            <div
+              className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 max-h-[85vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 헤더 */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-white">📊 카드명세서 분석 결과</h2>
+                <button
+                  onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
+                  className="text-white/40 hover:text-white text-xl leading-none"
+                >×</button>
               </div>
-            )}
 
-            {/* 신규 항목 (초록) */}
-            {statementResult.newItems.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-emerald-400">
-                  ✅ 신규 추가될 {statementResult.newItems.length}건
-                </p>
-                <ul className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                  {statementResult.newItems.map((t, i) => (
-                    <li key={i} className="flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
-                      <span className="text-xs text-emerald-300 truncate">
-                        {t.receipt_date} {t.vendor_name}
-                      </span>
-                      <span className="text-xs text-emerald-400 shrink-0 ml-2">
-                        {t.amount.toLocaleString()}원
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {/* 요약 */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 py-2">
+                  <p className="text-lg font-bold text-emerald-400">{statementResult.newItems.length}</p>
+                  <p className="text-[10px] text-emerald-300/70 mt-0.5">신규 추가</p>
+                </div>
+                <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 py-2">
+                  <p className="text-lg font-bold text-amber-400">{statementResult.suspected.length}</p>
+                  <p className="text-[10px] text-amber-300/70 mt-0.5">중복 의심</p>
+                </div>
+                <div className="rounded-xl bg-white/5 border border-white/10 py-2">
+                  <p className="text-lg font-bold text-white/40">{statementResult.confirmed.length}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">확실한 중복</p>
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-white/40 text-center py-2">신규 추가할 항목이 없습니다.</p>
-            )}
 
-            {/* 하단 버튼 */}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => { setStatementModalOpen(false); setStatementResult(null) }}
-                disabled={insertingStatement}
-                className="flex-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 py-3 text-sm font-semibold text-white/70 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => void handleStatementInsert()}
-                disabled={insertingStatement || statementResult.newItems.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
-              >
-                {insertingStatement
-                  ? <><span>⏳</span>추가 중...</>
-                  : `${statementResult.newItems.length}건 추가하기`
-                }
-              </button>
+              {/* ✅ 신규 항목 */}
+              {statementResult.newItems.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-emerald-400">
+                    ✅ 신규 추가: {statementResult.newItems.length}건
+                  </p>
+                  <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    {statementResult.newItems.map((t, i) => (
+                      <li key={i} className="flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
+                        <span className="text-xs text-emerald-300 truncate">
+                          {t.receipt_date} {t.vendor_name}
+                        </span>
+                        <span className="text-xs text-emerald-400 shrink-0 ml-2">
+                          {t.amount.toLocaleString()}원
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ⚠️ 의심 중복 항목 — 항목별 포함/제외 토글 */}
+              {statementResult.suspected.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-amber-400">
+                    ⚠️ 중복 의심: {statementResult.suspected.length}건 — 확인 필요
+                  </p>
+                  <ul className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {statementResult.suspected.map((t, i) => {
+                      const included = suspectedIncluded.has(i)
+                      return (
+                        <li key={i} className={`rounded-lg border px-3 py-2 transition-colors ${
+                          included
+                            ? "bg-emerald-500/10 border-emerald-500/25"
+                            : "bg-amber-500/8 border-amber-500/25"
+                        }`}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs text-white/70 truncate">
+                              {t.receipt_date} | {t.vendor_name} |{" "}
+                              <span className="font-semibold">{t.amount.toLocaleString()}원</span>
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => { if (included) toggleSuspected(i) }}
+                              className={`flex-1 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                                !included
+                                  ? "bg-white/10 text-white/60 ring-1 ring-white/20"
+                                  : "bg-white/5 text-white/30"
+                              }`}
+                            >
+                              영수증에 이미 있음
+                            </button>
+                            <button
+                              onClick={() => { if (!included) toggleSuspected(i) }}
+                              className={`flex-1 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                                included
+                                  ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40"
+                                  : "bg-white/5 text-white/30"
+                              }`}
+                            >
+                              그래도 추가
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {includedSuspected.length > 0 && (
+                    <p className="text-[11px] text-amber-300/60">
+                      의심 항목 중 {includedSuspected.length}건 추가 선택됨
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ❌ 확실한 중복 항목 (자동 제외, 접힌 목록) */}
+              {statementResult.confirmed.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-white/30">
+                    ❌ 확실한 중복: {statementResult.confirmed.length}건 (자동 제외)
+                  </p>
+                  <ul className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                    {statementResult.confirmed.map((t, i) => (
+                      <li key={i} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5">
+                        <span className="text-xs text-white/30 truncate">
+                          {t.receipt_date} {t.vendor_name}
+                        </span>
+                        <span className="text-xs text-white/20 shrink-0 ml-2">
+                          {t.amount.toLocaleString()}원
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {statementResult.newItems.length === 0 && statementResult.suspected.length === 0 && (
+                <p className="text-sm text-white/40 text-center py-2">신규 추가할 항목이 없습니다.</p>
+              )}
+
+              {/* 하단 버튼 */}
+              <div className="space-y-2 pt-1">
+                {/* 취소 */}
+                <button
+                  onClick={() => { setStatementModalOpen(false); setStatementResult(null) }}
+                  disabled={insertingStatement}
+                  className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 py-3 text-sm font-semibold text-white/70 transition-colors"
+                >
+                  취소
+                </button>
+
+                {/* 의심 제외하고 추가 (newItems + 개별 선택된 suspected) */}
+                <button
+                  onClick={() => void handleStatementInsert([
+                    ...statementResult.newItems,
+                    ...includedSuspected,
+                  ])}
+                  disabled={insertingStatement || (countWithoutSuspected === 0 && includedSuspected.length === 0)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
+                >
+                  {insertingStatement
+                    ? <><span>⏳</span>추가 중...</>
+                    : `의심항목 제외하고 ${countWithoutSuspected + includedSuspected.length}건 추가`
+                  }
+                </button>
+
+                {/* 의심 항목 전체 포함 추가 */}
+                {statementResult.suspected.length > 0 && (
+                  <button
+                    onClick={() => void handleStatementInsert([
+                      ...statementResult.newItems,
+                      ...statementResult.suspected,
+                    ])}
+                    disabled={insertingStatement || countWithSuspected === 0}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold text-amber-300 transition-all duration-200"
+                  >
+                    {insertingStatement
+                      ? <><span>⏳</span>추가 중...</>
+                      : `의심항목 포함 ${countWithSuspected}건 추가`
+                    }
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </section>
   )
 }

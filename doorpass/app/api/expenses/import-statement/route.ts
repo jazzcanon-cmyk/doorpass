@@ -19,6 +19,55 @@ interface Transaction {
   deduction_reason: string
 }
 
+// 중복 판정 수준: 확실한 중복 / 의심 중복 / 신규
+type DuplicateLevel = "확실" | "의심" | "none"
+
+// ─── 스마트 중복 감지 (3단계) ──────────────────────────────────────────────────
+// 1단계: 금액 완전 일치 확인 (다르면 즉시 제외)
+// 2단계: 날짜 ±3일 범위 확인 (범위 밖이면 제외)
+// 3단계: 업체명 유사도 확인 (포함 관계 or 앞 2글자 일치)
+function checkDuplicate(
+  newTx: Transaction,
+  existing: { receipt_date: string; amount: number; vendor_name: string | null }[]
+): DuplicateLevel {
+  for (const ex of existing) {
+    // 1단계: 금액 불일치 → 즉시 다음 항목으로
+    if (newTx.amount !== ex.amount) continue
+
+    // 2단계: 날짜 차이 계산 (일 단위)
+    const diffDays = Math.abs(
+      (new Date(newTx.receipt_date).getTime() - new Date(ex.receipt_date).getTime()) /
+        86_400_000
+    )
+    if (diffDays > 3) continue // ±3일 초과 → 중복 아님
+
+    // 3단계: 업체명 유사도
+    const newName  = (newTx.vendor_name ?? "").trim()
+    const existName = (ex.vendor_name ?? "").trim()
+
+    // 업체명 둘 다 없으면 날짜+금액만으로 판단
+    if (!newName || !existName) {
+      return diffDays <= 1 ? "확실" : "의심"
+    }
+
+    // 한쪽이 다른 쪽을 포함하거나 앞 2글자 이상 일치 → 유사 업체명
+    const nameContained = newName.includes(existName) || existName.includes(newName)
+    const prefixMatch   =
+      newName.length >= 2 && existName.length >= 2 &&
+      newName.slice(0, 2) === existName.slice(0, 2)
+
+    if (nameContained || prefixMatch) {
+      // 업체명 유사: ±1일이면 확실한 중복, ±3일이면 의심 중복
+      return diffDays <= 1 ? "확실" : "의심"
+    }
+
+    // 업체명 다름: ±1일이면 의심, 그 이상이면 다음 기존 항목 확인
+    if (diffDays <= 1) return "의심"
+  }
+
+  return "none"
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
@@ -87,43 +136,55 @@ export async function POST(req: NextRequest) {
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      return NextResponse.json({ error: "명세서 분석 실패 — 거래내역을 찾을 수 없습니다." }, { status: 422 })
+      return NextResponse.json(
+        { error: "명세서 분석 실패 — 거래내역을 찾을 수 없습니다." },
+        { status: 422 }
+      )
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as { transactions?: Transaction[] }
-    const transactions: Transaction[] = parsed.transactions ?? []
+    const parsed       = JSON.parse(jsonMatch[0]) as { transactions?: Transaction[] }
+    const transactions = parsed.transactions ?? []
 
     if (transactions.length === 0) {
       return NextResponse.json({ error: "거래내역을 찾을 수 없습니다." }, { status: 422 })
     }
 
-    // 5) 중복 확인 — 같은 user_id + receipt_date + amount 기준
-    const dates = [...new Set(transactions.map((t) => t.receipt_date))]
+    // 5) 스마트 중복 감지 — 날짜 범위 ±3일 확장 후 기존 expenses 조회
+    const allDates = transactions.map((t) => t.receipt_date)
+    const minDate  = allDates.reduce((a, b) => (a < b ? a : b))
+    const maxDate  = allDates.reduce((a, b) => (a > b ? a : b))
+
+    // ±3일 버퍼를 더해 날짜 범위 계산 (날짜 경계 스캔용)
+    const bufferMs        = 3 * 86_400_000
+    const minDateExpanded = new Date(new Date(minDate).getTime() - bufferMs)
+      .toISOString().split("T")[0]
+    const maxDateExpanded = new Date(new Date(maxDate).getTime() + bufferMs)
+      .toISOString().split("T")[0]
+
     const { data: existing } = await supabaseAdmin
       .from("expenses")
-      .select("receipt_date, amount")
+      .select("receipt_date, amount, vendor_name")
       .eq("user_id", userId)
-      .in("receipt_date", dates)
+      .gte("receipt_date", minDateExpanded)
+      .lte("receipt_date", maxDateExpanded)
 
-    const existingSet = new Set(
-      (existing ?? []).map((e) => `${e.receipt_date}_${e.amount}`)
-    )
-
-    const duplicates: Transaction[] = []
-    const newItems:   Transaction[] = []
+    // 3단계 판정으로 분류
+    const confirmed: Transaction[] = [] // 확실한 중복 (자동 제외)
+    const suspected: Transaction[] = [] // 의심 중복 (사용자 확인 필요)
+    const newItems:  Transaction[] = [] // 신규 항목
 
     for (const t of transactions) {
-      if (existingSet.has(`${t.receipt_date}_${t.amount}`)) {
-        duplicates.push(t)
-      } else {
-        newItems.push(t)
-      }
+      const level = checkDuplicate(t, existing ?? [])
+      if (level === "확실")    confirmed.push(t)
+      else if (level === "의심") suspected.push(t)
+      else                      newItems.push(t)
     }
 
     return NextResponse.json({
       total: transactions.length,
-      duplicates,
-      newItems,
+      confirmed,  // 확실한 중복 (자동 제외)
+      suspected,  // 의심 중복 (사용자 확인 필요)
+      newItems,   // 신규 항목
     })
   } catch (err) {
     console.error("카드명세서 분석 오류:", err)
