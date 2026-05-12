@@ -203,9 +203,6 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [selectedPeriod, setSelectedPeriod] = useState("all") // 기간 옵션 (all/q1~q4/h1~h2/1~12)
 
   // 이메일 발송 모달 상태
-  const [emailModalOpen, setEmailModalOpen] = useState(false)
-  const [emailForm, setEmailForm] = useState({ name: "", email: "" })
-  const [sendingEmail, setSendingEmail] = useState(false)
 
   // 카카오 공유 상태
   const [sharingKakao, setSharingKakao] = useState(false)
@@ -704,39 +701,6 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
   // ─── 이메일 발송 ─────────────────────────────────────────────────────────
 
-  const handleEmailSend = async () => {
-    if (!approvedUserId) return
-    if (!emailForm.email) { toast.warning("이메일 주소를 입력해주세요."); return }
-    setSendingEmail(true)
-    try {
-      const res = await fetch("/api/expenses/email", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          user_id:         String(approvedUserId),
-          year:            String(selectedYear),
-          period:          selectedPeriod,
-          recipient_email: emailForm.email,
-          recipient_name:  emailForm.name || "고객",
-        }),
-      })
-      if (res.status === 404) { toast.warning("발송할 지출 내역이 없습니다."); return }
-      const json = (await res.json()) as { success?: boolean }
-      if (json.success) {
-        toast.success("✅ 이메일이 발송됐습니다!")
-        setEmailModalOpen(false)
-        setEmailForm({ name: "", email: "" })
-      } else {
-        toast.error("❌ 발송 실패. 이메일을 확인해주세요.")
-      }
-    } catch (err) {
-      console.error("이메일 발송 오류:", err)
-      toast.error("❌ 발송 실패. 이메일을 확인해주세요.")
-    } finally {
-      setSendingEmail(false)
-    }
-  }
-
   // ─── 카드명세서 분석 ─────────────────────────────────────────────────────
 
   const handleStatementFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1127,8 +1091,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               ))}
             </select>
           </div>
-          {/* 다운로드 버튼 4개: 엑셀 / PDF / 이메일 / 카카오톡 */}
-          <div className="grid grid-cols-4 gap-2">
+          {/* 다운로드 버튼 3개: 엑셀 / PDF / 카카오톡 */}
+          <div className="grid grid-cols-3 gap-2">
             {/* 엑셀 */}
             <button
               onClick={() => void handleDownload()}
@@ -1145,15 +1109,6 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               className="flex items-center justify-center gap-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-blue-300 transition-all duration-200"
             >
               {downloadingPdf ? <><span>⏳</span>생성 중</> : <><span>📄</span>PDF</>}
-            </button>
-
-            {/* 이메일 */}
-            <button
-              onClick={() => setEmailModalOpen(true)}
-              disabled={!currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-purple-300 transition-all duration-200"
-            >
-              <span>📧</span>이메일
             </button>
 
             {/* 카카오톡 공유 — 카카오 노란색 */}
@@ -1478,62 +1433,6 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════
-          이메일 발송 모달
-      ══════════════════════════════════════════════ */}
-      {emailModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => { if (!sendingEmail) setEmailModalOpen(false) }}
-        >
-          <div
-            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">이메일 발송</h2>
-              <button
-                onClick={() => { if (!sendingEmail) setEmailModalOpen(false) }}
-                className="text-white/40 hover:text-white text-xl leading-none"
-              >×</button>
-            </div>
-
-            {/* 발송 대상 기간 표시 */}
-            <p className="text-xs text-white/40">
-              {selectedYear}년 {PERIOD_LABELS[selectedPeriod] ?? `${selectedPeriod}월`} 지출내역서를 발송합니다
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-white/50">받는 분 이름 <span className="text-white/30">(선택)</span></label>
-              <input
-                type="text"
-                value={emailForm.name}
-                onChange={(e) => setEmailForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="예: 홍길동"
-                className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-white/50">이메일 주소 <span className="text-red-400">*</span></label>
-              <input
-                type="email"
-                value={emailForm.email}
-                onChange={(e) => setEmailForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="example@email.com"
-                className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-purple-500/50"
-              />
-            </div>
-
-            <button
-              onClick={() => void handleEmailSend()}
-              disabled={sendingEmail}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-all duration-200"
-            >
-              {sendingEmail ? <><span>⏳</span>발송 중...</> : <><span>📧</span>발송하기</>}
-            </button>
-          </div>
-        </div>
-      )}
       {/* ══════════════════════════════════════════════
           사업자등록증 등록 모달
       ══════════════════════════════════════════════ */}
