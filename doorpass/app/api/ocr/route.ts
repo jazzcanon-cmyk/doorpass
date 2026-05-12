@@ -18,6 +18,7 @@ interface ExpenseOcrResult {
   is_deductible: boolean   // 부가세 매입세액 공제 가능 여부
   is_expense: boolean      // 사업 관련 경비처리 가능 여부
   deduction_reason: string // 판단 이유 한 문장
+  b_no: string | null      // 사업자등록번호 (10자리 숫자, 없으면 null)
 }
 
 interface IncomeOcrResult {
@@ -144,7 +145,8 @@ export async function POST(req: NextRequest) {
   "category": "유류비|수리비|식비|통신비|기타 중 하나",
   "is_deductible": 부가세 매입세액 공제 가능하면 true (세금계산서/카드매출전표 발행 사업자의 사업용 지출만 true),
   "is_expense": 사업 관련 경비처리 가능하면 true (사업과 관련된 지출이면 대부분 true),
-  "deduction_reason": "판단이유 한 문장 (예: 사업용 차량 유류비로 부가세공제 및 경비처리 가능)"
+  "deduction_reason": "판단이유 한 문장 (예: 사업용 차량 유류비로 부가세공제 및 경비처리 가능)",
+  "b_no": "사업자등록번호 숫자만 10자리 (예: 1234567890), 영수증에 없으면 null"
 }`
 
     // 3) Claude Haiku Vision 호출
@@ -216,6 +218,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: parsed })
     } else {
       const parsed = JSON.parse(jsonMatch[0]) as ExpenseOcrResult
+
+      // OCR 사업자번호: 하이픈 제거 후 10자리 검증
+      const rawBno = parsed.b_no ?? null
+      const cleanBno = rawBno ? rawBno.replace(/-/g, "").trim() : null
+      const validBno = cleanBno && /^\d{10}$/.test(cleanBno) ? cleanBno : null
+
+      // 1단계: OCR 결과로 expenses 업데이트 (사업자번호 포함)
       const { error } = await supabaseAdmin
         .from("expenses")
         .update({
@@ -224,12 +233,66 @@ export async function POST(req: NextRequest) {
           vendor_name:      parsed.vendor_name ?? null,
           category:         parsed.category ?? "기타",
           is_deductible:    parsed.is_deductible === true,
-          is_expense:       parsed.is_expense !== false, // 명시적 false만 false로 처리
+          is_expense:       parsed.is_expense !== false,
           deduction_reason: parsed.deduction_reason ?? null,
+          business_number:  validBno ?? null,
         })
         .eq("id", recordId)
       if (error) throw error
-      return NextResponse.json({ success: true, data: parsed })
+
+      // 2단계: 사업자번호가 추출된 경우 국세청 API로 과세유형 실시간 검증
+      let ntsResult: { tax_type: string; is_deductible: boolean | null; status: string } | null = null
+      if (validBno) {
+        try {
+          const ntsRes = await fetch(
+            `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${encodeURIComponent(process.env.NTS_API_KEY ?? "")}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ b_no: [validBno] }),
+            }
+          )
+          if (ntsRes.ok) {
+            const ntsJson = (await ntsRes.json()) as {
+              data?: { b_stt_cd: string; tax_type_cd: string; tax_type: string; b_stt: string }[]
+            }
+            const item = ntsJson.data?.[0]
+            if (item) {
+              const isActive = item.b_stt_cd === "01"
+              const isGeneral = item.tax_type_cd === "01"
+
+              let taxType = "확인필요"
+              if (item.tax_type_cd === "01") taxType = "일반과세자"
+              else if (item.tax_type_cd === "02") taxType = "간이과세자"
+              else if (item.tax_type_cd === "03") taxType = "면세사업자"
+
+              let status = "확인필요"
+              if (item.b_stt_cd === "01") status = "계속사업자"
+              else if (item.b_stt_cd === "02") status = "휴업자"
+              else if (item.b_stt_cd === "03") status = "폐업자"
+
+              // 일반과세자 + 계속사업자일 때만 공제 가능
+              const isDeductible = item.tax_type_cd === "" ? null : isGeneral && isActive
+
+              ntsResult = { tax_type: taxType, is_deductible: isDeductible, status }
+
+              // 국세청 결과로 is_deductible / vendor_tax_type 덮어쓰기
+              await supabaseAdmin
+                .from("expenses")
+                .update({
+                  vendor_tax_type: taxType,
+                  is_deductible:   isDeductible ?? parsed.is_deductible === true,
+                })
+                .eq("id", recordId)
+            }
+          }
+        } catch (ntsErr) {
+          // 국세청 조회 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
+          console.warn("국세청 조회 실패 (무시):", ntsErr)
+        }
+      }
+
+      return NextResponse.json({ success: true, data: { ...parsed, nts: ntsResult } })
     }
   } catch (err) {
     console.error("OCR 오류:", err)

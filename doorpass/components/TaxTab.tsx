@@ -20,6 +20,8 @@ interface Expense {
   is_expense: boolean | null       // 경비처리 가능 여부 (DEFAULT true)
   deduction_reason: string | null  // OCR 판단 이유
   receipt_image_url: string | null
+  business_number: string | null   // OCR 추출 사업자번호
+  vendor_tax_type: string | null   // 국세청 확인 과세유형 (null이면 AI 판단만)
 }
 
 interface Income {
@@ -282,7 +284,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       // 최근 지출 10개
       const { data: expRecentData } = await supabase
         .from("expenses")
-        .select("id, receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason, receipt_image_url")
+        .select("id, receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason, receipt_image_url, business_number, vendor_tax_type")
         .eq("user_id", uid)
         .order("receipt_date", { ascending: false })
         .limit(10)
@@ -1319,14 +1321,33 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                         }`}>
                           경비처리 {expense.is_expense !== false ? "✅" : "❌"}
                         </span>
+
+                        {/* 국세청 확인 뱃지: vendor_tax_type이 있을 때만 표시 */}
+                        {expense.vendor_tax_type && (
+                          expense.is_deductible ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/15 border-emerald-500/30 text-emerald-400">
+                              국세청 확인 ✅
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/15 border-red-500/30 text-red-400">
+                              부가세공제 불가 (국세청 확인)
+                            </span>
+                          )
+                        )}
                       </div>
                     )}
 
-                    {/* OCR 판단 이유 */}
-                    {expense.deduction_reason && expense.id !== analyzingExpenseId && (
-                      <p className="text-[10px] text-white/25 mt-1 leading-tight">
-                        {expense.deduction_reason}
-                      </p>
+                    {/* 국세청 확인된 경우: 과세유형 표시 / 미확인 시: AI 판단 이유 표시 */}
+                    {expense.id !== analyzingExpenseId && (
+                      expense.vendor_tax_type ? (
+                        <p className="text-[10px] text-white/30 mt-1 leading-tight">
+                          {expense.vendor_tax_type} · 국세청 실시간 조회
+                        </p>
+                      ) : expense.deduction_reason ? (
+                        <p className="text-[10px] text-white/25 mt-1 leading-tight">
+                          {expense.deduction_reason}
+                        </p>
+                      ) : null
                     )}
 
                     {/* 영수증 이미지 링크 (서명 URL이 있을 때만) */}
