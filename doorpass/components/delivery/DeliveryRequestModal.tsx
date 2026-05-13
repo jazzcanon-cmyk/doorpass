@@ -152,11 +152,14 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
             </div>
             {payType !== "negotiable" && (
               <Input
-                type="number"
-                inputMode="numeric"
+                type="tel"
+                inputMode="decimal"
+                pattern="[0-9]*"
+                autoComplete="off"
                 placeholder="금액 (원)"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="bg-white/5 border-white/10 text-white mt-2"
               />
             )}
