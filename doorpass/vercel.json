@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tax-notification",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
