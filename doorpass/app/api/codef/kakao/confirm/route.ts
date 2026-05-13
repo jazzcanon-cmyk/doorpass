@@ -1,0 +1,56 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { getCodefToken, encryptRSA, codefRequest } from '@/lib/codef'
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId, phoneNo, jobId, extraInfo } = await req.json() as { userId: number; phoneNo: string; jobId: string; extraInfo: unknown }
+    const token = await getCodefToken()
+    const encryptedPhone = encryptRSA(phoneNo.replace(/-/g, ''))
+
+    const result = await codefRequest<{
+      data?: { connectedId?: string }
+      result: { code: string; message: string }
+    }>(
+      '/v1/account/create',
+      {
+        accountList: [{
+          countryCode: 'KR',
+          businessType: 'TB',
+          clientType: 'P',
+          organization: '0001',
+          loginType: '1',
+          loginTypeLevel: '1',
+          simpleAuth: '1',
+          is2Way: true,
+          id: encryptedPhone,
+          phoneNo: encryptedPhone,
+          jobId,
+          extraInfo,
+        }]
+      },
+      token
+    )
+
+    if (result.result?.code === 'CF-03002') {
+      return NextResponse.json({ success: true, completed: false, message: '아직 승인 대기 중...' })
+    }
+
+    if (result.result?.code !== 'CF-00000' || !result.data?.connectedId) {
+      return NextResponse.json({ success: false, message: result.result?.message || '인증 확인 실패', code: result.result?.code }, { status: 400 })
+    }
+
+    const { error: dbError } = await supabase.from('codef_connections').upsert(
+      { user_id: userId, service_type: 'hometax', organization: '0001', connected_id: result.data.connectedId, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,service_type' }
+    )
+    if (dbError) throw dbError
+
+    return NextResponse.json({ success: true, completed: true, connectedId: result.data.connectedId, message: '카카오 인증 완료!' })
+  } catch (err) {
+    console.error('[kakao/confirm]', err)
+    return NextResponse.json({ success: false, message: (err as Error).message }, { status: 500 })
+  }
+}

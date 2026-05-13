@@ -7,7 +7,7 @@ import { CARD_ORGS } from "@/lib/codef"
 function getDefaultStart() { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0] }
 function getDefaultEnd() { return new Date().toISOString().split("T")[0] }
 
-type Step = "select-type" | "select-card" | "credentials" | "connecting" | "select-date" | "importing" | "done"
+type Step = "select-type" | "select-card" | "credentials" | "connecting" | "select-date" | "importing" | "done" | "kakao-phone" | "kakao-waiting"
 
 interface Props { open: boolean; userId: number; onClose: () => void; onImported?: (count: number) => void }
 
@@ -22,10 +22,15 @@ export function CodefConnectModal({ open, userId, onClose, onImported }: Props) 
   const [error, setError] = useState("")
   const [resultMsg, setResultMsg] = useState("")
   const [savedCount, setSavedCount] = useState(0)
+  const [phoneNo, setPhoneNo] = useState("")
+  const [kakaoJobId, setKakaoJobId] = useState("")
+  const [kakaoExtraInfo, setKakaoExtraInfo] = useState<unknown>(null)
+  const [pollCount, setPollCount] = useState(0)
 
   function handleClose() {
     setStep("select-type"); setServiceKind("hometax"); setCardOrgCode("")
     setLoginId(""); setLoginPw(""); setError(""); setResultMsg(""); setSavedCount(0)
+    setPhoneNo(""); setKakaoJobId(""); setKakaoExtraInfo(null); setPollCount(0)
     onClose()
   }
 
@@ -83,6 +88,16 @@ export function CodefConnectModal({ open, userId, onClose, onImported }: Props) 
                 <button onClick={() => { setServiceKind("card"); setStep("select-card") }} className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-4 text-center transition-all active:scale-95">
                   <div className="text-3xl mb-1">💳</div><div className="text-sm font-bold">카드사</div><div className="text-xs text-white/50 mt-0.5">카드내역 자동수집</div>
                 </button>
+                <button
+                  onClick={() => { setServiceKind("hometax"); setStep("kakao-phone") }}
+                  className="col-span-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 rounded-xl p-3 flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <span className="text-xl">🟡</span>
+                  <div className="text-left">
+                    <div className="text-sm font-bold text-yellow-300">카카오 간편인증</div>
+                    <div className="text-xs text-white/50">비밀번호 없이 카카오톡으로 홈택스 연결</div>
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -115,6 +130,80 @@ export function CodefConnectModal({ open, userId, onClose, onImported }: Props) 
               {error && <p className="text-sm text-red-400">{error}</p>}
               <Button onClick={() => void handleConnect()} disabled={!loginId || !loginPw} className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl">연결하기 🔗</Button>
             </>
+          )}
+
+          {step === "kakao-phone" && (
+            <>
+              <button onClick={() => setStep("select-type")} className="text-xs text-white/50 hover:text-white">← 뒤로</button>
+              <p className="text-sm text-white/70">홈택스에 등록된 <span className="text-white font-bold">전화번호</span>를 입력하세요</p>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <p className="text-xs text-yellow-300">🟡 카카오톡으로 인증 요청이 전송됩니다. 카카오톡 앱에서 승인해주세요.</p>
+              </div>
+              <input
+                type="tel"
+                placeholder="010-1234-5678"
+                value={phoneNo}
+                onChange={(e) => setPhoneNo(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-yellow-400"
+              />
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <Button
+                onClick={async () => {
+                  if (!phoneNo) { setError("전화번호를 입력해주세요."); return }
+                  setError("")
+                  setStep("connecting")
+                  try {
+                    const res = await fetch("/api/codef/kakao/start", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ phoneNo }),
+                    })
+                    const data = await res.json()
+                    if (!data.success) { setError(data.message ?? "인증 요청 실패"); setStep("kakao-phone"); return }
+                    if (data.completed) { setStep("select-date"); return }
+                    setKakaoJobId(data.jobId)
+                    setKakaoExtraInfo(data.extraInfo)
+                    setPollCount(0)
+                    setStep("kakao-waiting")
+                  } catch { setError("서버 오류가 발생했습니다."); setStep("kakao-phone") }
+                }}
+                disabled={!phoneNo}
+                className="w-full h-12 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-900 font-bold rounded-xl"
+              >
+                🟡 카카오톡으로 인증 요청
+              </Button>
+            </>
+          )}
+
+          {step === "kakao-waiting" && (
+            <div className="text-center py-4 space-y-4">
+              <div className="text-5xl animate-bounce">🟡</div>
+              <p className="font-bold text-yellow-300 text-lg">카카오톡 확인해주세요!</p>
+              <p className="text-sm text-white/60">카카오톡 앱에서 인증 요청을 승인하면<br/>자동으로 연결됩니다</p>
+              <div className="bg-white/5 rounded-xl p-3">
+                <p className="text-xs text-white/40">확인 중... ({pollCount}회)</p>
+              </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <Button
+                onClick={async () => {
+                  setPollCount(p => p + 1)
+                  setError("")
+                  try {
+                    const res = await fetch("/api/codef/kakao/confirm", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ userId, phoneNo, jobId: kakaoJobId, extraInfo: kakaoExtraInfo }),
+                    })
+                    const data = await res.json()
+                    if (!data.success) { setError(data.message ?? "확인 실패"); return }
+                    if (data.completed) { setStep("select-date") }
+                    else { setError("아직 승인 전입니다. 카카오톡을 확인해주세요.") }
+                  } catch { setError("서버 오류가 발생했습니다.") }
+                }}
+                className="w-full h-12 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300 font-bold rounded-xl"
+              >
+                ✅ 카카오톡 승인했어요
+              </Button>
+              <button onClick={() => setStep("kakao-phone")} className="text-xs text-white/40 hover:text-white">← 다시 시도</button>
+            </div>
           )}
 
           {step === "connecting" && (
