@@ -29,7 +29,7 @@ interface Props {
   onChecked?: (result: CheckResponse) => void
 }
 
-// 날짜 시드 기반 결정론적 랜덤 (같은 날 = 같은 운세)
+// 날짜 시드 기반 결정론적 랜덤
 function seededRand(seed: number): number {
   return Math.abs(Math.sin(seed) * 10000) % 1
 }
@@ -38,14 +38,14 @@ function getDailyFortune() {
   const now = new Date()
   const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()
 
-  const deliveryTexts = ["최고의 배송일!", "순조로운 하루", "보통의 하루", "집중력이 필요한 날", "인내가 필요한 날"]
-  const zones = ["삼산동", "신정동", "달동", "옥동", "남구", "중구", "북구", "동구"]
+  const deliveryTexts = ["최고의 배송운!", "좋은 하루", "보통의 하루", "집중이 필요한 날", "체력 관리 필요"]
+  const zones = ["동쪽", "서쪽", "남쪽", "북쪽", "중앙", "이북", "이남", "이서"]
   const quotes = [
-    "빠른 배송보다 안전한 배송이 먼저입니다.",
-    "고객의 작은 미소가 오늘의 원동력입니다.",
-    "잠깐의 휴식이 더 나은 배송을 만듭니다.",
-    "한 개 한 개 정성껏, 그게 프로입니다.",
-    "오늘 수고한 나 자신에게 박수를 보내세요.",
+    "오늘 배송보다 내일의 배송이 더 빛납니다.",
+    "작은 친절이 큰 기회로 돌아옵니다.",
+    "서두르지 말고 꼼꼼하게 배송하면 좋은 일이 생깁니다.",
+    "한 번의 실수가 큰 성과로 바뀔 수 있습니다.",
+    "오늘도 수고하셨습니다. 내일도 화이팅!",
   ]
 
   const textIdx = Math.floor(seededRand(seed + 1) * deliveryTexts.length)
@@ -64,7 +64,7 @@ function getDailyFortune() {
 function DailyFortune() {
   const { stars, deliveryText, zone, quote } = getDailyFortune()
   return (
-    <div className="border-t border-white/10 pt-4 space-y-2">
+    <div className="border-t border-white/10 pt-3 space-y-1.5">
       <p className="text-xs text-white/40 text-center uppercase tracking-wider">오늘의 배송운</p>
       <div className="flex items-center justify-between">
         <span className="text-sm text-white/70">배송운</span>
@@ -74,15 +74,14 @@ function DailyFortune() {
         </span>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-sm text-white/70">행운의 구역</span>
-        <span className="text-sm text-white/90">📍 {zone}</span>
+        <span className="text-sm text-white/70">행운의 방향</span>
+        <span className="text-sm text-white/90">→ {zone}</span>
       </div>
-      <p className="text-xs text-white/50 italic text-center pt-1">"{quote}"</p>
+      <p className="text-xs text-white/50 italic text-center pt-0.5">"{quote}"</p>
     </div>
   )
 }
 
-// 룰렛 칸 정의 (12시 방향에서 시계방향 0~7)
 interface Sector {
   label: string
   sub: string
@@ -93,12 +92,12 @@ interface Sector {
 const SECTORS: Sector[] = [
   { label: "10P", sub: "보통", bg: "#3b82f6", text: "#ffffff" },
   { label: "20P", sub: "보통", bg: "#0ea5e9", text: "#ffffff" },
-  { label: "30P", sub: "레어", bg: "#22c55e", text: "#ffffff" },
-  { label: "50P", sub: "에픽", bg: "#a855f7", text: "#ffffff" },
+  { label: "30P", sub: "행운", bg: "#22c55e", text: "#ffffff" },
+  { label: "50P", sub: "대박", bg: "#a855f7", text: "#ffffff" },
   { label: "100P", sub: "잭팟!", bg: "#facc15", text: "#1f2937" },
   { label: "10P", sub: "보통", bg: "#3b82f6", text: "#ffffff" },
   { label: "20P", sub: "보통", bg: "#0ea5e9", text: "#ffffff" },
-  { label: "30P", sub: "레어", bg: "#22c55e", text: "#ffffff" },
+  { label: "30P", sub: "행운", bg: "#22c55e", text: "#ffffff" },
 ]
 
 const SECTOR_DEG = 360 / SECTORS.length
@@ -117,21 +116,25 @@ function targetSector(rewardType: RewardType, points: number): number {
   return 0
 }
 
-// SVG 파이 조각 path 생성
-function sectorPath(i: number, radius: number, cx: number, cy: number): string {
+// SVG 내부 좌표계 (viewBox 기준 300x300 고정)
+const CX = 150
+const CY = 150
+const RADIUS = 140
+
+function sectorPath(i: number): string {
   const start = (i * SECTOR_DEG - 90) * (Math.PI / 180)
   const end = ((i + 1) * SECTOR_DEG - 90) * (Math.PI / 180)
-  const x1 = cx + radius * Math.cos(start)
-  const y1 = cy + radius * Math.sin(start)
-  const x2 = cx + radius * Math.cos(end)
-  const y2 = cy + radius * Math.sin(end)
-  return `M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 0,1 ${x2},${y2} Z`
+  const x1 = CX + RADIUS * Math.cos(start)
+  const y1 = CY + RADIUS * Math.sin(start)
+  const x2 = CX + RADIUS * Math.cos(end)
+  const y2 = CY + RADIUS * Math.sin(end)
+  return `M${CX},${CY} L${x1},${y1} A${RADIUS},${RADIUS} 0 0,1 ${x2},${y2} Z`
 }
 
-function labelPosition(i: number, radius: number, cx: number, cy: number) {
+function labelPosition(i: number) {
   const angle = (i * SECTOR_DEG + SECTOR_DEG / 2 - 90) * (Math.PI / 180)
-  const r = radius * 0.62
-  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+  const r = RADIUS * 0.62
+  return { x: CX + r * Math.cos(angle), y: CY + r * Math.sin(angle) }
 }
 
 export function AttendanceRouletteModal({
@@ -145,7 +148,7 @@ export function AttendanceRouletteModal({
   const [result, setResult] = useState<CheckResponse | null>(null)
   const [errorMsg, setErrorMsg] = useState<string>("")
 
-  // 모달 재오픈 시 상태 초기화
+  // 모달 열릴 때 상태 초기화
   useEffect(() => {
     if (open) {
       setPhase("idle")
@@ -154,10 +157,6 @@ export function AttendanceRouletteModal({
       setErrorMsg("")
     }
   }, [open])
-
-  const cx = 150
-  const cy = 150
-  const radius = 140
 
   async function handleSpin() {
     setPhase("spinning")
@@ -181,24 +180,22 @@ export function AttendanceRouletteModal({
     setResult(data)
     onChecked?.(data)
 
-    // 보너스 일자: 룰렛 스킵, 축하 화면
+    // 보너스 보상: 룰렛 없이, 바로 화면
     if (data.rewardType === "bonus_7day" || data.rewardType === "bonus_30day") {
       setPhase("bonus")
       return
     }
 
-    // 룰렛 회전: 결과 섹터에 정지
+    // 룰렛 회전: 결과 섹터로 멈춤
     const sectorIdx = targetSector(
       data.rewardType ?? "common",
       data.rewardPoints ?? 10
     )
-    // 12시 방향 포인터에 sectorIdx 중앙이 오도록: 회전각 = -(sectorIdx * 45 + 22.5)
-    // 5바퀴 추가 회전으로 시각적 임팩트
     const sectorCenter = sectorIdx * SECTOR_DEG + SECTOR_DEG / 2
     const finalRotation = 360 * 5 + (360 - sectorCenter)
     setRotation(finalRotation)
 
-    // 회전 애니메이션 종료 후 결과 표시
+    // 애니메이션 완료 후 결과 표시
     setTimeout(() => setPhase("result"), 3200)
   }
 
@@ -209,37 +206,41 @@ export function AttendanceRouletteModal({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent
         showCloseButton={false}
-        className="bg-slate-900 border-white/10 text-white max-w-sm mx-auto p-0 rounded-2xl flex flex-col max-h-[90vh]"
+        className="bg-slate-900 border-white/10 text-white w-[92vw] max-w-sm mx-auto p-0 rounded-2xl flex flex-col max-h-[88vh]"
       >
-        {/* 닫기 버튼 — 항상 우상단 고정 */}
+        {/* 닫기 버튼 */}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 z-20 text-white/60 hover:text-white bg-black/20 hover:bg-black/40 rounded-full p-1 transition-colors"
           aria-label="닫기"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
         </button>
 
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 pt-6 pb-4 text-center flex-shrink-0 rounded-t-2xl">
-          <div className="text-4xl mb-2">🎯</div>
-          <DialogTitle className="text-xl font-bold text-white">
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-5 pt-4 pb-3 text-center flex-shrink-0 rounded-t-2xl">
+          <div className="text-3xl mb-1">🎰</div>
+          <DialogTitle className="text-lg font-bold text-white">
             오늘의 출석 체크
           </DialogTitle>
-          <DialogDescription className="mt-1 text-blue-100 text-sm">
-            🔥 {consecutiveDays > 0 ? `${consecutiveDays}일 연속 출석 중` : "첫 출석!"}
+          <DialogDescription className="mt-0.5 text-blue-100 text-sm">
+            🎯 {consecutiveDays > 0 ? `${consecutiveDays}일 연속 출석 중!` : "첫 출석!"}
           </DialogDescription>
         </div>
 
-        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-          {/* 연속 출석 진행바 (7일 주기) */}
+        <div className="px-4 py-3 space-y-3 overflow-y-auto flex-1">
+
+          {/* 연속 출석 진행바 (7일 기준) */}
           <div>
-            <div className="flex justify-between text-xs text-white/50 mb-1.5">
-              <span>이번 주 보너스까지</span>
+            <div className="flex justify-between text-xs text-white/50 mb-1">
+              <span>연속 보너스까지</span>
               <span>
                 {Math.min(((consecutiveDays + (showResult ? 1 : 0)) % 7) || 7, 7)}/7
               </span>
             </div>
-            <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-400 to-yellow-500 transition-all duration-700"
                 style={{
@@ -251,8 +252,11 @@ export function AttendanceRouletteModal({
 
           {/* 룰렛 영역 */}
           {!isBonus && (
-            <div className="relative mx-auto" style={{ width: 300, height: 320 }}>
-              {/* 포인터 (12시 방향) */}
+            <div
+              className="relative mx-auto"
+              style={{ width: "min(260px, 78vw)", height: "calc(min(260px, 78vw) + 20px)" }}
+            >
+              {/* 화살표 (12시 방향) */}
               <div
                 className="absolute left-1/2 -translate-x-1/2 z-10"
                 style={{ top: 0 }}
@@ -262,9 +266,9 @@ export function AttendanceRouletteModal({
                   style={{
                     width: 0,
                     height: 0,
-                    borderLeft: "14px solid transparent",
-                    borderRight: "14px solid transparent",
-                    borderTop: "22px solid #ef4444",
+                    borderLeft: "12px solid transparent",
+                    borderRight: "12px solid transparent",
+                    borderTop: "20px solid #ef4444",
                     filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
                   }}
                 />
@@ -276,21 +280,21 @@ export function AttendanceRouletteModal({
                 style={{
                   top: 16,
                   left: 0,
-                  width: 300,
-                  height: 300,
+                  right: 0,
+                  bottom: 0,
                   transform: `rotate(${rotation}deg)`,
                   transition: phase === "spinning" || phase === "result"
                     ? "transform 3s cubic-bezier(0.17, 0.67, 0.21, 0.99)"
                     : "none",
                 }}
               >
-                <svg width="300" height="300" viewBox="0 0 300 300">
+                <svg width="100%" height="100%" viewBox="0 0 300 300">
                   {SECTORS.map((s, i) => {
-                    const pos = labelPosition(i, radius, cx, cy)
+                    const pos = labelPosition(i)
                     return (
                       <g key={i}>
                         <path
-                          d={sectorPath(i, radius, cx, cy)}
+                          d={sectorPath(i)}
                           fill={s.bg}
                           stroke="#0f172a"
                           strokeWidth="2"
@@ -321,28 +325,28 @@ export function AttendanceRouletteModal({
                       </g>
                     )
                   })}
-                  <circle cx={cx} cy={cy} r="22" fill="#0f172a" stroke="#fff" strokeWidth="3" />
-                  <text x={cx} y={cy} fill="#fff" fontSize="16" textAnchor="middle" dominantBaseline="middle" fontWeight="700">
-                    🎁
+                  <circle cx={CX} cy={CY} r="22" fill="#0f172a" stroke="#fff" strokeWidth="3" />
+                  <text x={CX} y={CY} fill="#fff" fontSize="16" textAnchor="middle" dominantBaseline="middle" fontWeight="700">
+                    🎯
                   </text>
                 </svg>
               </div>
             </div>
           )}
 
-          {/* 보너스 일자 축하 화면 */}
+          {/* 보너스 보상 화면 */}
           {isBonus && result && (
             <>
-              <div className="text-center py-6">
-                <div className="text-6xl mb-3">
-                  {result.rewardType === "bonus_30day" ? "🏆" : "🎉"}
+              <div className="text-center py-4">
+                <div className="text-5xl mb-2">
+                  {result.rewardType === "bonus_30day" ? "🏆" : "🎁"}
                 </div>
                 <p className="text-2xl font-extrabold text-amber-400">
                   {result.rewardPoints?.toLocaleString()}P 보너스!
                 </p>
-                <p className="mt-2 text-sm text-white/70">
+                <p className="mt-1.5 text-sm text-white/70">
                   {result.rewardType === "bonus_30day"
-                    ? "30일 연속 출석을 달성하셨습니다!"
+                    ? "30일 연속 출석을 달성했습니다!"
                     : "7일 연속 출석 보너스입니다!"}
                 </p>
               </div>
@@ -353,13 +357,13 @@ export function AttendanceRouletteModal({
           {/* 결과 메시지 */}
           {phase === "result" && result && (
             <>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
                 <p className="text-sm text-white/60 mb-1">획득 포인트</p>
                 <p className="text-3xl font-extrabold text-amber-400">
                   +{result.rewardPoints?.toLocaleString() ?? 0}P
                 </p>
                 {typeof result.newTotal === "number" && (
-                  <p className="mt-2 text-xs text-white/50">
+                  <p className="mt-1.5 text-xs text-white/50">
                     누적 {result.newTotal.toLocaleString()}P
                   </p>
                 )}
@@ -376,16 +380,17 @@ export function AttendanceRouletteModal({
 
           <p className="text-xs text-white/40 text-center">
             {showResult
-              ? "내일도 잊지 말고 출석해주세요! 🔔"
-              : "버튼을 눌러 룰렛을 돌려보세요"}
+              ? "내일도 잊지 말고 출석하세요! 🎯"
+              : "버튼을 눌러 룰렛을 돌려보세요!"}
           </p>
         </div>
 
-        <div className="px-6 pb-6 flex-shrink-0">
+        {/* 하단 버튼 */}
+        <div className="px-5 pb-5 flex-shrink-0">
           {phase === "idle" && (
             <Button
               onClick={() => void handleSpin()}
-              className="w-full h-14 text-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 active:scale-95"
+              className="w-full h-12 text-base bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 active:scale-95"
             >
               룰렛 돌리기 🎰
             </Button>
@@ -393,15 +398,15 @@ export function AttendanceRouletteModal({
           {phase === "spinning" && (
             <Button
               disabled
-              className="w-full h-14 text-lg bg-slate-700 text-white/60 font-bold rounded-xl"
+              className="w-full h-12 text-base bg-slate-700 text-white/60 font-bold rounded-xl"
             >
-              룰렛 회전 중...
+              룰렛 회전 중..
             </Button>
           )}
           {(phase === "result" || phase === "bonus" || phase === "error") && (
             <Button
               onClick={onClose}
-              className="w-full h-14 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all duration-200 active:scale-95"
+              className="w-full h-12 text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all duration-200 active:scale-95"
             >
               확인
             </Button>
