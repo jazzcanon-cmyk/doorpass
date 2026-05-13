@@ -221,6 +221,11 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // 개인정보 보호 안내 팝업 (최초 진입 시 1회만)
   const [securityPopupOpen, setSecurityPopupOpen] = useState(false)
 
+  // 섹션 아코디언 접기/펼치기 상태
+  // 수입은 자주 확인하지 않으므로 기본 접힘, 지출은 자주 사용하므로 기본 펼침
+  const [incomeExpanded, setIncomeExpanded] = useState(false)
+  const [expenseExpanded, setExpenseExpanded] = useState(true)
+
   // ─── 보안 안내 팝업 초기화 (마운트 후 localStorage 확인) ─────────────────────
   useEffect(() => {
     if (!localStorage.getItem("taxpass_security_agreed")) {
@@ -965,108 +970,161 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       />
 
       {/* ══════════════════════════════════════════════
-          수입 섹션
+          수입 섹션 (아코디언) — 기본 접힘
       ══════════════════════════════════════════════ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
-          <span>💰</span> 이번 달 수입
-          <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full">
-            🔒 나만 볼 수 있음
+      <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+        {/* 헤더 바 — 항상 표시 (얇게 48px) · 클릭으로 접기/펼치기 */}
+        <button
+          type="button"
+          onClick={() => setIncomeExpanded((v) => !v)}
+          className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
+        >
+          {/* 왼쪽: 아이콘 + 라벨 */}
+          <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
+            <span>💰</span> 이번 달 수입
           </span>
-        </h2>
+          {/* 가운데: 합계 금액 (굵게) */}
+          <span className="flex-1 text-center text-sm font-bold text-emerald-400">
+            {loading ? "..." : `${monthlyIncome.toLocaleString()}원`}
+          </span>
+          {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+              나만 볼 수 있음 🔒
+            </span>
+            <span className={`text-white/40 text-xs transition-transform duration-200 ${incomeExpanded ? "rotate-180" : ""}`}>
+              ∨
+            </span>
+          </span>
+        </button>
 
-        {/* 명세표 업로드 + 직접 입력 */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => incomeFileRef.current?.click()}
-            disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed py-4 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
-          >
-            {uploadingIncome ? (
-              <><span>⏳</span>업로드 중...</>
-            ) : isAnalyzingIncome ? (
-              <><span>🔍</span>분석 중...</>
-            ) : (
-              <><span>📸</span>명세표 업로드</>
-            )}
-          </button>
-          <button
-            onClick={() => { setIncomeForm({ ...EMPTY_INCOME_FORM, income_date: thisMonthStr() }); setIncomeModalOpen(true) }}
-            disabled={!currentUser || !approvedUserId}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-4 text-sm font-semibold text-white/80 transition-all duration-200"
-          >
-            <span>✏️</span>
-            <span className="whitespace-nowrap">직접 입력</span>
-          </button>
-        </div>
-        {/* 업로드 버튼 하단 보안 문구 */}
-        <p className="text-xs text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
-        {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
-        <input ref={incomeFileRef} type="file" accept="image/*" capture="environment" className="hidden"
-          disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
-          onChange={handleIncomeFileChange} />
-
-        {/* 수입 목록 */}
-        {loading ? (
-          <div className="text-center py-6 text-white/30 text-sm">불러오는 중...</div>
-        ) : incomes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-white/5 border border-dashed border-white/10 py-8 gap-2">
-            <span className="text-2xl opacity-40">📋</span>
-            <p className="text-sm text-white/30">정산명세표를 등록해보세요!</p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {incomes.map((inc) => (
-              <li
-                key={inc.id}
-                className={`rounded-xl border px-4 py-3 transition-colors ${
-                  inc.id === analyzingIncomeId
-                    ? "bg-emerald-500/10 border-emerald-500/30"
-                    : "bg-white/5 border-white/10"
-                }`}
+        {/* 펼친 영역 — 부드러운 전환 애니메이션 */}
+        <div
+          className={`transition-all duration-200 ease-in-out overflow-hidden ${
+            incomeExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="px-3 pb-3 pt-1 space-y-2">
+            {/* 명세표 업로드 + 직접 입력 (높이 축소: h-10) */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => incomeFileRef.current?.click()}
+                disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
+                className="flex-1 h-10 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
               >
-                {inc.id === analyzingIncomeId ? (
-                  <p className="text-emerald-300 text-xs">🔍 분석 중...</p>
+                {uploadingIncome ? (
+                  <><span>⏳</span>업로드 중...</>
+                ) : isAnalyzingIncome ? (
+                  <><span>🔍</span>분석 중...</>
                 ) : (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-white/50">{inc.income_date.slice(0, 7)}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-emerald-400">
-                          {(inc.total_amount ?? 0).toLocaleString()}원
-                        </span>
-                        {/* 다른 항목 삭제 중이면 비활성화 */}
-                        <button
-                          onClick={() => void handleDeleteIncome(inc)}
-                          disabled={deletingIncomeId !== null}
-                          className="text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base leading-none"
-                          title="삭제"
-                        >
-                          {deletingIncomeId === inc.id ? "⏳" : "🗑️"}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/40">
-                      <span>배송 {(inc.delivery_fee ?? 0).toLocaleString()}</span>
-                      {(inc.pickup_fee ?? 0) > 0 && <span>집하 {inc.pickup_fee.toLocaleString()}</span>}
-                      {(inc.incentive ?? 0) > 0 && <span>인센티브 {inc.incentive.toLocaleString()}</span>}
-                      {(inc.vat_amount ?? 0) > 0 && <span>부가세 {inc.vat_amount.toLocaleString()}</span>}
-                    </div>
-                  </>
+                  <><span>📸</span>명세표 업로드</>
                 )}
-              </li>
-            ))}
-          </ul>
-        )}
+              </button>
+              <button
+                onClick={() => { setIncomeForm({ ...EMPTY_INCOME_FORM, income_date: thisMonthStr() }); setIncomeModalOpen(true) }}
+                disabled={!currentUser || !approvedUserId}
+                className="h-10 flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 text-sm font-semibold text-white/80 transition-all duration-200"
+              >
+                <span>✏️</span>
+                <span className="whitespace-nowrap">직접 입력</span>
+              </button>
+            </div>
+            {/* 보안 안내 한 줄 (작은 글씨) */}
+            <p className="text-[11px] text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
+            {/* disabled로 파일 선택 자체를 차단해 중복 업로드 방지 */}
+            <input ref={incomeFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+              disabled={uploadingIncome || isAnalyzingIncome || !currentUser || !approvedUserId}
+              onChange={handleIncomeFileChange} />
+
+            {/* 수입 목록 — 있을 때만 표시. 없으면 한 줄 안내만 */}
+            {loading ? (
+              <div className="text-center py-4 text-white/30 text-sm">불러오는 중...</div>
+            ) : incomes.length === 0 ? (
+              <p className="text-center text-xs text-white/30 py-2">정산명세표를 등록해보세요</p>
+            ) : (
+              <ul className="space-y-2">
+                {incomes.map((inc) => (
+                  <li
+                    key={inc.id}
+                    className={`rounded-xl border px-4 py-3 transition-colors ${
+                      inc.id === analyzingIncomeId
+                        ? "bg-emerald-500/10 border-emerald-500/30"
+                        : "bg-white/5 border-white/10"
+                    }`}
+                  >
+                    {inc.id === analyzingIncomeId ? (
+                      <p className="text-emerald-300 text-xs">🔍 분석 중...</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/50">{inc.income_date.slice(0, 7)}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-bold text-emerald-400">
+                              {(inc.total_amount ?? 0).toLocaleString()}원
+                            </span>
+                            {/* 다른 항목 삭제 중이면 비활성화 */}
+                            <button
+                              onClick={() => void handleDeleteIncome(inc)}
+                              disabled={deletingIncomeId !== null}
+                              className="text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base leading-none"
+                              title="삭제"
+                            >
+                              {deletingIncomeId === inc.id ? "⏳" : "🗑️"}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/40">
+                          <span>배송 {(inc.delivery_fee ?? 0).toLocaleString()}</span>
+                          {(inc.pickup_fee ?? 0) > 0 && <span>집하 {inc.pickup_fee.toLocaleString()}</span>}
+                          {(inc.incentive ?? 0) > 0 && <span>인센티브 {inc.incentive.toLocaleString()}</span>}
+                          {(inc.vat_amount ?? 0) > 0 && <span>부가세 {inc.vat_amount.toLocaleString()}</span>}
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════
-          지출 섹션 (기존 유지)
+          지출 섹션 (아코디언) — 기본 펼침
       ══════════════════════════════════════════════ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
-          <span>🧾</span> 지출 관리
-        </h2>
+      <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+        {/* 헤더 바 — 항상 표시 (얇게 48px) · 클릭으로 접기/펼치기 */}
+        <button
+          type="button"
+          onClick={() => setExpenseExpanded((v) => !v)}
+          className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
+        >
+          {/* 왼쪽: 아이콘 + 라벨 */}
+          <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
+            <span>📤</span> 지출 관리
+          </span>
+          {/* 가운데: 합계 금액 (굵게) */}
+          <span className="flex-1 text-center text-sm font-bold text-white">
+            {loading ? "..." : `${monthlyExpense.toLocaleString()}원`}
+          </span>
+          {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+              나만 볼 수 있음 🔒
+            </span>
+            <span className={`text-white/40 text-xs transition-transform duration-200 ${expenseExpanded ? "rotate-180" : ""}`}>
+              ∨
+            </span>
+          </span>
+        </button>
+
+        {/* 펼친 영역 — 부드러운 전환 애니메이션 */}
+        <div
+          className={`transition-all duration-200 ease-in-out overflow-hidden ${
+            expenseExpanded ? "max-h-[10000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="px-3 pb-3 pt-1 space-y-3">
 
         {/* 회계자료 다운로드 */}
         <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
@@ -1294,6 +1352,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               ))}
             </ul>
           )}
+        </div>
+          </div>
         </div>
       </div>
 
