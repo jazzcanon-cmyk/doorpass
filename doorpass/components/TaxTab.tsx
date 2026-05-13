@@ -250,6 +250,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [budgetHistory, setBudgetHistory] = useState<{ label: string; income: number; expense: number }[]>([])
   const [loadingBudget,    setLoadingBudget]    = useState(false)
   const [downloadingBudget, setDownloadingBudget] = useState(false)
+  // 가계부 아코디언 — 기본 접힘 (헤더만 표시)
+  const [budgetExpanded, setBudgetExpanded] = useState(false)
 
   // ─── 보안 안내 팝업 초기화 (마운트 후 localStorage 확인) ─────────────────────
   useEffect(() => {
@@ -1522,16 +1524,39 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         const hasData = budgetExpense > 0 || budgetIncome > 0
 
         return (
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-4">
-            {/* ── 헤더: 제목 + 월 네비 + 보안 뱃지 ───────────────────────── */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
+          <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+            {/* ── 헤더 바 (항상 표시, 48px) — 클릭으로 접기/펼치기 ──────── */}
+            <button
+              type="button"
+              onClick={() => setBudgetExpanded((v) => !v)}
+              className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
+            >
+              {/* 왼쪽: 아이콘 + 라벨 */}
+              <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
                 <span>📒</span> 가계부
-              </h2>
-              <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                나만 볼 수 있음 🔒
               </span>
-            </div>
+              {/* 가운데: 현재 조회 월 */}
+              <span className="flex-1 text-center text-sm font-bold text-white">
+                {budgetYear}년 {budgetMonth}월
+              </span>
+              {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+              <span className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  나만 볼 수 있음 🔒
+                </span>
+                <span className={`text-white/40 text-xs transition-transform duration-200 ${budgetExpanded ? "rotate-180" : ""}`}>
+                  ∨
+                </span>
+              </span>
+            </button>
+
+            {/* ── 펼친 영역 — 부드러운 전환 ──────────────────────────────── */}
+            <div
+              className={`transition-all duration-200 ease-in-out overflow-hidden ${
+                budgetExpanded ? "max-h-[10000px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="px-4 pb-4 pt-2 space-y-4">
 
             {/* 월 네비게이션 */}
             <div className="flex items-center justify-between gap-2">
@@ -1718,6 +1743,8 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             >
               {downloadingBudget ? <><span>⏳</span>생성 중...</> : <><span>📄</span>가계부 PDF 다운로드</>}
             </button>
+              </div>
+            </div>
           </div>
         )
       })()}
