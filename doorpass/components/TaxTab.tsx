@@ -1777,39 +1777,20 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                 placeholder="예: 하이패스"
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-blue-500/50" />
             </div>
-            <div
-              style={{ position: 'relative', zIndex: 9999 }}
-              onTouchStart={(e) => {
-                e.stopPropagation()
-                amountInputRef.current?.focus()
-              }}
-            >
+            <div>
               <label className="text-xs text-white/50">금액 <span className="text-red-400">*</span></label>
-              <input
-                ref={amountInputRef}
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                tabIndex={0}
-                value={expenseForm.amount}
-                onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
-                placeholder="숫자만 입력"
-                onTouchEnd={(e) => {
-                  e.stopPropagation()
-                  ;(e.target as HTMLInputElement).focus()
+              <button
+                type="button"
+                onClick={() => {
+                  const val = window.prompt('금액을 입력하세요 (숫자만)', expenseForm.amount || '')
+                  if (val !== null) {
+                    setExpenseForm(f => ({ ...f, amount: val.replace(/[^0-9]/g, '') }))
+                  }
                 }}
-                style={{
-                  fontSize: '16px',
-                  WebkitUserSelect: 'text',
-                  userSelect: 'text',
-                  pointerEvents: 'auto',
-                  touchAction: 'auto',
-                  position: 'relative',
-                  zIndex: 9999,
-                }}
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-blue-400"
-              />
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-left text-white focus:outline-none focus:border-blue-400 mt-1"
+              >
+                {expenseForm.amount ? `${Number(expenseForm.amount).toLocaleString()}원` : <span className="text-white/40">탭하여 금액 입력</span>}
+              </button>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">카테고리</label>
