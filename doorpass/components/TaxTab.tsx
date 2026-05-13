@@ -996,7 +996,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // ─── 렌더 ─────────────────────────────────────────────────────────────────
 
   return (
-    <section className="container mx-auto px-4 py-4 space-y-4">
+    <section className="container mx-auto px-4 py-4 space-y-3">
 
       {/* ══════════════════════════════════════════════
           개인정보 보호 안내 팝업 (최초 진입 시 1회)
@@ -1083,21 +1083,21 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
       {/* ── 상단 요약 카드 3개 ── */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
-          <p className="text-[11px] text-white/40">이번 달 수입</p>
-          <p className="text-xl font-bold text-emerald-400">
+        <div className="rounded-2xl bg-slate-800/80 border border-white/10 p-3 space-y-1">
+          <p className="text-xs text-white/50">이번 달 수입</p>
+          <p className="text-2xl font-bold text-emerald-400">
             {loading ? "..." : `${monthlyIncome.toLocaleString()}원`}
           </p>
         </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
-          <p className="text-[11px] text-white/40">이번 달 지출</p>
-          <p className="text-xl font-bold text-white">
+        <div className="rounded-2xl bg-slate-800/80 border border-white/10 p-3 space-y-1">
+          <p className="text-xs text-white/50">이번 달 지출</p>
+          <p className="text-2xl font-bold text-white">
             {loading ? "..." : `${monthlyExpense.toLocaleString()}원`}
           </p>
         </div>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
-          <p className="text-[11px] text-white/40">순이익</p>
-          <p className={`text-xl font-bold ${netProfit >= 0 ? "text-blue-400" : "text-red-400"}`}>
+        <div className="rounded-2xl bg-slate-800/80 border border-white/10 p-3 space-y-1">
+          <p className="text-xs text-white/50">순이익</p>
+          <p className={`text-2xl font-bold ${netProfit >= 0 ? "text-blue-400" : "text-red-400"}`}>
             {loading ? "..." : `${netProfit.toLocaleString()}원`}
           </p>
         </div>
@@ -1117,26 +1117,24 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       {/* ══════════════════════════════════════════════
           수입 섹션 (아코디언) — 기본 접힘
       ══════════════════════════════════════════════ */}
-      <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+      <div className="rounded-2xl bg-slate-800/60 border border-white/10 overflow-hidden">
         {/* 헤더 바 — 항상 표시 (얇게 48px) · 클릭으로 접기/펼치기 */}
         <button
           type="button"
           onClick={() => setIncomeExpanded((v) => !v)}
           className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
         >
-          {/* 왼쪽: 아이콘 + 라벨 */}
-          <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
+          {/* 왼쪽: accent + 아이콘 + 라벨 */}
+          <span className="border-l-2 border-blue-400 pl-2 text-sm font-semibold text-white flex items-center gap-1.5 shrink-0">
             <span>💰</span> 이번 달 수입
           </span>
           {/* 가운데: 합계 금액 (굵게) */}
           <span className="flex-1 text-center text-sm font-bold text-emerald-400">
             {loading ? "..." : `${monthlyIncome.toLocaleString()}원`}
           </span>
-          {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+          {/* 오른쪽: 보안 아이콘 + 토글 아이콘 */}
           <span className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-              나만 볼 수 있음 🔒
-            </span>
+            <span className="text-white/30 text-xs">🔒</span>
             <span className={`text-white/40 text-xs transition-transform duration-200 ${incomeExpanded ? "rotate-180" : ""}`}>
               ∨
             </span>
@@ -1237,26 +1235,24 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       {/* ══════════════════════════════════════════════
           지출 섹션 (아코디언) — 기본 펼침
       ══════════════════════════════════════════════ */}
-      <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+      <div className="rounded-2xl bg-slate-800/60 border border-white/10 overflow-hidden">
         {/* 헤더 바 — 항상 표시 (얇게 48px) · 클릭으로 접기/펼치기 */}
         <button
           type="button"
           onClick={() => setExpenseExpanded((v) => !v)}
           className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
         >
-          {/* 왼쪽: 아이콘 + 라벨 */}
-          <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
+          {/* 왼쪽: accent + 아이콘 + 라벨 */}
+          <span className="border-l-2 border-blue-400 pl-2 text-sm font-semibold text-white flex items-center gap-1.5 shrink-0">
             <span>📤</span> 지출 관리
           </span>
           {/* 가운데: 합계 금액 (굵게) */}
           <span className="flex-1 text-center text-sm font-bold text-white">
             {loading ? "..." : `${monthlyExpense.toLocaleString()}원`}
           </span>
-          {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+          {/* 오른쪽: 보안 아이콘 + 토글 아이콘 */}
           <span className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-              나만 볼 수 있음 🔒
-            </span>
+            <span className="text-white/30 text-xs">🔒</span>
             <span className={`text-white/40 text-xs transition-transform duration-200 ${expenseExpanded ? "rotate-180" : ""}`}>
               ∨
             </span>
@@ -1327,52 +1323,50 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </button>
         </div>
 
-        {/* 영수증 업로드 — 크게 강조 (h-14) */}
+        {/* 영수증 업로드 — 강조 (h-12 rounded-xl) */}
         <button
           onClick={() => expenseFileRef.current?.click()}
           disabled={uploading || isAnalyzingExpense || importingStatement || !currentUser || !approvedUserId}
-          className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-base font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
+          className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-base font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
         >
           {uploading ? (
-            <><span className="text-2xl">⏳</span>업로드 중...</>
+            <><span>⏳</span>업로드 중...</>
           ) : isAnalyzingExpense ? (
-            <><span className="text-2xl">🔍</span>분석 중...</>
+            <><span>🔍</span>분석 중...</>
           ) : (
-            <><span className="text-2xl">📸</span>영수증 업로드</>
+            <><span>📸</span>영수증 업로드</>
           )}
         </button>
 
-        {/* 카드명세서 + 직접 입력 — 별도 한 줄 (기존 크기 유지) */}
-        <div className="flex gap-2">
+        {/* 카드명세서 / 직접입력 / 자동수집 — 3등분 */}
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => statementFileRef.current?.click()}
             disabled={importingStatement || uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold text-teal-300 transition-all duration-200"
+            className="h-10 flex items-center justify-center gap-1 rounded-xl bg-slate-700/60 hover:bg-slate-700/80 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold text-white/80 transition-all duration-200"
           >
             {importingStatement ? (
-              <><span>⏳</span><span className="whitespace-nowrap text-xs">분석 중...</span></>
+              <><span>⏳</span><span>분석 중...</span></>
             ) : (
-              <><span>📋</span><span className="whitespace-nowrap">카드명세서</span></>
+              <><span>📋</span><span>카드명세서</span></>
             )}
           </button>
           <button
             onClick={() => { setExpenseForm({ ...EMPTY_EXPENSE_FORM, receipt_date: todayStr() }); setExpenseModalOpen(true) }}
             disabled={!currentUser || !approvedUserId}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold text-white/80 transition-all duration-200"
+            className="h-10 flex items-center justify-center gap-1 rounded-xl bg-slate-700/60 hover:bg-slate-700/80 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold text-white/80 transition-all duration-200"
           >
             <span>✏️</span>
-            <span className="whitespace-nowrap">직접 입력</span>
+            <span>직접 입력</span>
+          </button>
+          <button
+            onClick={() => setCodefOpen(true)}
+            className="h-10 flex items-center justify-center gap-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-xs font-semibold text-blue-300 transition-all active:scale-95"
+          >
+            <span>🔗</span>
+            <span>자동수집</span>
           </button>
         </div>
-        <button
-          onClick={() => setCodefOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-lg text-xs text-blue-300 font-medium transition-all active:scale-95"
-        >
-          🔗 자동수집
-        </button>
-
-        {/* 업로드 버튼 하단 보안 문구 */}
-        <p className="text-xs text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
 
         {/* 파일 입력 (숨김) — disabled로 중복 업로드 방지 */}
         <input ref={expenseFileRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -1385,11 +1379,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
         {/* 지출 목록 — 컴팩트 2줄, 기본 15개 + "더 보기" 5개씩 */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-white/60 flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-1.5 border-l-2 border-blue-400 pl-2">
             최근 지출
-            <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full">
-              🔒 나만 볼 수 있음
-            </span>
+            <span className="ml-auto text-white/30 text-xs">🔒</span>
           </h3>
           {loading ? (
             <div className="text-center py-8 text-white/30 text-sm">불러오는 중...</div>
@@ -1404,10 +1396,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                 {expenses.slice(0, expenseDisplayCount).map((expense) => (
                   <li
                     key={expense.id}
-                    className={`rounded-xl border px-3 py-2 transition-colors ${
+                    className={`group rounded-xl border px-3 py-2 transition-colors ${
                       expense.id === analyzingExpenseId
                         ? "bg-blue-500/10 border-blue-500/30"
-                        : "bg-white/5 border-white/10"
+                        : "bg-slate-800/60 border-white/10"
                     }`}
                   >
                     {/* 1행: 업체명 + 카테고리 뱃지 + (오른쪽) 금액 + 삭제 */}
@@ -1417,7 +1409,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                           ? <span className="text-blue-300 text-xs">🔍 분석 중...</span>
                           : (expense.vendor_name ?? "업체명 없음")}
                       </span>
-                      <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border ${CATEGORY_COLORS[expense.category] ?? CATEGORY_COLORS["기타"]}`}>
+                      <span className={`shrink-0 text-[10px] rounded-full px-2 py-0.5 border ${CATEGORY_COLORS[expense.category] ?? CATEGORY_COLORS["기타"]}`}>
                         {expense.category}
                       </span>
                       <span className="shrink-0 text-sm font-bold text-white">
@@ -1426,7 +1418,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                       <button
                         onClick={() => void handleDeleteExpense(expense)}
                         disabled={expense.id === analyzingExpenseId || deletingExpenseId !== null}
-                        className="shrink-0 text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm leading-none"
+                        className="shrink-0 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm leading-none"
                         title="삭제"
                       >
                         {deletingExpenseId === expense.id ? "⏳" : "🗑️"}
@@ -1437,14 +1429,14 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                     {expense.id !== analyzingExpenseId && (
                       <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
                         <span className="text-white/30">{expense.receipt_date}</span>
-                        <span className={`px-1.5 py-0.5 rounded border ${
+                        <span className={`rounded-full px-2 py-0.5 border ${
                           expense.is_deductible
                             ? "bg-green-500/15 border-green-500/30 text-green-400"
                             : "bg-white/5 border-white/10 text-white/30"
                         }`}>
                           부가세 {expense.is_deductible ? "✅" : "❌"}
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded border ${
+                        <span className={`rounded-full px-2 py-0.5 border ${
                           expense.is_expense !== false
                             ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
                             : "bg-white/5 border-white/10 text-white/30"
@@ -1455,7 +1447,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                         {expense.vendor_tax_type && (
                           <span
                             title={`${expense.vendor_tax_type} · 국세청 실시간 조회`}
-                            className={`px-1.5 py-0.5 rounded border ${
+                            className={`rounded-full px-2 py-0.5 border ${
                               expense.is_deductible
                                 ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
                                 : "bg-red-500/15 border-red-500/30 text-red-400"
@@ -1532,26 +1524,24 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         const hasData = budgetExpense > 0 || budgetIncome > 0
 
         return (
-          <div className="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="rounded-2xl bg-slate-800/60 border border-white/10 overflow-hidden">
             {/* ── 헤더 바 (항상 표시, 48px) — 클릭으로 접기/펼치기 ──────── */}
             <button
               type="button"
               onClick={() => setBudgetExpanded((v) => !v)}
               className="w-full h-12 px-3 flex items-center gap-2 hover:bg-white/[0.03] transition-colors"
             >
-              {/* 왼쪽: 아이콘 + 라벨 */}
-              <span className="text-sm font-semibold text-white/70 flex items-center gap-1.5 shrink-0">
+              {/* 왼쪽: accent + 아이콘 + 라벨 */}
+              <span className="border-l-2 border-blue-400 pl-2 text-sm font-semibold text-white flex items-center gap-1.5 shrink-0">
                 <span>📒</span> 가계부
               </span>
               {/* 가운데: 현재 조회 월 */}
               <span className="flex-1 text-center text-sm font-bold text-white">
                 {budgetYear}년 {budgetMonth}월
               </span>
-              {/* 오른쪽: 보안 뱃지 + 토글 아이콘 */}
+              {/* 오른쪽: 보안 아이콘 + 토글 아이콘 */}
               <span className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  나만 볼 수 있음 🔒
-                </span>
+                <span className="text-white/30 text-xs">🔒</span>
                 <span className={`text-white/40 text-xs transition-transform duration-200 ${budgetExpanded ? "rotate-180" : ""}`}>
                   ∨
                 </span>
