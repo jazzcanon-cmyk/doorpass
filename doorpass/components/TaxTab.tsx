@@ -226,6 +226,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [incomeExpanded, setIncomeExpanded] = useState(false)
   const [expenseExpanded, setExpenseExpanded] = useState(true)
 
+  // 지출 목록 표시 개수 — 기본 15개, "더 보기" 클릭 시 5개씩 추가
+  const [expenseDisplayCount, setExpenseDisplayCount] = useState(15)
+
   // ─── 보안 안내 팝업 초기화 (마운트 후 localStorage 확인) ─────────────────────
   useEffect(() => {
     if (!localStorage.getItem("taxpass_security_agreed")) {
@@ -288,13 +291,13 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         .lte("receipt_date", endOfMonth)
       setMonthlyExpense((expMonthData ?? []).reduce((s, e) => s + (e.amount ?? 0), 0))
 
-      // 최근 지출 10개
+      // 최근 지출 — 더 보기 페이지네이션을 위해 넉넉히 50개까지 불러옴
       const { data: expRecentData } = await supabase
         .from("expenses")
         .select("id, receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason, receipt_image_url, business_number, vendor_tax_type")
         .eq("user_id", uid)
         .order("receipt_date", { ascending: false })
-        .limit(10)
+        .limit(50)
       setExpenses(expRecentData ?? [])
 
       // 비공개 버킷 — 영수증 이미지용 서명 URL 일괄 생성 (1시간 유효)
@@ -1126,83 +1129,83 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         >
           <div className="px-3 pb-3 pt-1 space-y-3">
 
-        {/* 회계자료 다운로드 */}
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
-          <p className="text-sm font-medium text-white/70">회계자료 다운로드</p>
-          <div className="flex gap-2">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="flex-1 rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-blue-500/50"
-            >
-              {YEARS.map((y) => (
-                <option key={y} value={y} className="bg-slate-900">{y}년</option>
-              ))}
-            </select>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="flex-1 rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2 focus:outline-none focus:border-blue-500/50"
-            >
-              {PERIODS.map((p) => (
-                <option key={p.value} value={p.value} className="bg-slate-900">{p.label}</option>
-              ))}
-            </select>
-          </div>
-          {/* 다운로드 버튼 3개: 엑셀 / PDF / 카카오톡 */}
-          <div className="grid grid-cols-3 gap-2">
-            {/* 엑셀 */}
-            <button
-              onClick={() => void handleDownload()}
-              disabled={downloading || !currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-emerald-300 transition-all duration-200"
-            >
-              {downloading ? <><span>⏳</span>저장 중</> : <><span>📥</span>엑셀</>}
-            </button>
-
-            {/* PDF */}
-            <button
-              onClick={() => void handlePdfDownload()}
-              disabled={downloadingPdf || !currentUser || !approvedUserId}
-              className="flex items-center justify-center gap-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-blue-300 transition-all duration-200"
-            >
-              {downloadingPdf ? <><span>⏳</span>생성 중</> : <><span>📄</span>PDF</>}
-            </button>
-
-            {/* 카카오톡 공유 — 카카오 노란색 */}
-            <button
-              onClick={() => void handleKakaoShare()}
-              disabled={sharingKakao || !currentUser || !approvedUserId}
-              style={{ backgroundColor: "#FEE500", borderColor: "#E6CE00" }}
-              className="flex items-center justify-center gap-1 rounded-xl border disabled:opacity-50 disabled:cursor-not-allowed py-3 text-xs font-semibold text-gray-900 transition-all duration-200 hover:brightness-95"
-            >
-              {sharingKakao ? <><span>⏳</span>생성 중</> : <><span>💬</span>카카오</>}
-            </button>
-          </div>
+        {/* 회계자료 다운로드 — 한 줄 컴팩트 (📥 + 연도/기간 드롭다운 + 아이콘 버튼 3개) */}
+        <div className="flex items-center gap-1.5">
+          {/* 📥 아이콘 (제목 대체) */}
+          <span className="text-base shrink-0" title="회계자료 다운로드">📥</span>
+          {/* 연도 드롭다운 (compact) */}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="h-9 rounded-lg bg-white/10 border border-white/10 text-white text-xs px-2 focus:outline-none focus:border-blue-500/50"
+            title="연도 선택"
+          >
+            {YEARS.map((y) => (
+              <option key={y} value={y} className="bg-slate-900">{y}년</option>
+            ))}
+          </select>
+          {/* 기간 드롭다운 (compact) */}
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className="h-9 rounded-lg bg-white/10 border border-white/10 text-white text-xs px-2 focus:outline-none focus:border-blue-500/50"
+            title="기간 선택"
+          >
+            {PERIODS.map((p) => (
+              <option key={p.value} value={p.value} className="bg-slate-900">{p.label}</option>
+            ))}
+          </select>
+          {/* 엑셀 — 아이콘만 (title 툴팁) */}
+          <button
+            onClick={() => void handleDownload()}
+            disabled={downloading || !currentUser || !approvedUserId}
+            title="엑셀 다운로드"
+            className="h-9 w-9 flex items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-300 transition-all duration-200"
+          >
+            {downloading ? "⏳" : "📊"}
+          </button>
+          {/* PDF — 아이콘만 */}
+          <button
+            onClick={() => void handlePdfDownload()}
+            disabled={downloadingPdf || !currentUser || !approvedUserId}
+            title="PDF 다운로드"
+            className="h-9 w-9 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-blue-300 transition-all duration-200"
+          >
+            {downloadingPdf ? "⏳" : "📄"}
+          </button>
+          {/* 카카오 공유 — 아이콘만 (카카오 노란색) */}
+          <button
+            onClick={() => void handleKakaoShare()}
+            disabled={sharingKakao || !currentUser || !approvedUserId}
+            style={{ backgroundColor: "#FEE500", borderColor: "#E6CE00" }}
+            title="카카오톡 공유"
+            className="h-9 w-9 flex items-center justify-center rounded-lg border disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 transition-all duration-200 hover:brightness-95"
+          >
+            {sharingKakao ? "⏳" : "💬"}
+          </button>
         </div>
 
-        {/* 영수증 업로드 + 카드명세서 + 직접 입력 */}
-        <div className="flex gap-2">
-          {/* 영수증 단건 업로드 (OCR) */}
-          <button
-            onClick={() => expenseFileRef.current?.click()}
-            disabled={uploading || isAnalyzingExpense || importingStatement || !currentUser || !approvedUserId}
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed py-5 text-base font-semibold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
-          >
-            {uploading ? (
-              <><span className="text-xl">⏳</span>업로드 중...</>
-            ) : isAnalyzingExpense ? (
-              <><span className="text-xl">🔍</span>분석 중...</>
-            ) : (
-              <><span className="text-xl">📸</span>영수증 업로드</>
-            )}
-          </button>
+        {/* 영수증 업로드 — 크게 강조 (h-14) */}
+        <button
+          onClick={() => expenseFileRef.current?.click()}
+          disabled={uploading || isAnalyzingExpense || importingStatement || !currentUser || !approvedUserId}
+          className="w-full h-14 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-base font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-200"
+        >
+          {uploading ? (
+            <><span className="text-2xl">⏳</span>업로드 중...</>
+          ) : isAnalyzingExpense ? (
+            <><span className="text-2xl">🔍</span>분석 중...</>
+          ) : (
+            <><span className="text-2xl">📸</span>영수증 업로드</>
+          )}
+        </button>
 
-          {/* 카드명세서 일괄 업로드 */}
+        {/* 카드명세서 + 직접 입력 — 별도 한 줄 (기존 크기 유지) */}
+        <div className="flex gap-2">
           <button
             onClick={() => statementFileRef.current?.click()}
             disabled={importingStatement || uploading || isAnalyzingExpense || !currentUser || !approvedUserId}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-5 text-sm font-semibold text-teal-300 transition-all duration-200"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold text-teal-300 transition-all duration-200"
           >
             {importingStatement ? (
               <><span>⏳</span><span className="whitespace-nowrap text-xs">분석 중...</span></>
@@ -1210,14 +1213,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               <><span>📋</span><span className="whitespace-nowrap">카드명세서</span></>
             )}
           </button>
-
-          {/* 직접 입력 */}
           <button
             onClick={() => { setExpenseForm({ ...EMPTY_EXPENSE_FORM, receipt_date: todayStr() }); setExpenseModalOpen(true) }}
             disabled={!currentUser || !approvedUserId}
-            className="flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-5 text-sm font-semibold text-white/80 transition-all duration-200"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold text-white/80 transition-all duration-200"
           >
-            <span className="text-base">✏️</span>
+            <span>✏️</span>
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
@@ -1234,7 +1235,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           disabled={importingStatement || !currentUser || !approvedUserId}
           onChange={handleStatementFileChange} />
 
-        {/* 지출 목록 */}
+        {/* 지출 목록 — 컴팩트 2줄, 기본 15개 + "더 보기" 5개씩 */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-white/60 flex items-center gap-1.5">
             최근 지출
@@ -1250,107 +1251,99 @@ export function TaxTab({ currentUser }: TaxTabProps) {
               <p className="text-sm text-white/30">영수증을 등록해보세요!</p>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {expenses.map((expense) => (
-                <li
-                  key={expense.id}
-                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
-                    expense.id === analyzingExpenseId
-                      ? "bg-blue-500/10 border-blue-500/30"
-                      : "bg-white/5 border-white/10"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
+            <>
+              <ul className="space-y-1.5">
+                {expenses.slice(0, expenseDisplayCount).map((expense) => (
+                  <li
+                    key={expense.id}
+                    className={`rounded-xl border px-3 py-2 transition-colors ${
+                      expense.id === analyzingExpenseId
+                        ? "bg-blue-500/10 border-blue-500/30"
+                        : "bg-white/5 border-white/10"
+                    }`}
+                  >
+                    {/* 1행: 업체명 + 카테고리 뱃지 + (오른쪽) 금액 + 삭제 */}
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white truncate">
-                        {expense.id === analyzingExpenseId ? (
-                          <span className="text-blue-300 text-xs">🔍 분석 중...</span>
-                        ) : (
-                          expense.vendor_name ?? "업체명 없음"
-                        )}
+                      <span className="text-sm font-medium text-white truncate flex-1 min-w-0">
+                        {expense.id === analyzingExpenseId
+                          ? <span className="text-blue-300 text-xs">🔍 분석 중...</span>
+                          : (expense.vendor_name ?? "업체명 없음")}
                       </span>
                       <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border ${CATEGORY_COLORS[expense.category] ?? CATEGORY_COLORS["기타"]}`}>
                         {expense.category}
                       </span>
+                      <span className="shrink-0 text-sm font-bold text-white">
+                        {(expense.amount ?? 0).toLocaleString()}원
+                      </span>
+                      <button
+                        onClick={() => void handleDeleteExpense(expense)}
+                        disabled={expense.id === analyzingExpenseId || deletingExpenseId !== null}
+                        className="shrink-0 text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm leading-none"
+                        title="삭제"
+                      >
+                        {deletingExpenseId === expense.id ? "⏳" : "🗑️"}
+                      </button>
                     </div>
-                    <p className="text-[11px] text-white/30 mt-0.5">{expense.receipt_date}</p>
 
-                    {/* 부가세공제 / 경비처리 뱃지 (분석 완료된 항목만) */}
+                    {/* 2행: 날짜 + 부가세/경비/국세청 뱃지 + 영수증 보기 (분석 완료 항목만) */}
                     {expense.id !== analyzingExpenseId && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+                        <span className="text-white/30">{expense.receipt_date}</span>
+                        <span className={`px-1.5 py-0.5 rounded border ${
                           expense.is_deductible
                             ? "bg-green-500/15 border-green-500/30 text-green-400"
                             : "bg-white/5 border-white/10 text-white/30"
                         }`}>
-                          부가세공제 {expense.is_deductible ? "✅" : "❌"}
+                          부가세 {expense.is_deductible ? "✅" : "❌"}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                        <span className={`px-1.5 py-0.5 rounded border ${
                           expense.is_expense !== false
                             ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
                             : "bg-white/5 border-white/10 text-white/30"
                         }`}>
-                          경비처리 {expense.is_expense !== false ? "✅" : "❌"}
+                          경비 {expense.is_expense !== false ? "✅" : "❌"}
                         </span>
-
-                        {/* 국세청 확인 뱃지: vendor_tax_type이 있을 때만 표시 */}
+                        {/* 국세청 확인 뱃지 — vendor_tax_type이 있을 때만 */}
                         {expense.vendor_tax_type && (
-                          expense.is_deductible ? (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/15 border-emerald-500/30 text-emerald-400">
-                              국세청 확인 ✅
-                            </span>
-                          ) : (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/15 border-red-500/30 text-red-400">
-                              부가세공제 불가 (국세청 확인)
-                            </span>
-                          )
+                          <span
+                            title={`${expense.vendor_tax_type} · 국세청 실시간 조회`}
+                            className={`px-1.5 py-0.5 rounded border ${
+                              expense.is_deductible
+                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                : "bg-red-500/15 border-red-500/30 text-red-400"
+                            }`}
+                          >
+                            국세청 {expense.is_deductible ? "✅" : "❌"}
+                          </span>
+                        )}
+                        {/* 영수증 이미지 링크 — 인라인 아이콘 */}
+                        {signedUrls[expense.id] && (
+                          <a
+                            href={signedUrls[expense.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="영수증 보기"
+                            className="ml-auto text-blue-400/60 hover:text-blue-400 transition-colors"
+                          >
+                            🖼️
+                          </a>
                         )}
                       </div>
                     )}
-
-                    {/* 국세청 확인된 경우: 과세유형 표시 / 미확인 시: AI 판단 이유 표시 */}
-                    {expense.id !== analyzingExpenseId && (
-                      expense.vendor_tax_type ? (
-                        <p className="text-[10px] text-white/30 mt-1 leading-tight">
-                          {expense.vendor_tax_type} · 국세청 실시간 조회
-                        </p>
-                      ) : expense.deduction_reason ? (
-                        <p className="text-[10px] text-white/25 mt-1 leading-tight">
-                          {expense.deduction_reason}
-                        </p>
-                      ) : null
-                    )}
-
-                    {/* 영수증 이미지 링크 (서명 URL이 있을 때만) */}
-                    {signedUrls[expense.id] && expense.id !== analyzingExpenseId && (
-                      <a
-                        href={signedUrls[expense.id]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-blue-400/50 hover:text-blue-400 mt-1 inline-block transition-colors"
-                      >
-                        🖼️ 영수증 보기
-                      </a>
-                    )}
-                  </div>
-                  {/* 금액 + 삭제 버튼 */}
-                  <div className="flex items-start gap-1.5 shrink-0 mt-0.5">
-                    <span className="text-sm font-bold text-white">
-                      {(expense.amount ?? 0).toLocaleString()}원
-                    </span>
-                    {/* 분석 중이거나 다른 항목 삭제 중이면 비활성화 */}
-                    <button
-                      onClick={() => void handleDeleteExpense(expense)}
-                      disabled={expense.id === analyzingExpenseId || deletingExpenseId !== null}
-                      className="text-white/20 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base leading-none"
-                      title="삭제"
-                    >
-                      {deletingExpenseId === expense.id ? "⏳" : "🗑️"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+              {/* 더 보기 버튼 — 표시 개수가 전체보다 적을 때만 노출, 5개씩 증가 */}
+              {expenseDisplayCount < expenses.length && (
+                <button
+                  type="button"
+                  onClick={() => setExpenseDisplayCount((c) => c + 5)}
+                  className="w-full h-9 mt-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/60 hover:text-white/80 transition-colors"
+                >
+                  더 보기 ↓ ({expenses.length - expenseDisplayCount}개 남음)
+                </button>
+              )}
+            </>
           )}
         </div>
           </div>
