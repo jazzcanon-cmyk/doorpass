@@ -4,6 +4,13 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CurrentUser } from "@/types/building"
 import { isKakaoShareReady, shareExpensePdf } from "@/lib/kakao-share"
+// recharts — 가계부 도넛/막대 차트
+import {
+  ResponsiveContainer,
+  PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
+  Tooltip as RechartsTooltip,
+} from "recharts"
 
 // approved_users.id 타입 (int8이지만 JS에서는 number로 취급)
 type ApprovedUserId = number
@@ -229,6 +236,21 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // 지출 목록 표시 개수 — 기본 15개, "더 보기" 클릭 시 5개씩 추가
   const [expenseDisplayCount, setExpenseDisplayCount] = useState(15)
 
+  // ─── 가계부 섹션 상태 ─────────────────────────────────────────────────────
+  // 선택된 가계부 연/월 (기본: 현재 월)
+  const _now = new Date()
+  const [budgetYear,  setBudgetYear]  = useState<number>(_now.getFullYear())
+  const [budgetMonth, setBudgetMonth] = useState<number>(_now.getMonth() + 1)
+  // 집계 데이터 (선택 월)
+  const [budgetIncome,  setBudgetIncome]  = useState(0)
+  const [budgetExpense, setBudgetExpense] = useState(0)
+  // 카테고리별 합계 (원본 카테고리 그대로 — UI에서 4버킷으로 묶음)
+  const [budgetByCategory, setBudgetByCategory] = useState<{ category: string; amount: number }[]>([])
+  // 최근 6개월 수입/지출 시계열
+  const [budgetHistory, setBudgetHistory] = useState<{ label: string; income: number; expense: number }[]>([])
+  const [loadingBudget,    setLoadingBudget]    = useState(false)
+  const [downloadingBudget, setDownloadingBudget] = useState(false)
+
   // ─── 보안 안내 팝업 초기화 (마운트 후 localStorage 확인) ─────────────────────
   useEffect(() => {
     if (!localStorage.getItem("taxpass_security_agreed")) {
@@ -345,6 +367,122 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     void fetchData(approvedUserId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [approvedUserId])
+
+  // ─── 가계부 데이터 조회 (선택 월 + 최근 6개월) ────────────────────────────
+  const fetchBudgetData = async (uid: number, year: number, month: number) => {
+    setLoadingBudget(true)
+    try {
+      const mm        = String(month).padStart(2, "0")
+      const startDate = `${year}-${mm}-01`
+      const lastDay   = new Date(year, month, 0).getDate()
+      const endDate   = `${year}-${mm}-${String(lastDay).padStart(2, "0")}`
+
+      // 6개월 시계열용 시작일 (선택 월 포함 6개월)
+      const sixStart  = new Date(year, month - 6, 1)
+      const sixStartStr = `${sixStart.getFullYear()}-${String(sixStart.getMonth() + 1).padStart(2, "0")}-01`
+
+      // 병렬 조회: 6개월치 expenses / 6개월치 income
+      const [expRes, incRes] = await Promise.all([
+        supabase
+          .from("expenses")
+          .select("receipt_date, amount, category")
+          .eq("user_id", uid)
+          .gte("receipt_date", sixStartStr)
+          .lte("receipt_date", endDate),
+        supabase
+          .from("income")
+          .select("income_date, total_amount")
+          .eq("user_id", uid)
+          .gte("income_date", sixStartStr)
+          .lte("income_date", endDate),
+      ])
+
+      const expRows = expRes.data ?? []
+      const incRows = incRes.data ?? []
+
+      // 선택 월 수입/지출 합계
+      const monthExpenses = expRows.filter((r) => r.receipt_date >= startDate && r.receipt_date <= endDate)
+      const monthIncomes  = incRows.filter((r) => r.income_date  >= startDate && r.income_date  <= endDate)
+      setBudgetExpense(monthExpenses.reduce((s, r) => s + (r.amount ?? 0), 0))
+      setBudgetIncome (monthIncomes .reduce((s, r) => s + (r.total_amount ?? 0), 0))
+
+      // 카테고리별 합계 (선택 월)
+      const catMap = new Map<string, number>()
+      for (const r of monthExpenses) {
+        const key = r.category ?? "기타"
+        catMap.set(key, (catMap.get(key) ?? 0) + (r.amount ?? 0))
+      }
+      setBudgetByCategory(
+        Array.from(catMap.entries()).map(([category, amount]) => ({ category, amount }))
+      )
+
+      // 최근 6개월 월별 합계 (선택 월 ~ 5개월 전)
+      const history: { label: string; income: number; expense: number }[] = []
+      for (let i = 5; i >= 0; i--) {
+        const d   = new Date(year, month - 1 - i, 1)
+        const y   = d.getFullYear()
+        const m   = d.getMonth() + 1
+        const mmh = String(m).padStart(2, "0")
+        const s   = `${y}-${mmh}-01`
+        const lastD = new Date(y, m, 0).getDate()
+        const e   = `${y}-${mmh}-${String(lastD).padStart(2, "0")}`
+        const exp = expRows
+          .filter((r) => r.receipt_date >= s && r.receipt_date <= e)
+          .reduce((sum, r) => sum + (r.amount ?? 0), 0)
+        const inc = incRows
+          .filter((r) => r.income_date >= s && r.income_date <= e)
+          .reduce((sum, r) => sum + (r.total_amount ?? 0), 0)
+        history.push({ label: `${m}월`, income: inc, expense: exp })
+      }
+      setBudgetHistory(history)
+    } catch (err) {
+      console.error("가계부 데이터 조회 오류:", err)
+    } finally {
+      setLoadingBudget(false)
+    }
+  }
+
+  // approvedUserId 또는 선택 월 변경 시 재조회
+  useEffect(() => {
+    if (!approvedUserId) return
+    void fetchBudgetData(approvedUserId, budgetYear, budgetMonth)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approvedUserId, budgetYear, budgetMonth])
+
+  // ─── 가계부 월 네비게이션 ────────────────────────────────────────────────
+  const goPrevBudgetMonth = () => {
+    if (budgetMonth === 1) { setBudgetYear((y) => y - 1); setBudgetMonth(12) }
+    else                   { setBudgetMonth((m) => m - 1) }
+  }
+  const goNextBudgetMonth = () => {
+    if (budgetMonth === 12) { setBudgetYear((y) => y + 1); setBudgetMonth(1) }
+    else                    { setBudgetMonth((m) => m + 1) }
+  }
+
+  // ─── 가계부 PDF 다운로드 ──────────────────────────────────────────────────
+  const handleBudgetPdfDownload = async () => {
+    if (!approvedUserId) return
+    setDownloadingBudget(true)
+    try {
+      const url = `/api/expenses/budget-pdf?user_id=${approvedUserId}&year=${budgetYear}&month=${budgetMonth}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error("PDF 생성 실패")
+      const blob = await res.blob()
+      const link = document.createElement("a")
+      link.href     = URL.createObjectURL(blob)
+      link.download = `가계부_${budgetYear}년_${budgetMonth}월.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(link.href)
+      toast.success("가계부 PDF 저장 완료")
+    } catch (err) {
+      console.error(err)
+      toast.error("PDF 생성 중 오류가 발생했습니다")
+    } finally {
+      setDownloadingBudget(false)
+    }
+  }
 
   // ─── 사업자등록증 업로드 + OCR ──────────────────────────────────────────
 
@@ -1349,6 +1487,240 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════
+          📒 가계부 섹션 — 월별 수입/지출 분석
+      ══════════════════════════════════════════════ */}
+      {(() => {
+        // ── 데이터 가공 (한 번만 계산) ────────────────────────────────────
+        const budgetBalance = budgetIncome - budgetExpense
+        // 도넛 차트용 4버킷 집계 (유류비+수리비 → 차량유지비)
+        const donutBuckets: Record<string, number> = { 차량유지비: 0, 식비: 0, 통신비: 0, 기타: 0 }
+        for (const { category, amount } of budgetByCategory) {
+          if (category === "유류비" || category === "수리비") donutBuckets["차량유지비"] += amount
+          else if (category === "식비")                      donutBuckets["식비"]       += amount
+          else if (category === "통신비")                    donutBuckets["통신비"]     += amount
+          else                                                donutBuckets["기타"]       += amount
+        }
+        const donutData = Object.entries(donutBuckets)
+          .filter(([, v]) => v > 0)
+          .map(([name, value]) => ({ name, value }))
+        // 도넛 색상 — 카테고리별 고정
+        const DONUT_COLORS: Record<string, string> = {
+          차량유지비: "#fb923c", // orange-400
+          식비:       "#4ade80", // green-400
+          통신비:     "#60a5fa", // blue-400
+          기타:       "#94a3b8", // slate-400
+        }
+        // 카테고리별 리스트용 (원본 카테고리 + 비율) — 금액 큰 순
+        const categoryList = [...budgetByCategory]
+          .sort((a, b) => b.amount - a.amount)
+          .map((r) => ({
+            ...r,
+            ratio: budgetExpense > 0 ? (r.amount / budgetExpense) * 100 : 0,
+          }))
+        const hasData = budgetExpense > 0 || budgetIncome > 0
+
+        return (
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-4">
+            {/* ── 헤더: 제목 + 월 네비 + 보안 뱃지 ───────────────────────── */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold text-white/70 flex items-center gap-1.5">
+                <span>📒</span> 가계부
+              </h2>
+              <span className="ml-auto text-[10px] bg-green-900/60 text-green-300 border border-green-700/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                나만 볼 수 있음 🔒
+              </span>
+            </div>
+
+            {/* 월 네비게이션 */}
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={goPrevBudgetMonth}
+                className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-sm text-white/80 transition-colors"
+              >
+                ← 이전달
+              </button>
+              <div className="text-base font-bold text-white">
+                {budgetYear}년 {budgetMonth}월
+              </div>
+              <button
+                onClick={goNextBudgetMonth}
+                className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-sm text-white/80 transition-colors"
+              >
+                다음달 →
+              </button>
+            </div>
+
+            {/* ── 요약 카드 3개 (수입 / 지출 / 잔액) ──────────────────────── */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="text-[11px] text-white/40">💰 이번달 수입</p>
+                <p className="text-lg font-bold text-emerald-400">
+                  {loadingBudget ? "..." : `${budgetIncome.toLocaleString()}원`}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="text-[11px] text-white/40">📤 이번달 지출</p>
+                <p className="text-lg font-bold text-white">
+                  {loadingBudget ? "..." : `${budgetExpense.toLocaleString()}원`}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="text-[11px] text-white/40">💚 잔액</p>
+                <p className={`text-lg font-bold ${budgetBalance >= 0 ? "text-blue-400" : "text-red-400"}`}>
+                  {loadingBudget ? "..." : `${budgetBalance.toLocaleString()}원`}
+                </p>
+              </div>
+            </div>
+
+            {/* ── 로딩 스켈레톤 / 데이터 없음 / 차트들 ────────────────────── */}
+            {loadingBudget ? (
+              <div className="space-y-3">
+                <div className="h-48 rounded-2xl bg-white/5 animate-pulse" />
+                <div className="h-48 rounded-2xl bg-white/5 animate-pulse" />
+              </div>
+            ) : !hasData ? (
+              <div className="rounded-2xl bg-white/5 border border-dashed border-white/10 py-10 text-center">
+                <p className="text-sm text-white/40">이번달 지출 내역이 없습니다</p>
+              </div>
+            ) : (
+              <>
+                {/* ── 도넛 차트: 카테고리별 지출 비율 ─────────────────────── */}
+                {donutData.length > 0 && (
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <p className="text-xs font-medium text-white/60 mb-2">카테고리별 지출 비율</p>
+                    <div className="flex items-center gap-3">
+                      {/* 도넛 + 중앙 총 지출금액 */}
+                      <div className="relative w-[140px] h-[140px] shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={donutData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={42}
+                              outerRadius={62}
+                              paddingAngle={2}
+                              dataKey="value"
+                              stroke="none"
+                            >
+                              {donutData.map((d) => (
+                                <Cell key={d.name} fill={DONUT_COLORS[d.name] ?? "#94a3b8"} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip
+                              contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                              formatter={(v: number) => `${v.toLocaleString()}원`}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        {/* 중앙 총 지출금액 */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-[10px] text-white/40">총 지출</span>
+                          <span className="text-xs font-bold text-white">
+                            {budgetExpense.toLocaleString()}원
+                          </span>
+                        </div>
+                      </div>
+                      {/* 범례 (퍼센트 포함) */}
+                      <ul className="flex-1 min-w-0 space-y-1.5">
+                        {donutData.map((d) => {
+                          const pct = budgetExpense > 0 ? (d.value / budgetExpense) * 100 : 0
+                          return (
+                            <li key={d.name} className="flex items-center gap-2 text-xs">
+                              <span
+                                className="w-2.5 h-2.5 rounded-sm shrink-0"
+                                style={{ backgroundColor: DONUT_COLORS[d.name] ?? "#94a3b8" }}
+                              />
+                              <span className="text-white/70 truncate flex-1">{d.name}</span>
+                              <span className="text-white/50 tabular-nums">{pct.toFixed(1)}%</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 막대 차트: 최근 6개월 수입/지출 비교 ─────────────────── */}
+                {budgetHistory.length > 0 && (
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                    <p className="text-xs font-medium text-white/60 mb-2">최근 6개월 수입/지출</p>
+                    <div className="w-full h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={budgetHistory} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
+                          <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                          <XAxis dataKey="label" tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis
+                            tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }}
+                            tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                            formatter={(v: number) => `${v.toLocaleString()}원`}
+                            cursor={{ fill: "rgba(255,255,255,0.05)" }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} />
+                          <Bar dataKey="income"  name="수입" fill="#60a5fa" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="expense" name="지출" fill="#f87171" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 카테고리별 지출 상세 목록 (비율 바) ──────────────────── */}
+                {categoryList.length > 0 && (
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-2">
+                    <p className="text-xs font-medium text-white/60">카테고리별 지출 상세</p>
+                    <ul className="space-y-2">
+                      {categoryList.map((c) => (
+                        <li key={c.category} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-white/70">{c.category}</span>
+                            <span className="text-white/50 tabular-nums">
+                              {c.amount.toLocaleString()}원 ({c.ratio.toFixed(1)}%)
+                            </span>
+                          </div>
+                          {/* 비율 바 */}
+                          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${c.ratio}%`,
+                                backgroundColor:
+                                  c.category === "유류비" || c.category === "수리비"
+                                    ? "#fb923c"
+                                    : c.category === "식비"
+                                    ? "#4ade80"
+                                    : c.category === "통신비"
+                                    ? "#60a5fa"
+                                    : "#94a3b8",
+                              }}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ── 가계부 PDF 다운로드 ─────────────────────────────────────── */}
+            <button
+              onClick={() => void handleBudgetPdfDownload()}
+              disabled={downloadingBudget || loadingBudget || !approvedUserId || !hasData}
+              className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-indigo-300 transition-all duration-200"
+            >
+              {downloadingBudget ? <><span>⏳</span>생성 중...</> : <><span>📄</span>가계부 PDF 다운로드</>}
+            </button>
+          </div>
+        )
+      })()}
 
       {/* ══════════════════════════════════════════════
           지출 직접 입력 모달
