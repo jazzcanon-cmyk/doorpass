@@ -1757,6 +1757,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         >
           <div
             className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1777,9 +1778,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">금액 <span className="text-red-400">*</span></label>
-              <input type="number" inputMode="numeric" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
-                placeholder="숫자만 입력" min={0}
-                onFocus={(e) => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
+                value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                placeholder="숫자만 입력"
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-blue-500/50" />
             </div>
             <div className="space-y-1.5">
@@ -1826,6 +1828,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         >
           <div
             className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1840,30 +1843,34 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">배송수수료 <span className="text-red-400">*</span></label>
-              <input type="number" inputMode="numeric" value={incomeForm.delivery_fee} onChange={(e) => setIncomeForm((f) => ({ ...f, delivery_fee: e.target.value }))}
-                placeholder="숫자만 입력" min={0}
-                onFocus={(e) => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
+                value={incomeForm.delivery_fee} onChange={(e) => setIncomeForm((f) => ({ ...f, delivery_fee: e.target.value }))}
+                placeholder="숫자만 입력"
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-emerald-500/50" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">집하수수료 <span className="text-white/30">(선택)</span></label>
-              <input type="number" inputMode="numeric" value={incomeForm.pickup_fee} onChange={(e) => setIncomeForm((f) => ({ ...f, pickup_fee: e.target.value }))}
-                placeholder="숫자만 입력" min={0}
-                onFocus={(e) => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
+                value={incomeForm.pickup_fee} onChange={(e) => setIncomeForm((f) => ({ ...f, pickup_fee: e.target.value }))}
+                placeholder="숫자만 입력"
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-emerald-500/50" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">인센티브 <span className="text-white/30">(선택)</span></label>
-              <input type="number" inputMode="numeric" value={incomeForm.incentive} onChange={(e) => setIncomeForm((f) => ({ ...f, incentive: e.target.value }))}
-                placeholder="숫자만 입력" min={0}
-                onFocus={(e) => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
+                value={incomeForm.incentive} onChange={(e) => setIncomeForm((f) => ({ ...f, incentive: e.target.value }))}
+                placeholder="숫자만 입력"
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-emerald-500/50" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-white/50">부가세액 <span className="text-white/30">(선택)</span></label>
-              <input type="number" inputMode="numeric" value={incomeForm.vat_amount} onChange={(e) => setIncomeForm((f) => ({ ...f, vat_amount: e.target.value }))}
-                placeholder="숫자만 입력" min={0}
-                onFocus={(e) => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
+                value={incomeForm.vat_amount} onChange={(e) => setIncomeForm((f) => ({ ...f, vat_amount: e.target.value }))}
+                placeholder="숫자만 입력"
+                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-emerald-500/50" />
             </div>
 
