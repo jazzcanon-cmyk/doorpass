@@ -1776,12 +1776,25 @@ export function TaxTab({ currentUser }: TaxTabProps) {
                 placeholder="예: 하이패스"
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-blue-500/50" />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" style={{ position: 'relative', zIndex: 50 }}>
               <label className="text-xs text-white/50">금액 <span className="text-red-400">*</span></label>
-              <input type="tel" inputMode="decimal" pattern="[0-9]*" autoComplete="off"
-                value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+              <input
+                type="tel"
+                inputMode="decimal"
+                pattern="[0-9]*"
+                autoComplete="off"
+                readOnly={false}
+                value={expenseForm.amount}
+                onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
                 placeholder="숫자만 입력"
-                onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }) }, 300) }}
+                onFocus={(e) => {
+                  e.target.removeAttribute('readonly')
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    e.target.focus()
+                  }, 350)
+                }}
+                onClick={(e) => { (e.target as HTMLInputElement).focus() }}
                 className="w-full rounded-xl bg-white/10 border border-white/10 text-white text-sm px-3 py-2.5 placeholder-white/20 focus:outline-none focus:border-blue-500/50" />
             </div>
             <div className="space-y-1.5">
