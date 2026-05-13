@@ -17,8 +17,8 @@ export function CodefConnectModal({ open, userId, onClose, onImported }: Props) 
   const [cardOrgCode, setCardOrgCode] = useState("")
   const [loginId, setLoginId] = useState("")
   const [loginPw, setLoginPw] = useState("")
-  const [startDate, setStartDate] = useState(getDefaultStart())
-  const [endDate, setEndDate] = useState(getDefaultEnd())
+  const [startDate, setStartDate] = useState(() => getDefaultStart())
+  const [endDate, setEndDate] = useState(() => getDefaultEnd())
   const [error, setError] = useState("")
   const [resultMsg, setResultMsg] = useState("")
   const [savedCount, setSavedCount] = useState(0)
@@ -123,12 +123,12 @@ export function CodefConnectModal({ open, userId, onClose, onImported }: Props) 
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
                 <p className="text-xs text-amber-300">🔒 비밀번호는 RSA로 암호화 후 CODEF 서버로 전송됩니다. 당사 서버에는 저장되지 않습니다.</p>
               </div>
-              <div className="space-y-2.5">
+              <form onSubmit={(e) => { e.preventDefault(); void handleConnect() }} className="space-y-2.5">
                 <input type="text" placeholder={serviceKind === "hometax" ? "홈택스 아이디" : "카드 웹사이트 아이디"} value={loginId} onChange={(e) => setLoginId(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-400"/>
-                <input type="password" placeholder="비밀번호" value={loginPw} onChange={(e) => setLoginPw(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void handleConnect() }} className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-400"/>
-              </div>
-              {error && <p className="text-sm text-red-400">{error}</p>}
-              <Button onClick={() => void handleConnect()} disabled={!loginId || !loginPw} className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl">연결하기 🔗</Button>
+                <input type="password" placeholder="비밀번호" value={loginPw} onChange={(e) => setLoginPw(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-sm text-white placeholder-white/40 focus:outline-none focus:border-blue-400"/>
+                {error && <p className="text-sm text-red-400">{error}</p>}
+                <Button type="submit" disabled={!loginId || !loginPw} className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl">연결하기 🔗</Button>
+              </form>
             </>
           )}
 
