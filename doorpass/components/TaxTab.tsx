@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CurrentUser } from "@/types/building"
 import { isKakaoShareReady, shareExpensePdf } from "@/lib/kakao-share"
+import { CodefConnectModal } from "@/components/CodefConnectModal"
 // recharts — 가계부 도넛/막대 차트
 import {
   ResponsiveContainer,
@@ -217,6 +218,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // 카드명세서 일괄 업로드 상태
   const [importingStatement, setImportingStatement]   = useState(false)
   const [statementModalOpen, setStatementModalOpen]   = useState(false)
+  const [codefOpen, setCodefOpen] = useState(false)
   const [statementResult,    setStatementResult]      = useState<StatementResult | null>(null)
   const [insertingStatement, setInsertingStatement]   = useState(false)
   // 의심 중복 항목 중 사용자가 "그래도 추가"를 선택한 인덱스 집합
@@ -1362,6 +1364,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             <span className="whitespace-nowrap">직접 입력</span>
           </button>
         </div>
+        <button
+          onClick={() => setCodefOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-lg text-xs text-blue-300 font-medium transition-all active:scale-95"
+        >
+          🔗 자동수집
+        </button>
 
         {/* 업로드 버튼 하단 보안 문구 */}
         <p className="text-xs text-gray-400 text-center">🔒 암호화 저장 · 본인만 열람 가능</p>
@@ -2176,6 +2184,15 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
         )
       })()}
+      <CodefConnectModal
+        open={codefOpen}
+        userId={approvedUserId ?? 0}
+        onClose={() => setCodefOpen(false)}
+        onImported={() => {
+          setCodefOpen(false)
+          if (approvedUserId) void fetchData(approvedUserId)
+        }}
+      />
     </section>
   )
 }
