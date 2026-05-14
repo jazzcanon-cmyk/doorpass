@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const branchId = searchParams.get("branchId")
   const date = searchParams.get("date")
   const postType = searchParams.get("post_type")
+  const district = searchParams.get("district")?.trim()
   const mine = searchParams.get("mine") === "1"
   const applied = searchParams.get("applied") === "1"
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
@@ -56,6 +57,10 @@ export async function GET(request: Request) {
     if (date) q = q.eq("request_date", date)
     if (postType) q = q.eq("post_type", postType)
     if (applied) q = q.in("id", appliedIds)
+    if (district) {
+      const escaped = district.replace(/[%,()]/g, "")
+      q = q.or(`area.ilike.%${escaped}%,available_area.ilike.%${escaped}%`)
+    }
 
     const {
       data: requests,

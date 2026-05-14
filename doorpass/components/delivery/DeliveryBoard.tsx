@@ -32,11 +32,15 @@ interface Props {
 
 type Tab = "all" | "mine" | "applied"
 
+const DISTRICTS = ["전체", "남구", "북구", "중구", "동구", "울주군"] as const
+type District = (typeof DISTRICTS)[number]
+
 export function DeliveryBoard({ currentEmail, branchId }: Props) {
   const [postTypeTab, setPostTypeTab] = useState<PostType>("request")
   const [tab, setTab] = useState<Tab>("all")
   const [statusFilter, setStatusFilter] = useState<"" | DeliveryStatus>("")
   const [dateFilter, setDateFilter] = useState("")
+  const [selectedDistrict, setSelectedDistrict] = useState<District>("전체")
   const [requests, setRequests] = useState<DeliveryRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [requestModalOpen, setRequestModalOpen] = useState(false)
@@ -55,6 +59,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
     if (tab === "applied") params.set("applied", "1")
     if (statusFilter) params.set("status", statusFilter)
     if (dateFilter) params.set("date", dateFilter)
+    if (selectedDistrict !== "전체") params.set("district", selectedDistrict)
     try {
       const res = await fetch(`/api/delivery?${params.toString()}`)
       const data = await res.json()
@@ -77,7 +82,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [postTypeTab, tab, statusFilter, dateFilter, currentEmail])
+  }, [postTypeTab, tab, statusFilter, dateFilter, selectedDistrict, currentEmail])
 
   useEffect(() => {
     void fetchList()
@@ -209,6 +214,26 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
             초기화
           </button>
         )}
+      </div>
+
+      <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap mb-3 pb-1 -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {DISTRICTS.map((d) => {
+          const active = selectedDistrict === d
+          return (
+            <button
+              key={d}
+              onClick={() => setSelectedDistrict(d)}
+              className={
+                "shrink-0 text-xs font-medium rounded-full px-3 py-1 border transition-all " +
+                (active
+                  ? "bg-blue-600 border-blue-500 text-white shadow"
+                  : "bg-transparent border-white/20 text-white/60 hover:text-white hover:border-white/40")
+              }
+            >
+              {d}
+            </button>
+          )
+        })}
       </div>
 
       {showCalendar && (
