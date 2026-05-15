@@ -118,6 +118,22 @@ export function ManageTab() {
     }
   }
 
+  const subAdminAction = async (u: ApprovedUser) => {
+    const newRole = u.role === "sub_admin" ? "driver" : "sub_admin"
+    const label = u.role === "sub_admin" ? "부관리자 해제" : "부관리자 지정"
+    if (!confirm(`${u.name}님을 ${label}하시겠습니까?`)) return
+    try {
+      await adminApi(`/api/admin/users/${u.id}/assign-subadmin`, {
+        method: "POST",
+        body: JSON.stringify({ role: newRole, managed_region: null }),
+      })
+      toast.success(`${u.name}님 ${label} 완료`)
+      void load()
+    } catch {
+      toast.error(`${label} 실패`)
+    }
+  }
+
   const del = async (id: number, n: string) => {
     if (!confirm(`${n}님을 삭제하시겠습니까?`)) return
     try {
@@ -226,6 +242,7 @@ export function ManageTab() {
                   onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
                   onChangeBranch={() => setChangingBranch(u)}
+                  onSubAdmin={u.role !== "admin" ? () => void subAdminAction(u) : undefined}
                 />
               ))}
               {pending.length === 0 && (
@@ -251,6 +268,7 @@ export function ManageTab() {
                   onRole={() => openAssign(u)}
                   onDelete={() => void del(u.id, u.name)}
                   onChangeBranch={() => setChangingBranch(u)}
+                  onSubAdmin={u.role !== "admin" ? () => void subAdminAction(u) : undefined}
                 />
               ))}
               {approved.length === 0 && (

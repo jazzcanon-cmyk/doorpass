@@ -1,5 +1,5 @@
 "use client"
-import { Crown, User, ShieldCheck, ShieldOff, Ban, Trash2, Building2 } from "lucide-react"
+import { Crown, User, ShieldCheck, ShieldOff, Ban, Trash2, Building2, KeyRound } from "lucide-react"
 import type { ApprovedUser, ApprovedRowMode } from "@/types/admin-users"
 
 interface ApprovedUserRowProps {
@@ -10,6 +10,7 @@ interface ApprovedUserRowProps {
   onRole: () => void
   onDelete: () => void
   onChangeBranch?: () => void
+  onSubAdmin?: () => void
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -38,7 +39,7 @@ const BRANCH_TYPE_BADGE: Record<string, string> = {
   public: "bg-purple-500/20 text-purple-300",
 }
 
-export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete, onChangeBranch }: ApprovedUserRowProps) {
+export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete, onChangeBranch, onSubAdmin }: ApprovedUserRowProps) {
   const badgeCls = ROLE_BADGE[u.role] ?? ROLE_BADGE.driver
   const label = ROLE_LABEL[u.role] ?? "일반"
   const branchType = u.branches?.type ?? null
@@ -71,7 +72,7 @@ export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-white">{u.name}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeCls}`}>
-            {label}
+            {u.role === "sub_admin" ? "🔑 " : ""}{label}
           </span>
           {u.role === "sub_admin" && u.managed_region && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300/80">
@@ -135,6 +136,21 @@ export function ApprovedUserRow({ u, mode, onApprove, onReject, onRole, onDelete
             title="소속 변경"
           >
             <Building2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {onSubAdmin && u.role !== "admin" && (
+          <button
+            type="button"
+            onClick={onSubAdmin}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition ${
+              u.role === "sub_admin"
+                ? "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20"
+                : "bg-purple-500/10 border-purple-500/20 text-purple-300 hover:bg-purple-500/20"
+            }`}
+            title={u.role === "sub_admin" ? "부관리자 해제" : "부관리자 지정"}
+          >
+            <KeyRound className="h-3 w-3" />
+            {u.role === "sub_admin" ? "해제" : "지정"}
           </button>
         )}
         {u.role !== "admin" && (

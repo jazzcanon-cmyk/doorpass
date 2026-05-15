@@ -107,6 +107,7 @@ export default function BranchDetailPage() {
   const [searchResults, setSearchResults] = useState<UserCandidate[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isAssigning, setIsAssigning] = useState<string | null>(null)
+  const [isRevoking, setIsRevoking] = useState<number | null>(null)
 
   const fetchBranchDetail = useCallback(async () => {
     setIsLoading(true)
@@ -154,6 +155,25 @@ export default function BranchDetailPage() {
     const timer = setTimeout(() => void searchUsers(searchQuery), 300)
     return () => clearTimeout(timer)
   }, [searchQuery, isAssignModalOpen, searchUsers])
+
+  const handleRevoke = async (user: SubAdminEntry) => {
+    if (!confirm(`${user.name || user.email}님의 부관리자 권한을 해제하시겠습니까?`)) return
+    setIsRevoking(user.id)
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/assign-subadmin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "driver", managed_region: null }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success("부관리자 권한이 해제되었습니다.")
+      await fetchBranchDetail()
+    } catch {
+      toast.error("해제에 실패했습니다.")
+    } finally {
+      setIsRevoking(null)
+    }
+  }
 
   const handleOpenAssignModal = () => {
     setSearchQuery("")
@@ -358,9 +378,19 @@ export default function BranchDetailPage() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{sa.email}</p>
                     )}
                   </div>
-                  <span className="ml-3 text-xs px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 flex-shrink-0">
-                    부관리자
-                  </span>
+                  <div className="ml-3 flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">
+                      🔑 부관리자
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void handleRevoke(sa)}
+                      disabled={isRevoking === sa.id}
+                      className="text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition"
+                    >
+                      {isRevoking === sa.id ? "..." : "해제"}
+                    </button>
+                  </div>
                 </div>
               )
             })}
