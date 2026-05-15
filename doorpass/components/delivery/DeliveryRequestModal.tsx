@@ -19,23 +19,25 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
   const isOffer = postType === "offer"
 
   const [requestDate, setRequestDate] = useState("")
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
   const [volume, setVolume] = useState<DeliveryVolume>("v50")
   const [payType, setPayType] = useState<DeliveryPayType>("per_item")
   const [payAmount, setPayAmount] = useState("")
-  const [area, setArea] = useState("")
   const [memo, setMemo] = useState("")
   const [contact, setContact] = useState("")
   const [availableVolume, setAvailableVolume] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
+  const DISTRICTS = ["전체", "남구", "북구", "중구", "동구", "울주군"]
+
   if (!open) return null
 
   const reset = () => {
     setRequestDate("")
+    setSelectedDistrict(null)
     setVolume("v50")
     setPayType("per_item")
     setPayAmount("")
-    setArea("")
     setMemo("")
     setContact("")
     setAvailableVolume("")
@@ -43,6 +45,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
 
   const submit = async () => {
     if (!requestDate) return toast.error("날짜를 선택해주세요")
+    if (selectedDistrict === null) return toast.error("지역을 선택해주세요")
     if (!contact.trim()) return toast.error("연락처를 입력해주세요")
     if (payType !== "negotiable" && !payAmount) return toast.error("금액을 입력해주세요")
 
@@ -57,13 +60,13 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
           volume,
           payType,
           payAmount: payType === "negotiable" ? null : Number(payAmount),
-          area,
+          area: selectedDistrict === "전체" ? "" : selectedDistrict,
           memo,
           contact,
           postType,
           ...(isOffer && {
             availableDate: requestDate,
-            availableArea: area,
+            availableArea: selectedDistrict === "전체" ? "" : selectedDistrict,
             availableVolume: availableVolume ? Number(availableVolume) : null,
           }),
         }),
@@ -104,6 +107,26 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
               onChange={(e) => setRequestDate(e.target.value)}
               className="bg-white/5 border-white/10 text-white"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-white/70 mb-1.5">지역 선택 *</label>
+            <div className="flex flex-wrap gap-1.5">
+              {DISTRICTS.map((district) => (
+                <button
+                  key={district}
+                  type="button"
+                  onClick={() => setSelectedDistrict(district)}
+                  className={`px-3 py-2 text-sm rounded-lg border transition ${
+                    selectedDistrict === district
+                      ? "bg-blue-500/20 border-blue-400 text-white"
+                      : "bg-white/5 border-white/10 text-white/70"
+                  }`}
+                >
+                  {district}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -163,19 +186,6 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
                 className="bg-white/5 border-white/10 text-white mt-2"
               />
             )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-white/70 mb-1.5">
-              {isOffer ? "가능 지역" : "구역 설명"}
-            </label>
-            <Input
-              type="text"
-              placeholder={isOffer ? "예: 남구 일대 가능" : "예: 남구 신정동 일대"}
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="bg-white/5 border-white/10 text-white"
-            />
           </div>
 
           {isOffer && (
