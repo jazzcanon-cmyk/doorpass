@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { addPoints } from '@/lib/points'
 import { sendTelegramMessage } from '@/lib/telegram'
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const { token } = await request.json() as { token?: string }
   if (!token) return NextResponse.json({ error: '토큰 없음' }, { status: 400 })
 
-  const email = user!.email!
+  const email = resolveUserEmail(user!)
   const meta = user!.user_metadata as Record<string, unknown> | undefined
   const kakaoName = (meta?.name as string | undefined) ?? (meta?.full_name as string | undefined) ?? ''
 

@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
+import { requireAuth } from "@/lib/auth"
 import { generateExpensePdf } from "../_pdf-generator"
 
 export async function POST(req: NextRequest) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   // 빌드 시 환경변수 미확정 문제 방지 — 함수 안에서 초기화
   const resend = new Resend(process.env.RESEND_API_KEY)
   try {
     const body = (await req.json()) as {
-      user_id:         string
       year:            string
       period:          string
       recipient_email: string
       recipient_name:  string
     }
 
-    const { user_id, year, period, recipient_email, recipient_name } = body
+    const { year, period, recipient_email, recipient_name } = body
+    const user_id = user!.id
 
-    if (!user_id || !recipient_email) {
-      return NextResponse.json({ error: "user_id, recipient_email 필수" }, { status: 400 })
+    if (!recipient_email) {
+      return NextResponse.json({ error: "recipient_email 필수" }, { status: 400 })
     }
 
     // PDF 생성 (pdf/route.ts와 동일 로직 재사용)

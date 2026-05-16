@@ -15,21 +15,36 @@ export async function POST(request: Request) {
     }
 
     const identifier = resolveUserEmail(user!)
+    const endpoint = (subscription as { endpoint: string }).endpoint
 
-    const { error } = await supabaseAdmin
+    // 같은 사용자의 기존 구독 목록에서 동일 endpoint를 찾아 insert/update 분기
+    // (onConflict: user_email 로 upsert하면 두 번째 기기가 첫 번째 기기 구독을 덮어씀)
+    const { data: userSubs } = await supabaseAdmin
       .from('push_subscriptions')
-      .upsert({
-        user_email: identifier,
-        subscription: subscription,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_email',
-        ignoreDuplicates: false,
-      })
+      .select('id, subscription')
+      .eq('user_email', identifier)
 
-    if (error) {
-      console.error('[push/subscribe] DB 오류:', (error as Error).message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    const existingRow = (userSubs ?? []).find(
+      (row) => (row.subscription as { endpoint?: string })?.endpoint === endpoint
+    )
+
+    let dbError: unknown
+    if (existingRow) {
+      const { error } = await supabaseAdmin
+        .from('push_subscriptions')
+        .update({ subscription, updated_at: new Date().toISOString() })
+        .eq('id', existingRow.id)
+      dbError = error
+    } else {
+      const { error } = await supabaseAdmin
+        .from('push_subscriptions')
+        .insert({ user_email: identifier, subscription, updated_at: new Date().toISOString() })
+      dbError = error
+    }
+
+    if (dbError) {
+      console.error('[push/subscribe] DB 오류:', (dbError as Error).message)
+      return NextResponse.json({ error: (dbError as Error).message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })

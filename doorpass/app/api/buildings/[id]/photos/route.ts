@@ -42,6 +42,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { unauthorized } = await requireAuth()
+    if (unauthorized) return unauthorized
+
     const { id: buildingId } = await params
     const { data, error } = await supabaseAdmin
       .from("building_photos")
