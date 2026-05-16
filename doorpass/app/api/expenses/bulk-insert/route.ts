@@ -40,11 +40,19 @@ export async function POST(req: NextRequest) {
     }))
 
     const { error } = await supabaseAdmin.from("expenses").insert(rows)
-    if (error) throw error
+    if (error) {
+      console.error("Supabase insert 오류:", JSON.stringify(error))
+      return NextResponse.json({
+        error:   error.message || error.details || "저장 실패",
+        code:    error.code,
+        details: error.details,
+        hint:    error.hint,
+      }, { status: 500 })
+    }
 
     return NextResponse.json({ inserted: rows.length })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? err.message : JSON.stringify(err)
     console.error("일괄 추가 오류:", msg)
     return NextResponse.json({ error: msg || "일괄 추가 중 오류" }, { status: 500 })
   }

@@ -1021,16 +1021,18 @@ export function TaxTab({ currentUser }: TaxTabProps) {
 
   const handleSmsInsert = async () => {
     if (!approvedUserId) return
+    const VALID_CATEGORIES = ["유류비", "수리비", "식비", "통신비", "기타"] as const
+    const todayIso = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)
     const items = smsResults
       .filter((_, i) => selectedSmsItems.has(i))
-      .map(({ receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason }) => ({
-        receipt_date,
-        amount:           Number(amount),
-        vendor_name,
-        category,
-        is_deductible,
-        is_expense,
-        deduction_reason,
+      .map((item) => ({
+        receipt_date:     /^\d{4}-\d{2}-\d{2}$/.test(item.receipt_date) ? item.receipt_date : todayIso,
+        amount:           Math.abs(Number(item.amount)) || 0,
+        vendor_name:      String(item.vendor_name || "알수없음").slice(0, 100),
+        category:         (VALID_CATEGORIES as readonly string[]).includes(item.category) ? item.category : "기타",
+        is_deductible:    Boolean(item.is_deductible),
+        is_expense:       Boolean(item.is_expense),
+        deduction_reason: String(item.deduction_reason || ""),
       }))
     if (!items.length) { toast.warning("추가할 항목을 선택하세요."); return }
     setInsertingSms(true)
