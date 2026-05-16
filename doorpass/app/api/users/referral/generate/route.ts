@@ -65,7 +65,8 @@ export async function POST(request: Request) {
     memo,
   })
 
-  const referralUrl = 'https://doorpass.kr/join?ref=' + token
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://doorpass.kr'
+  const referralUrl = `${baseUrl}/join?ref=${token}`
 
   return NextResponse.json({ url: referralUrl, expiresAt: expiresAt.toISOString() })
 }

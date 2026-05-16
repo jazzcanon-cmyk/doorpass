@@ -25,7 +25,6 @@ export async function sendTelegramMessage(text: string, settingKey?: string): Pr
     try {
       const enabled = await isNotificationEnabled(settingKey)
       if (!enabled) {
-        console.log(`[Telegram] Notification disabled for ${settingKey}`)
         return
       }
     } catch {

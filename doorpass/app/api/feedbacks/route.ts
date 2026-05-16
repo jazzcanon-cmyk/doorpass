@@ -203,13 +203,14 @@ async function notifySubAdminsOfPasswordError(opts: {
     .eq("branch_id", branchId)
     .eq("role", "sub_admin")
 
-  for (const row of subAdmins ?? []) {
-    const target = row.email as string | null
-    if (!target) continue
-    void sendPushToUser(target, {
-      title: "⚠️ 비밀번호 오류 신고",
-      body: `${opts.reporterName}님이 ${opts.buildingName} 비밀번호 오류를 신고했어요.`,
-      url: "/admin/feedbacks",
-    }).catch(console.error)
-  }
+  const targets = (subAdmins ?? []).map((row) => row.email as string | null).filter(Boolean) as string[]
+  await Promise.allSettled(
+    targets.map((target) =>
+      sendPushToUser(target, {
+        title: "⚠️ 비밀번호 오류 신고",
+        body: `${opts.reporterName}님이 ${opts.buildingName} 비밀번호 오류를 신고했어요.`,
+        url: "/admin/feedbacks",
+      })
+    )
+  )
 }
