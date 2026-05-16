@@ -62,7 +62,11 @@ function getDailyFortune() {
 }
 
 function DailyFortune() {
-  const { stars, deliveryText, zone, quote } = getDailyFortune()
+  const [fortune, setFortune] = useState<ReturnType<typeof getDailyFortune> | null>(null)
+  useEffect(() => { setFortune(getDailyFortune()) }, [])
+
+  if (!fortune) return null
+  const { stars, deliveryText, zone, quote } = fortune
   return (
     <div className="border-t border-white/10 pt-3 space-y-1.5">
       <p className="text-xs text-white/40 text-center uppercase tracking-wider">오늘의 배송운</p>

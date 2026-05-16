@@ -21,14 +21,16 @@ function getWeatherInfo(code: number): { desc: string; icon: string } {
 }
 
 export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = today.getMonth() + 1
-  const day = today.getDate()
-  const dayName = DAYS[today.getDay()]
-  const lunar = getLunarDate(today)
-  const isSun = today.getDay() === 0
-  const isSat = today.getDay() === 6
+  const [today, setToday] = useState<Date | null>(null)
+  useEffect(() => { setToday(new Date()) }, [])
+
+  const year    = today?.getFullYear()
+  const month   = today ? today.getMonth() + 1 : null
+  const day     = today?.getDate()
+  const dayName = today ? DAYS[today.getDay()] : null
+  const lunar   = today ? getLunarDate(today) : null
+  const isSun   = today ? today.getDay() === 0 : false
+  const isSat   = today ? today.getDay() === 6 : false
 
   const [weather, setWeather] = useState<WeatherInfo | null>(null)
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null)
@@ -76,13 +78,15 @@ export function DateHeader({ onCalendarOpen }: { onCalendarOpen: () => void }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>📅</span>
-          <span style={{ color: "white", fontSize: 14, fontWeight: 600 }}>
-            {year}.{String(month).padStart(2, "0")}.{String(day).padStart(2, "0")}
+          <span suppressHydrationWarning style={{ color: "white", fontSize: 14, fontWeight: 600 }}>
+            {year && month && day
+              ? `${year}.${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`
+              : ""}
           </span>
-          <span style={{ color: isSun ? "#ff6b6b" : isSat ? "#74b9ff" : "#94a3b8", fontSize: 13 }}>
-            {dayName}
+          <span suppressHydrationWarning style={{ color: isSun ? "#ff6b6b" : isSat ? "#74b9ff" : "#94a3b8", fontSize: 13 }}>
+            {dayName ?? ""}
           </span>
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{lunar}</span>
+          <span suppressHydrationWarning style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{lunar ?? ""}</span>
         </div>
         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>달력 ›</span>
       </div>

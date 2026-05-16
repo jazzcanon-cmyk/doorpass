@@ -120,7 +120,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 const CATEGORIES = ["유류비", "수리비", "식비", "통신비", "기타"]
 
-const THIS_YEAR = new Date().getFullYear()
+const THIS_YEAR = typeof window === "undefined" ? new Date().getUTCFullYear() : new Date().getFullYear()
 const YEARS = [THIS_YEAR, THIS_YEAR - 1, THIS_YEAR - 2]
 // 회계자료 다운로드 기간 옵션 (전체 / 분기 / 반기 / 개별 월)
 const PERIODS = [

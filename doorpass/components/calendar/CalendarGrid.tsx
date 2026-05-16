@@ -1,4 +1,5 @@
 "use client"
+import { useState, useEffect } from "react"
 import { Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { DAYS, MONTHS, formatCalendarDate } from "@/lib/calendar-utils"
 import type { Memo } from "@/types/calendar"
@@ -24,10 +25,13 @@ export function CalendarGrid({
   onSearchOpen,
   onDateClick,
 }: CalendarGridProps) {
-  const today = new Date()
+  const [todayStr, setTodayStr] = useState("")
+  useEffect(() => {
+    const t = new Date()
+    setTodayStr(formatCalendarDate(t.getFullYear(), t.getMonth(), t.getDate()))
+  }, [])
   const firstDay = new Date(currentYear, currentMonth, 1).getDay()
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-  const todayStr = formatCalendarDate(today.getFullYear(), today.getMonth(), today.getDate())
 
   const getDateMemos = (dateStr: string) =>
     memos.filter(m => m.date === dateStr && (!m.is_private || m.kakao_id === kakaoId))
