@@ -100,15 +100,32 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
     const { id } = await params
     if (!id) return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
 
-    const author = await fetchPostAuthor(id)
-    if (author === null) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-    if (!isAdmin && author !== getUserName(user!)) {
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author, image_url')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+    if (!isAdmin && post.author !== getUserName(user!)) {
       return NextResponse.json({ error: '작성자만 삭제할 수 있습니다.' }, { status: 403 })
     }
 
     await supabase.from('comments').delete().eq('post_id', id)
     const { error } = await supabase.from('posts').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Storage 이미지 파일 정리 (best-effort)
+    if (post.image_url) {
+      const BUCKET = 'post-images'
+      const marker = `/${BUCKET}/`
+      const idx = String(post.image_url).indexOf(marker)
+      if (idx >= 0) {
+        const path = String(post.image_url).slice(idx + marker.length)
+        supabase.storage.from(BUCKET).remove([path]).catch(() => {})
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '오류 발생' }, { status: 500 })

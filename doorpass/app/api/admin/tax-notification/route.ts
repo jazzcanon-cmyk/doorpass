@@ -107,7 +107,7 @@ async function buildContextForUser(userId: number, name: string | null): Promise
   const qStartMonth = (Math.ceil(month / 3) - 1) * 3 + 1
   const qStart      = `${year}-${String(qStartMonth).padStart(2, "0")}-01`
 
-  const [expMonthRes, expQuarterRes, incMonthRes, incYearRes] = await Promise.all([
+  const [expMonthRes, expQuarterRes, incMonthRes, incQuarterRes, incYearRes] = await Promise.all([
     supabaseAdmin
       .from("expenses")
       .select("amount, is_deductible")
@@ -128,6 +128,12 @@ async function buildContextForUser(userId: number, name: string | null): Promise
       .lte("income_date", monEnd),
     supabaseAdmin
       .from("income")
+      .select("total_amount, vat_amount")
+      .eq("user_id", userId)
+      .gte("income_date", qStart)
+      .lte("income_date", monEnd),
+    supabaseAdmin
+      .from("income")
       .select("total_amount")
       .eq("user_id", userId)
       .gte("income_date", `${year}-01-01`)
@@ -136,7 +142,6 @@ async function buildContextForUser(userId: number, name: string | null): Promise
 
   const monExp     = expMonthRes.data ?? []
   const quarterExp = expQuarterRes.data ?? []
-  const incMon     = incMonthRes.data ?? []
   const incYear    = incYearRes.data ?? []
 
   const monthExpense = monExp.reduce((s, r) => s + (r.amount ?? 0), 0)
@@ -144,7 +149,8 @@ async function buildContextForUser(userId: number, name: string | null): Promise
   const receiptCount = monExp.length
 
   // 예상 부가세 = 분기 매출VAT - 분기 공제가능 매입VAT(추정: 공제대상 금액의 1/11)
-  const quarterIncomeVat = incMon.reduce((s, r) => s + (r.vat_amount ?? 0), 0)
+  const incQuarter = incQuarterRes.data ?? []
+  const quarterIncomeVat = incQuarter.reduce((s, r) => s + (r.vat_amount ?? 0), 0)
   const quarterDeductible = quarterExp.filter((r) => r.is_deductible).reduce((s, r) => s + (r.amount ?? 0), 0)
   const estimatedVat = Math.max(0, quarterIncomeVat - Math.round(quarterDeductible / 11))
 

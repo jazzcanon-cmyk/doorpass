@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth, canEditBuilding, resolveUserEmail } from "@/lib/auth"
+import { requireAuth, resolveUserEmail, lookupApprovedUser } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { sendTelegramMessage } from "@/lib/telegram"
@@ -37,26 +37,19 @@ function plaintextPassword(raw: string | null): string {
 }
 
 async function assertBuildingAccess(
-  userEmail: string,
+  user: NonNullable<Awaited<ReturnType<typeof requireAuth>>["user"]>,
   buildingId: number
-): Promise<{ row: BuildingRow } | { response: NextResponse }> {
-  if (!(await canEditBuilding(userEmail))) {
+): Promise<{ row: BuildingRow; userRole: string } | { response: NextResponse }> {
+  const me = await lookupApprovedUser<{ role: string | null; branch_id: string | null }>(user, "role, branch_id")
+  const role = me?.role ?? null
+
+  if (!role || !["admin", "sub_admin", "editor"].includes(role)) {
     return {
       response: NextResponse.json(
         { error: "건물 정보 수정 권한이 없습니다. 설정에서 편집자 권한을 요청하세요." },
         { status: 403 }
       ),
     }
-  }
-
-  const { data: me } = await supabaseAdmin
-    .from("approved_users")
-    .select("role, branch_id")
-    .eq("email", userEmail)
-    .maybeSingle()
-
-  if (!me) {
-    return { response: NextResponse.json({ error: "권한 없음" }, { status: 403 }) }
   }
 
   const { data: row, error } = await supabaseAdmin
@@ -70,11 +63,11 @@ async function assertBuildingAccess(
   }
 
   const b = row as BuildingRow
-  if (me.role === "sub_admin" && b.branch_id !== me.branch_id) {
+  if (role === "sub_admin" && b.branch_id !== me!.branch_id) {
     return { response: NextResponse.json({ error: "이 건물을 수정할 권한이 없습니다." }, { status: 403 }) }
   }
 
-  return { row: b }
+  return { row: b, userRole: role }
 }
 
 export async function GET(_request: Request, { params }: { params: Params }) {
@@ -90,7 +83,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
     return NextResponse.json({ error: "유효하지 않은 건물 ID입니다." }, { status: 400 })
   }
 
-  const access = await assertBuildingAccess(user!.email!, id)
+  const access = await assertBuildingAccess(user!, id)
   if ("response" in access) return access.response
 
   const { row } = access
@@ -118,17 +111,10 @@ export async function PUT(request: Request, { params }: { params: Params }) {
     return NextResponse.json({ error: "유효하지 않은 건물 ID입니다." }, { status: 400 })
   }
 
-  const access = await assertBuildingAccess(user!.email!, id)
+  const access = await assertBuildingAccess(user!, id)
   if ("response" in access) return access.response
 
-  const existingBuilding = access.row
-
-  const { data: userInfo } = await supabaseAdmin
-    .from("approved_users")
-    .select("role")
-    .eq("email", user!.email!)
-    .single()
-  const userRole = userInfo?.role
+  const { row: existingBuilding, userRole } = access
   const isManager = userRole === "admin" || userRole === "sub_admin"
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -221,15 +207,10 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
-  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(user?.email, null))
+  const rl = await checkRateLimit(generalLimiter, rateLimitIdentifier(resolveUserEmail(user!), null))
   if (!rl.success) return RATE_LIMIT_RESPONSE
 
-  const { data: approvedUser } = await supabaseAdmin
-    .from("approved_users")
-    .select("role")
-    .eq("email", user!.email)
-    .maybeSingle()
-
+  const approvedUser = await lookupApprovedUser<{ role: string | null }>(user!, "role")
   if (!approvedUser || (approvedUser.role !== "admin" && approvedUser.role !== "sub_admin")) {
     return NextResponse.json(
       { error: "건물 삭제는 관리자와 부관리자만 가능합니다." },
@@ -243,7 +224,7 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
     return NextResponse.json({ error: "유효하지 않은 건물 ID입니다." }, { status: 400 })
   }
 
-  const access = await assertBuildingAccess(user!.email!, id)
+  const access = await assertBuildingAccess(user!, id)
   if ("response" in access) return access.response
 
   const label = access.row.name ?? access.row.address ?? `ID ${id}`
