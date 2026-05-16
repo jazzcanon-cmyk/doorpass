@@ -107,7 +107,7 @@ export async function PUT(request: Request, ctx: { params: Promise<{ id: string 
     }
 
     const update: Record<string, unknown> = {}
-    if (typeof body.status === "string") update.status = body.status
+    // status 변경은 /accept, /complete 전용 엔드포인트로만 허용
     if (typeof body.memo === "string") update.memo = body.memo
     if (typeof body.area === "string") update.area = body.area
     if (typeof body.contact === "string") update.contact = body.contact

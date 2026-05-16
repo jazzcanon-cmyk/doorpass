@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       .from("delivery_requests")
       .select("*", { count: "exact" })
 
-    if (mine) q = q.eq("requester_email", user!.email!)
+    if (mine) q = q.eq("requester_email", resolveUserEmail(user!))
     if (status) q = q.eq("status", status)
     if (branchId) q = q.eq("branch_id", branchId)
     if (date) q = q.eq("request_date", date)
@@ -99,15 +99,21 @@ async function attachCounts(list: Array<Record<string, unknown>>) {
   const ids = list.map((r) => r.id)
   const { data: apps } = await supabaseAdmin
     .from("delivery_applications")
-    .select("request_id")
+    .select("request_id, status")
     .in("request_id", ids as (number | string)[])
   const counts = new Map<string | number, number>()
+  const pendingCounts = new Map<string | number, number>()
   ;(apps ?? []).forEach((a) => {
-    const id = (a as { request_id: number | string }).request_id
-    counts.set(id, (counts.get(id) ?? 0) + 1)
+    const row = a as { request_id: number | string; status: string }
+    counts.set(row.request_id, (counts.get(row.request_id) ?? 0) + 1)
+    if (row.status === "pending") {
+      pendingCounts.set(row.request_id, (pendingCounts.get(row.request_id) ?? 0) + 1)
+    }
   })
   for (const r of list) {
-    r.application_count = counts.get(r.id as number | string) ?? 0
+    const id = r.id as number | string
+    r.application_count = counts.get(id) ?? 0
+    r.pending_count = pendingCounts.get(id) ?? 0
   }
 }
 

@@ -73,7 +73,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
         const isMine = r.requester_email === currentEmail
         if (!isMine) return sum
         if (r.status !== "open") return sum
-        const count = typeof r.application_count === "number" ? r.application_count : 0
+        const count = typeof r.pending_count === "number" ? r.pending_count : 0
         return sum + count
       }, 0)
       setPendingCount(total)
@@ -136,6 +136,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
               setTab("all")
               setStatusFilter("")
               setDateFilter("")
+              setSelectedDistrict("전체")
             }}
             className={`px-3 py-2 text-sm font-semibold rounded-lg transition ${
               postTypeTab === t.key

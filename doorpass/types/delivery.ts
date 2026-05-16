@@ -23,6 +23,7 @@ export interface DeliveryRequest {
   created_at: string
   updated_at?: string
   application_count?: number
+  pending_count?: number
   my_application_status?: ApplicationStatus | null
   post_type?: PostType
   available_date?: string | null
