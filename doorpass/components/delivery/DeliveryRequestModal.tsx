@@ -104,8 +104,9 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
             <Input
               type="date"
               value={requestDate}
+              min={new Date().toISOString().split("T")[0]}
               onChange={(e) => setRequestDate(e.target.value)}
-              className="bg-white/5 border-white/10 text-white"
+              className="bg-white/5 border-white/10 text-white [color-scheme:dark]"
             />
           </div>
 

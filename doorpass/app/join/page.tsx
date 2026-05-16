@@ -20,6 +20,8 @@ function JoinContent() {
   useEffect(() => {
     if (!token) { setStatus('invalid'); return }
 
+    let timer: ReturnType<typeof setTimeout>
+
     fetch('/api/users/referral/validate?token=' + encodeURIComponent(token))
       .then((r) => r.json())
       .then((data: { valid: boolean; reason?: string; referrerName?: string }) => {
@@ -29,7 +31,7 @@ function JoinContent() {
           // sessionStorage + localStorage 이중 저장 (인앱 → 외부 브라우저 전환 대비)
           try { sessionStorage.setItem('referral_token', token) } catch {}
           try { localStorage.setItem('referral_token', token) } catch {}
-          setTimeout(() => router.push('/login'), 2000)
+          timer = setTimeout(() => router.push('/login'), 2000)
         } else if (data.reason === 'used') {
           setStatus('used')
         } else if (data.reason === 'expired') {
@@ -39,6 +41,8 @@ function JoinContent() {
         }
       })
       .catch(() => setStatus('invalid'))
+
+    return () => clearTimeout(timer)
   }, [token, router])
 
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''

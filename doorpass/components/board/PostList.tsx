@@ -23,10 +23,13 @@ export function PostList({ listKey, debouncedQuery, clearSearch }: PostListProps
 
   useEffect(() => {
     setLoading(true)
-    fetch("/api/posts")
+    setError(null)
+    const controller = new AbortController()
+    fetch("/api/posts", { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => { if (d.error) setError("게시글을 불러오지 못했습니다."); else setPosts(d.posts || []); setLoading(false) })
-      .catch(() => { setError("게시글 불러오기 실패"); setLoading(false) })
+      .catch((e: unknown) => { if ((e as { name?: string })?.name === "AbortError") return; setError("게시글 불러오기 실패"); setLoading(false) })
+    return () => controller.abort()
   }, [listKey])
 
   const isSearching = debouncedQuery.length >= 2

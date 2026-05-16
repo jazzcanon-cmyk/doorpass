@@ -31,6 +31,7 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
   const [isOwner, setIsOwner] = useState(false)
   const [actingId, setActingId] = useState<string | number | null>(null)
   const [completing, setCompleting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [myRating, setMyRating] = useState<MyRating>(null)
 
   useEffect(() => {
@@ -51,7 +52,8 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       })
       .catch(() => toast.error("불러오기 실패"))
       .finally(() => setLoading(false))
-  }, [open, requestId, onClose])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, requestId])
 
   if (!open || requestId == null) return null
 
@@ -124,14 +126,21 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
 
   const handleDelete = async () => {
     if (!confirm("이 대체배송 요청을 삭제하시겠습니까?")) return
-    const res = await fetch(`/api/delivery/${requestId}`, { method: "DELETE" })
-    if (!res.ok) {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/delivery/${requestId}`, { method: "DELETE" })
+      if (!res.ok) {
+        toast.error("삭제 실패")
+        return
+      }
+      toast.success("삭제됨")
+      onChanged()
+      onClose()
+    } catch {
       toast.error("삭제 실패")
-      return
+    } finally {
+      setDeleting(false)
     }
-    toast.success("삭제됨")
-    onChanged()
-    onClose()
   }
 
   return (
@@ -142,11 +151,12 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
           <div className="flex items-center gap-1">
             {isOwner && (
               <button
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
+                disabled={deleting}
                 title="삭제"
-                className="text-white/40 hover:text-red-400 p-1"
+                className="text-white/40 hover:text-red-400 p-1 disabled:opacity-40"
               >
-                <Trash2 className="h-4 w-4" />
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               </button>
             )}
             <button onClick={onClose} className="text-white/60 hover:text-white p-1">

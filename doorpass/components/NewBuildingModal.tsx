@@ -83,6 +83,7 @@ export function NewBuildingModal({
   const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult>(null)
   const [isChecking, setIsChecking] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const nameCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const SCRIPT_ID = "kakao-postcode-script"
@@ -324,9 +325,13 @@ export function NewBuildingModal({
                   type="text"
                   value={form.name}
                   onChange={(e) => {
-                    setForm({ ...form, name: e.target.value })
-                    if (form.address && e.target.value.length >= 2) {
-                      void checkDuplicate(form.address, e.target.value)
+                    const newName = e.target.value
+                    setForm({ ...form, name: newName })
+                    if (form.address && newName.length >= 2) {
+                      if (nameCheckTimerRef.current) clearTimeout(nameCheckTimerRef.current)
+                      nameCheckTimerRef.current = setTimeout(() => {
+                        void checkDuplicate(form.address, newName)
+                      }, 500)
                     }
                   }}
                   placeholder="예) 롯데캐슬 101동"
