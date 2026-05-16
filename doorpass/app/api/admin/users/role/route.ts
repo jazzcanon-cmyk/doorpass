@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { sendAlimtalk } from "@/lib/solapi"
@@ -7,7 +7,7 @@ import { sendAlimtalk } from "@/lib/solapi"
 const ALLOWED_ROLES = new Set(["admin", "sub_admin", "editor", "driver"])
 
 export async function PUT(request: Request) {
-  const { unauthorized, user } = await requireAuth()
+  const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   try {
@@ -19,14 +19,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
     }
 
-    const { data: currentUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("role, branch_id")
-      .eq("email", user?.email ?? "unknown")
-      .maybeSingle()
-
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "sub_admin")) {
-      return NextResponse.json({ error: "권한 없음" }, { status: 403 })
+    // sub_admin: 자신의 대리점 branch_id 조회
+    let myBranchId: string | null = null
+    if (role === "sub_admin" && user) {
+      const { data: me } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("email", resolveUserEmail(user!))
+        .maybeSingle()
+      myBranchId = me?.branch_id ?? null
     }
 
     const { data: targetUser } = await supabaseAdmin
@@ -39,11 +40,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "사용자를 찾을 수 없습니다" }, { status: 404 })
     }
 
-    if (currentUser.role === "sub_admin" && targetUser.branch_id !== currentUser.branch_id) {
+    if (role === "sub_admin" && targetUser.branch_id !== myBranchId) {
       return NextResponse.json({ error: "다른 대리점 회원의 역할은 변경할 수 없습니다" }, { status: 403 })
     }
 
-    if (currentUser.role === "sub_admin" && (newRole === "admin" || newRole === "sub_admin")) {
+    if (role === "sub_admin" && (newRole === "admin" || newRole === "sub_admin")) {
       return NextResponse.json({ error: "관리자 또는 부관리자로 승격할 권한이 없습니다" }, { status: 403 })
     }
 
@@ -79,7 +80,7 @@ export async function PUT(request: Request) {
     }
 
     await sendTelegramMessage(
-      `🔄 회원 역할 변경\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n📊 변경: ${roleLabels[targetUser.role] || targetUser.role} → ${roleLabels[newRole] || newRole}\n👤 변경자: ${user?.email ?? "unknown"}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+      `🔄 회원 역할 변경\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n📊 변경: ${roleLabels[targetUser.role] || targetUser.role} → ${roleLabels[newRole] || newRole}\n👤 변경자: ${resolveUserEmail(user!)}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
     )
 
     if (newRole === "editor" || newRole === "sub_admin") {

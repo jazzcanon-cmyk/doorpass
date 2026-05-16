@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
 export async function POST(request: Request) {
-  const { unauthorized, user } = await requireAuth()
+  const { user, role, unauthorized } = await requireManagerApi()
   if (unauthorized) return unauthorized
 
   try {
@@ -14,14 +14,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "userEmail이 필요합니다" }, { status: 400 })
     }
 
-    const { data: currentUser } = await supabaseAdmin
-      .from("approved_users")
-      .select("role, branch_id")
-      .eq("email", user?.email ?? "unknown")
-      .maybeSingle()
-
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "sub_admin")) {
-      return NextResponse.json({ error: "권한 없음" }, { status: 403 })
+    // sub_admin: 자신의 대리점 branch_id 조회
+    let myBranchId: string | null = null
+    if (role === "sub_admin" && user) {
+      const { data: me } = await supabaseAdmin
+        .from("approved_users")
+        .select("branch_id")
+        .eq("email", resolveUserEmail(user!))
+        .maybeSingle()
+      myBranchId = me?.branch_id ?? null
     }
 
     const { data: targetUser } = await supabaseAdmin
@@ -34,11 +35,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "사용자를 찾을 수 없습니다" }, { status: 404 })
     }
 
-    if (currentUser.role === "sub_admin" && targetUser.branch_id !== currentUser.branch_id) {
+    if (role === "sub_admin" && targetUser.branch_id !== myBranchId) {
       return NextResponse.json({ error: "다른 대리점 회원은 차단할 수 없습니다" }, { status: 403 })
     }
 
-    if (userEmail === (user?.email ?? "unknown")) {
+    if (user && userEmail === resolveUserEmail(user)) {
       return NextResponse.json({ error: "자기 자신은 차단할 수 없습니다" }, { status: 400 })
     }
 
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     if (error) throw error
 
     await sendTelegramMessage(
-      `🚫 회원 차단\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n👤 차단자: ${user?.email ?? "unknown"}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}\n\n⚠️ 차단된 회원은 로그인할 수 없습니다.`
+      `🚫 회원 차단\n\n📧 대상: ${targetUser.name || userEmail}\n🏢 대리점: ${(targetUser.branches as { name?: string } | null)?.name || "미지정"}\n👤 차단자: ${resolveUserEmail(user!)}\n📅 시간: ${new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}\n\n⚠️ 차단된 회원은 로그인할 수 없습니다.`
     )
 
     return NextResponse.json({ success: true })

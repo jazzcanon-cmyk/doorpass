@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAdminApi } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export async function GET(request: Request) {
-  const { user, unauthorized } = await requireAuth()
+  const { unauthorized } = await requireAdminApi()
   if (unauthorized) return unauthorized
-
-  const { data: me } = await supabaseAdmin
-    .from("approved_users")
-    .select("role")
-    .eq("email", user?.email ?? "unknown")
-    .single()
-
-  if (!me || me.role !== "admin") {
-    return NextResponse.json({ error: "관리자만 가능합니다." }, { status: 403 })
-  }
 
   const { searchParams } = new URL(request.url)
   const type = searchParams.get("type") ?? ""

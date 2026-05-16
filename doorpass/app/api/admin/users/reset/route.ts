@@ -1,23 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireAuth, resolveUserEmail } from '@/lib/auth'
+import { requireAdminApi } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
-  const { user, unauthorized } = await requireAuth()
+  const { unauthorized } = await requireAdminApi()
   if (unauthorized) return unauthorized
 
   try {
-    // 관리자 권한 확인 (카카오 admin도 매칭되도록 resolveUserEmail 사용)
-    const { data: me } = await supabaseAdmin
-      .from('approved_users')
-      .select('role')
-      .eq('email', resolveUserEmail(user!))
-      .single()
-
-    if (!me || me.role !== 'admin') {
-      return NextResponse.json({ error: '관리자만 가능합니다.' }, { status: 403 })
-    }
-
     const text = await request.text()
     const body = text ? JSON.parse(text) : {}
     const { approved_id, email, user_id } = body as {
