@@ -321,7 +321,7 @@ export async function GET(request: Request) {
         .order("address", { ascending: true })
 
       if (error) throw new Error(error.message)
-      logActivity(user!.email!, "building_view", { count: data?.length ?? 0 }, getIp(request))
+      logActivity(resolveUserEmail(user!), "building_view", { count: data?.length ?? 0 }, getIp(request))
       return NextResponse.json({
         buildings: (data ?? []).map((row) => toBuilding(row as BuildingRow, revealPassword)),
       })
@@ -451,21 +451,32 @@ export async function POST(request: Request) {
       memo?: string
       region?: string
       branch_id?: string | null
-      uploaded_by?: string
       access_type?: "free" | "password" | "etc"
     }
     const { name, address, password, memo, region } = body
     const lat = body.lat
     const lng = body.lng
     const branch_id = body.branch_id ?? approvedUser.branch_id ?? null
-    const uploaded_by = body.uploaded_by ?? user!.email
+    const uploaded_by = resolveUserEmail(user!)
     const access_type = body.access_type ?? "password"
 
     if (!address?.trim()) {
       return NextResponse.json({ error: "주소는 필수입니다." }, { status: 400 })
     }
+    if (address.length > 500) {
+      return NextResponse.json({ error: "주소는 500자 이하여야 합니다." }, { status: 400 })
+    }
+    if (name && name.length > 100) {
+      return NextResponse.json({ error: "건물명은 100자 이하여야 합니다." }, { status: 400 })
+    }
+    if (memo && memo.length > 2000) {
+      return NextResponse.json({ error: "메모는 2000자 이하여야 합니다." }, { status: 400 })
+    }
     if (access_type === "password" && (!password || password.length < 4)) {
       return NextResponse.json({ error: "비밀번호는 4자리 이상이어야 합니다." }, { status: 400 })
+    }
+    if (password && password.length > 100) {
+      return NextResponse.json({ error: "비밀번호는 100자 이하여야 합니다." }, { status: 400 })
     }
 
     if (lat !== undefined && lng !== undefined) {

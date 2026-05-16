@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, requireAdminApi } from "@/lib/auth"
+import { requireAuth, requireAdminApi, resolveUserEmail } from "@/lib/auth"
 import { logActivity, getIp } from "@/lib/activity-logger"
 
 const supabase = supabaseAdmin
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       .order("is_important", { ascending: false })
       .order("created_at", { ascending: false })
     if (error) throw new Error(error.message)
-    logActivity(user!.email!, "notice_view", { count: data?.length ?? 0 }, getIp(request))
+    logActivity(resolveUserEmail(user!), "notice_view", { count: data?.length ?? 0 }, getIp(request))
     return NextResponse.json(
       { notices: data ?? [] },
       { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300", "Vary": "Cookie" } }
