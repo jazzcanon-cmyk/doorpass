@@ -96,6 +96,19 @@ interface StatementResult {
   newItems:  StatementTransaction[]  // 신규 항목
 }
 
+// 카드문자 OCR 개별 결과
+interface SmsOcrResult {
+  receipt_date: string
+  amount: number
+  vendor_name: string
+  card_company: string
+  approval_number: string | null
+  category: string
+  is_deductible: boolean
+  is_expense: boolean
+  deduction_reason: string
+}
+
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -182,6 +195,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [savingExpense, setSavingExpense] = useState(false)
   const expenseFileRef   = useRef<HTMLInputElement>(null)
   const statementFileRef = useRef<HTMLInputElement>(null)  // 카드명세서 전용
+  const smsFileRef       = useRef<HTMLInputElement>(null)  // 카드문자 캡처 전용
   const amountInputRef   = useRef<HTMLInputElement>(null)
 
   // 사업자 상태
@@ -224,6 +238,13 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [insertingStatement, setInsertingStatement]   = useState(false)
   // 의심 중복 항목 중 사용자가 "그래도 추가"를 선택한 인덱스 집합
   const [suspectedIncluded, setSuspectedIncluded]     = useState<Set<number>>(new Set())
+
+  // 카드문자 OCR 상태
+  const [uploadingSms, setUploadingSms]           = useState(false)
+  const [smsModalOpen, setSmsModalOpen]           = useState(false)
+  const [smsResults, setSmsResults]               = useState<SmsOcrResult[]>([])
+  const [selectedSmsItems, setSelectedSmsItems]   = useState<Set<number>>(new Set())
+  const [insertingSms, setInsertingSms]           = useState(false)
 
   // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -922,6 +943,109 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
+  // ─── 카드문자 캡처 OCR ──────────────────────────────────────────────────
+
+  // 브라우저에서 File → base64 (이미지 리사이즈 후 JPEG 압축)
+  async function fileToResizedBase64(file: File, maxPx = 1920): Promise<{ base64: string; mediaType: string }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement("canvas")
+        canvas.width = w; canvas.height = h
+        const ctx = canvas.getContext("2d")
+        if (!ctx) { reject(new Error("canvas 실패")); return }
+        ctx.drawImage(img, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85)
+        resolve({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg" })
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
+  const handleSmsCaptureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("파일 크기는 5MB 이하여야 합니다.")
+      e.target.value = ""; return
+    }
+    const headBytes = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+    const isJpeg = headBytes[0] === 0xff && headBytes[1] === 0xd8 && headBytes[2] === 0xff
+    const isPng  = headBytes[0] === 0x89 && headBytes[1] === 0x50 && headBytes[2] === 0x4e && headBytes[3] === 0x47
+    const isWebp = headBytes[0] === 0x52 && headBytes[1] === 0x49 && headBytes[2] === 0x46 && headBytes[3] === 0x46 &&
+      headBytes[8] === 0x57 && headBytes[9] === 0x45 && headBytes[10] === 0x42 && headBytes[11] === 0x50
+    if (!isJpeg && !isPng && !isWebp) {
+      toast.error("허용되지 않는 파일 형식입니다. (JPEG, PNG, WebP만 가능)")
+      e.target.value = ""; return
+    }
+
+    setUploadingSms(true)
+    try {
+      const { base64: imageBase64, mediaType: imageMediaType } = await fileToResizedBase64(file)
+
+      const res = await fetch("/api/ocr", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ imageBase64, imageMediaType, type: "sms" }),
+      })
+      const json = (await res.json()) as { results?: SmsOcrResult[]; error?: string }
+
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? "카드결제 문자 분석에 실패했습니다. 수동으로 입력해주세요.")
+        return
+      }
+      if (!json.results || json.results.length === 0) {
+        toast.warning("카드결제 문자를 찾지 못했습니다. 수동으로 입력해주세요.")
+        return
+      }
+      // 전체 항목 선택 상태로 모달 열기
+      setSelectedSmsItems(new Set(json.results.map((_, i) => i)))
+      setSmsResults(json.results)
+      setSmsModalOpen(true)
+    } catch (err) {
+      console.error("카드문자 OCR 오류:", err)
+      toast.error("분석에 실패했습니다. 수동으로 입력해주세요.")
+    } finally {
+      setUploadingSms(false)
+      e.target.value = ""
+    }
+  }
+
+  const handleSmsInsert = async () => {
+    if (!approvedUserId) return
+    const items = smsResults
+      .filter((_, i) => selectedSmsItems.has(i))
+      .map(({ receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason }) => ({
+        receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason,
+      }))
+    if (!items.length) { toast.warning("추가할 항목을 선택하세요."); return }
+    setInsertingSms(true)
+    try {
+      const res = await fetch("/api/expenses/bulk-insert", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ user_id: String(approvedUserId), items, import_source: "sms_ocr" }),
+      })
+      const json = (await res.json()) as { inserted?: number; error?: string }
+      if (!res.ok) throw new Error(json.error ?? "추가 실패")
+      toast.success(`✅ ${json.inserted}건이 추가됐습니다!`)
+      setSmsModalOpen(false); setSmsResults([]); setSelectedSmsItems(new Set())
+      await fetchData(approvedUserId)
+    } catch (err) {
+      console.error("SMS 항목 추가 오류:", err)
+      toast.error("추가에 실패했습니다.")
+    } finally {
+      setInsertingSms(false)
+    }
+  }
+
   // ─── 카카오톡 공유 ──────────────────────────────────────────────────────
 
   const handleKakaoShare = async () => {
@@ -1353,6 +1477,19 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           )}
         </button>
 
+        {/* 카드문자 캡처 업로드 */}
+        <button
+          onClick={() => smsFileRef.current?.click()}
+          disabled={uploadingSms || !currentUser || !approvedUserId}
+          className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-violet-300 transition-all duration-200"
+        >
+          {uploadingSms ? (
+            <><span>⏳</span>분석 중...</>
+          ) : (
+            <><span>📱</span>카드문자 캡처 업로드</>
+          )}
+        </button>
+
         {/* 카드명세서 / 직접입력 / 자동수집 — 3등분 */}
         <div className="grid grid-cols-3 gap-2">
           <button
@@ -1391,6 +1528,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         <input ref={statementFileRef} type="file" accept="image/*" className="hidden"
           disabled={importingStatement || !currentUser || !approvedUserId}
           onChange={handleStatementFileChange} />
+        {/* 카드문자 캡처 전용 파일 입력 (숨김) */}
+        <input ref={smsFileRef} type="file" accept="image/*" className="hidden"
+          disabled={uploadingSms || !currentUser || !approvedUserId}
+          onChange={handleSmsCaptureFileChange} />
 
         {/* 지출 목록 — 컴팩트 2줄, 기본 15개 + "더 보기" 5개씩 */}
         <div className="space-y-2">
@@ -2208,6 +2349,125 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           </div>
         )
       })()}
+      {/* ══════════════════════════════════════════════
+          카드문자 OCR 결과 모달
+      ══════════════════════════════════════════════ */}
+      {smsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+          onClick={() => { if (!insertingSms) setSmsModalOpen(false) }}
+        >
+          <div
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">📱 카드문자 인식 결과</h2>
+              <button
+                onClick={() => { if (!insertingSms) setSmsModalOpen(false) }}
+                className="text-white/40 hover:text-white text-xl leading-none"
+              >×</button>
+            </div>
+
+            {smsResults.length === 0 ? (
+              <div className="rounded-xl bg-white/5 border border-dashed border-white/10 py-10 text-center">
+                <p className="text-sm text-white/40">인식된 결제 내역이 없습니다.</p>
+                <p className="text-xs text-white/30 mt-1">카드결제 문자 스크린샷을 다시 시도해주세요.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-white/50">{smsResults.length}건 인식됨 — 추가할 항목을 선택하세요</p>
+                <ul className="space-y-2">
+                  {smsResults.map((item, i) => {
+                    const isDuplicate = expenses.some(
+                      (e) =>
+                        e.receipt_date === item.receipt_date &&
+                        e.amount === item.amount &&
+                        e.vendor_name === item.vendor_name
+                    )
+                    const checked = selectedSmsItems.has(i)
+                    return (
+                      <li key={i}>
+                        <label
+                          className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                            isDuplicate
+                              ? "border-amber-500/30 bg-amber-500/5 opacity-60"
+                              : checked
+                              ? "border-violet-500/40 bg-violet-500/10"
+                              : "border-white/10 bg-white/5 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 accent-violet-500"
+                            checked={checked}
+                            disabled={isDuplicate || insertingSms}
+                            onChange={() => {
+                              setSelectedSmsItems((prev) => {
+                                const next = new Set(prev)
+                                next.has(i) ? next.delete(i) : next.add(i)
+                                return next
+                              })
+                            }}
+                          />
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-white truncate">{item.vendor_name || "업체명 불명"}</span>
+                              <span className="text-sm font-bold text-violet-300 shrink-0">{item.amount.toLocaleString()}원</span>
+                            </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/40">
+                              <span>{item.receipt_date}</span>
+                              <span>{item.category}</span>
+                              {item.card_company && <span>{item.card_company}</span>}
+                              {item.approval_number && <span>승인 {item.approval_number}</span>}
+                              <span>{item.is_deductible ? "공제가능" : "공제불가"}</span>
+                            </div>
+                            {isDuplicate && (
+                              <p className="text-[11px] text-amber-400">⚠ 이미 등록된 내역입니다</p>
+                            )}
+                          </div>
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                <div className="flex items-center justify-between text-xs text-white/40 pt-1">
+                  <button
+                    className="underline underline-offset-2 hover:text-white/70 transition-colors"
+                    onClick={() => {
+                      const allSelectableIndexes = smsResults
+                        .map((item, i) => ({ item, i }))
+                        .filter(({ item }) => !expenses.some(
+                          (e) => e.receipt_date === item.receipt_date && e.amount === item.amount && e.vendor_name === item.vendor_name
+                        ))
+                        .map(({ i }) => i)
+                      setSelectedSmsItems(new Set(allSelectableIndexes))
+                    }}
+                  >
+                    전체 선택
+                  </button>
+                  <span>{selectedSmsItems.size}건 선택됨</span>
+                </div>
+
+                <button
+                  onClick={() => void handleSmsInsert()}
+                  disabled={insertingSms || selectedSmsItems.size === 0}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-all duration-200"
+                >
+                  {insertingSms ? (
+                    <><span>⏳</span>추가 중...</>
+                  ) : (
+                    <><span>✅</span>선택한 항목 {selectedSmsItems.size}건 추가</>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <CodefConnectModal
         open={codefOpen}
         userId={approvedUserId ?? 0}

@@ -41,6 +41,18 @@ interface BusinessOcrResult {
   tax_type: string
 }
 
+interface SmsOcrResult {
+  receipt_date: string
+  amount: number
+  vendor_name: string
+  card_company: string
+  approval_number: string | null
+  category: string
+  is_deductible: boolean
+  is_expense: boolean
+  deduction_reason: string
+}
+
 // 이미지 URL → base64 변환 (공개 URL 또는 외부 URL용)
 async function fetchImageBase64(url: string): Promise<{ base64: string; mediaType: string }> {
   const res = await fetch(url)
@@ -72,15 +84,97 @@ export async function POST(req: NextRequest) {
   if (unauthorized) return unauthorized
   try {
     const body = (await req.json()) as {
-      imageUrl?: string    // 공개 URL 또는 외부 URL (income/business)
-      storagePath?: string // 비공개 버킷 경로 (expense)
+      imageUrl?: string       // 공개 URL 또는 외부 URL (income/business)
+      storagePath?: string    // 비공개 버킷 경로 (expense)
+      imageBase64?: string    // base64 직접 전달 (sms)
+      imageMediaType?: string // base64 미디어 타입 (sms)
       expenseId?: string
       incomeId?: string
       businessId?: string
-      type?: "expense" | "income" | "business"
+      type?: "expense" | "income" | "business" | "sms"
     }
 
     const { imageUrl, storagePath, type = "expense" } = body
+
+    // ── SMS 카드문자 OCR (별도 경로) ──────────────────────────────────────────
+    if (type === "sms") {
+      if (!body.imageBase64 && !imageUrl) {
+        return NextResponse.json({ error: "imageBase64 또는 imageUrl 필수" }, { status: 400 })
+      }
+
+      let smsBase64: string
+      let smsMediaType: string
+      if (body.imageBase64) {
+        smsBase64 = body.imageBase64
+        smsMediaType = body.imageMediaType ?? "image/jpeg"
+      } else {
+        const path = extractReceiptsPath(imageUrl!)
+        const r = path ? await downloadFromStorage(path) : await fetchImageBase64(imageUrl!)
+        smsBase64 = r.base64; smsMediaType = r.mediaType
+      }
+
+      const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)
+      const smsMessage = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2048,
+        system: "한국 카드결제 문자 분석 전문가입니다. JSON만 반환하세요. 다른 말은 하지 마세요.",
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: smsMediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: smsBase64,
+              },
+            },
+            {
+              type: "text",
+              text: `이 이미지는 한국 카드결제 문자 스크린샷입니다.
+카드결제 승인 문자를 모두 찾아서 각각 JSON으로 추출하세요.
+카드결제 문자가 전혀 없으면 {"error": "카드결제 문자가 아닙니다"}를 반환하세요.
+
+카드결제 문자가 있으면 아래 형식으로 반환:
+{
+  "results": [
+    {
+      "receipt_date": "결제일 (YYYY-MM-DD, 연도 없으면 ${today.slice(0, 4)} 기준)",
+      "amount": 결제금액 숫자만 (원 단위, 쉼표 제거),
+      "vendor_name": "가맹점명",
+      "card_company": "카드사명 (BC카드/신한카드/국민카드/삼성카드/현대카드/롯데카드/하나카드/우리카드/농협카드 등)",
+      "approval_number": "승인번호 (없으면 null)",
+      "category": "유류비|수리비|식비|통신비|기타 중 가장 적합한 것",
+      "is_deductible": 사업용 부가세공제 가능하면 true,
+      "is_expense": 사업 관련 경비처리 가능하면 true,
+      "deduction_reason": "AI 판단 이유 한 문장 (한국어)"
+    }
+  ]
+}`,
+            },
+          ],
+        }],
+      })
+
+      const smsRaw = smsMessage.content
+        .filter((b) => b.type === "text")
+        .map((b) => (b as { type: "text"; text: string }).text)
+        .join("")
+
+      const smsMatch = smsRaw.match(/\{[\s\S]*\}/)
+      if (!smsMatch) return NextResponse.json({ results: [] })
+
+      const smsParsed = JSON.parse(smsMatch[0]) as { results?: SmsOcrResult[]; error?: string }
+      if (smsParsed.error) {
+        return NextResponse.json({ error: smsParsed.error }, { status: 422 })
+      }
+      const validResults = (smsParsed.results ?? []).filter(
+        (r) => r.receipt_date && typeof r.amount === "number" && r.vendor_name
+      )
+      return NextResponse.json({ results: validResults })
+    }
+
+    // ── 기존 타입 (expense / income / business) ──────────────────────────────
     const recordId =
       type === "income"   ? body.incomeId   :
       type === "business" ? body.businessId :

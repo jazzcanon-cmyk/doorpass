@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
   if (unauthorized) return unauthorized
 
   try {
-    const body = (await req.json()) as { user_id: string; items: ExpenseItem[] }
-    const { user_id, items } = body
+    const body = (await req.json()) as { user_id: string; items: ExpenseItem[]; import_source?: string }
+    const { user_id, items, import_source = "statement" } = body
 
     if (!user_id || !items?.length) {
       return NextResponse.json({ error: "user_id, items 필수" }, { status: 400 })
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       is_expense:       item.is_expense  !== false,
       deduction_reason: item.deduction_reason ?? null,
       receipt_image_url: null,
-      import_source:    "statement",  // 카드명세서 일괄 추가 출처 표시
+      import_source:    import_source,
     }))
 
     const { error } = await supabaseAdmin.from("expenses").insert(rows)
