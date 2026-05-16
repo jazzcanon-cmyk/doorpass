@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
 
@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
-  const email = user!.email!
+  const email = resolveUserEmail(user!)
   const meta = user!.user_metadata as Record<string, unknown> | undefined
   const providerId = meta?.provider_id as string | undefined
 

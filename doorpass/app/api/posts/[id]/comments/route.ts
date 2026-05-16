@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail, getUserName } from '@/lib/auth'
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route'
 import { logActivity, getIp } from '@/lib/activity-logger'
 import { sendTelegramMessage } from '@/lib/telegram'
@@ -70,24 +70,28 @@ export async function POST(request: Request) {
 
   try {
     const id = getPostId(request.url)
-    const { content, author } = await request.json()
+    const { content } = await request.json()
 
     if (!content) return NextResponse.json({ error: 'Content required' }, { status: 400 })
+    if (typeof content !== 'string' || content.trim().length === 0 || content.length > 1000) {
+      return NextResponse.json({ error: '댓글은 1~1000자 이내여야 합니다.' }, { status: 400 })
+    }
     if (!id || id === 'undefined') return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 })
+
+    const authorName = getUserName(user!)
 
     const { data, error } = await supabase
       .from('comments')
-      .insert({ post_id: Number(id), content, author: author || '익명' })
+      .insert({ post_id: Number(id), content: content.trim(), author: authorName })
       .select()
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // 실제 인증된 사용자 이메일로 로그 기록
     logActivity(
-      user!.email!,
+      resolveUserEmail(user!),
       "comment_create",
-      { post_id: Number(id), content: String(content || "").slice(0, 50), author: author || "익명" },
+      { post_id: Number(id), content: content.slice(0, 50), author: authorName },
       getIp(request)
     )
 
@@ -98,10 +102,9 @@ export async function POST(request: Request) {
         .eq('id', Number(id))
         .single()
       const postTitle = post?.title ?? '(제목 없음)'
-      const commentAuthor = author || '익명'
-      const preview = String(content || '').slice(0, 50)
+      const preview = content.slice(0, 50)
       await sendTelegramMessage(
-        `💬 새 댓글\n📝 게시글: ${postTitle}\n👤 작성자: ${commentAuthor}\n💬 내용: ${preview}`,
+        `💬 새 댓글\n📝 게시글: ${postTitle}\n👤 작성자: ${authorName}\n💬 내용: ${preview}`,
         "card_notification"
       )
     })().catch(console.error)

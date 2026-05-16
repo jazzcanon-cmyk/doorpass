@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, getUserIdentifier, getUserName } from "@/lib/auth"
+import { requireAuth, getUserIdentifier, getUserName, resolveUserEmail } from "@/lib/auth"
 import { logActivity, getIp } from "@/lib/activity-logger"
 
 const supabase = supabaseAdmin
@@ -106,6 +106,12 @@ export async function POST(request: Request) {
     if (!content || !date) {
       return NextResponse.json({ error: "내용과 날짜가 필요합니다." }, { status: 400 })
     }
+    if (typeof content !== "string" || content.length > 2000) {
+      return NextResponse.json({ error: "내용은 2000자 이하여야 합니다." }, { status: 400 })
+    }
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json({ error: "날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)" }, { status: 400 })
+    }
     const insertData = {
       content,
       date,
@@ -118,7 +124,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("calendar_memos").insert(insertData)
     if (error) throw new Error(error.message)
     sendTelegramMessage(`📅 캘린더 메모 추가\n내용: ${String(content).slice(0, 50)}\n날짜: ${date}`).catch(console.error)
-    logActivity(user!.email!, "calendar_memo", { content: String(content).slice(0, 50), date }, getIp(request))
+    logActivity(resolveUserEmail(user!), "calendar_memo", { content: String(content).slice(0, 50), date }, getIp(request))
     return NextResponse.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "저장에 실패했습니다."
