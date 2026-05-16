@@ -31,48 +31,56 @@ export async function GET() {
       }
     }
 
-    const branchesWithStats = await Promise.all(
-      (branches || []).map(async (branch) => {
-        const { data: users, count: userCount } = await supabaseAdmin
-          .from("approved_users")
-          .select("email", { count: "exact" })
-          .eq("branch_id", branch.id)
+    // N+1 방지: 모든 지점의 사용자·건물·활성유저를 3개 쿼리로 한번에 조회
+    const [allUsersRes, allBuildingsRes] = await Promise.all([
+      supabaseAdmin.from("approved_users").select("email, branch_id").not("branch_id", "is", null),
+      supabaseAdmin.from("buildings").select("branch_id").not("branch_id", "is", null),
+    ])
 
-        const { count: buildingCount } = await supabaseAdmin
-          .from("buildings")
-          .select("id", { count: "exact", head: true })
-          .eq("branch_id", branch.id)
+    const branchEmailsMap = new Map<string, string[]>()
+    for (const u of allUsersRes.data ?? []) {
+      if (!u.branch_id || !u.email) continue
+      if (!branchEmailsMap.has(u.branch_id)) branchEmailsMap.set(u.branch_id, [])
+      branchEmailsMap.get(u.branch_id)!.push(u.email)
+    }
 
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const buildingCountMap = new Map<string, number>()
+    for (const b of allBuildingsRes.data ?? []) {
+      if (!b.branch_id) continue
+      buildingCountMap.set(b.branch_id, (buildingCountMap.get(b.branch_id) ?? 0) + 1)
+    }
 
-        const emails = (users || []).map((u) => u.email).filter((v): v is string => Boolean(v))
-        let activeUsers = 0
-        if (emails.length > 0) {
-          const { data: recentLogins } = await supabaseAdmin
-            .from("login_history")
-            .select("user_email")
-            .in("user_email", emails)
-            .gte("login_at", thirtyDaysAgo.toISOString())
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const allEmails = Array.from(new Set([...branchEmailsMap.values()].flat()))
 
-          activeUsers = new Set((recentLogins || []).map((l) => l.user_email).filter(Boolean)).size
-        }
+    const activeEmailSet = new Set<string>()
+    if (allEmails.length > 0) {
+      const { data: recentLogins } = await supabaseAdmin
+        .from("login_history")
+        .select("user_email")
+        .in("user_email", allEmails)
+        .gte("login_at", thirtyDaysAgo.toISOString())
+      for (const l of recentLogins ?? []) {
+        if (l.user_email) activeEmailSet.add(l.user_email)
+      }
+    }
 
-        const resolvedName = branch.manager_email
-          ? (managerNameMap[branch.manager_email] ?? branch.manager_name ?? null)
-          : null
-
-        return {
-          ...branch,
-          manager_name: resolvedName,
-          stats: {
-            userCount: userCount || 0,
-            buildingCount: buildingCount || 0,
-            activeUsers,
-          },
-        }
-      })
-    )
+    const branchesWithStats = (branches || []).map((branch) => {
+      const branchEmails = branchEmailsMap.get(branch.id) ?? []
+      const resolvedName = branch.manager_email
+        ? (managerNameMap[branch.manager_email] ?? branch.manager_name ?? null)
+        : null
+      return {
+        ...branch,
+        manager_name: resolvedName,
+        stats: {
+          userCount: branchEmails.length,
+          buildingCount: buildingCountMap.get(branch.id) ?? 0,
+          activeUsers: branchEmails.filter((e) => activeEmailSet.has(e)).length,
+        },
+      }
+    })
 
     return NextResponse.json({ branches: branchesWithStats })
   } catch (error) {

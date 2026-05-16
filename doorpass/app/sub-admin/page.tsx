@@ -178,9 +178,9 @@ export default function SubAdminDashboardPage() {
       })
       if (!res.ok) throw new Error('처리 실패')
       setRoleRequests((prev) => prev.filter((r) => r.id !== id))
-      alert(action === 'approve' ? '✅ 편집자 권한 승인 완료!' : '❌ 거부 완료')
+      toast.success(action === 'approve' ? '편집자 권한 승인 완료!' : '거부 완료')
     } catch {
-      alert('처리 중 오류가 발생했습니다')
+      toast.error('처리 중 오류가 발생했습니다')
     } finally {
       setProcessingRoleId(null)
     }

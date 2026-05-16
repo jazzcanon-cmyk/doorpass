@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getCodefToken, codefRequest, guessCategory, fromYYYYMMDD } from '@/lib/codef'
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAuth } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
-    const { userId, serviceType, startDate, endDate } = await req.json()
+    const { serviceType, startDate, endDate } = await req.json()
     const organization = serviceType.replace('card_', '')
-    const { data: conn } = await supabase.from('codef_connections').select('connected_id').eq('user_id', userId).eq('service_type', serviceType).single()
+
+    // 인증된 사용자의 ID를 사용 (요청 body의 userId는 보안상 무시)
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId = (
+      (meta?.provider_id as string | undefined) ??
+      (meta?.sub as string | undefined) ??
+      user!.id
+    ) as string
+
+    const { data: conn } = await supabaseAdmin.from('codef_connections').select('connected_id').eq('user_id', userId).eq('service_type', serviceType).single()
     if (!conn?.connected_id) return NextResponse.json({ success: false, message: '카드 계정이 연결되지 않았습니다.' }, { status: 400 })
 
     const token = await getCodefToken()
@@ -26,9 +37,9 @@ export async function POST(req: NextRequest) {
       const amount = parseInt(t.useAmount || '0', 10)
       if (!amount) continue
       const memoKey = t.approvalNo ? `카드_${organization}_${t.approvalNo}` : `카드_${organization}_${t.useDate}_${amount}`
-      const { data: existing } = await supabase.from('expenses').select('id').eq('user_id', userId).eq('memo', memoKey).maybeSingle()
+      const { data: existing } = await supabaseAdmin.from('expenses').select('id').eq('user_id', userId).eq('memo', memoKey).maybeSingle()
       if (existing) { skipped++; continue }
-      const { error } = await supabase.from('expenses').insert({
+      const { error } = await supabaseAdmin.from('expenses').insert({
         user_id: userId, receipt_date: fromYYYYMMDD(t.useDate), amount,
         vendor_name: t.merchantName, business_number: t.merchantNo?.replace(/-/g, '') || '',
         category: guessCategory(t.merchantName),

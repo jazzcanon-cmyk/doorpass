@@ -67,9 +67,11 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       if (res.status === 409) {
         toast.error(data?.error || "이미 다른 기사님이 수락한 요청입니다.")
         onChanged()
-        const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
-        setRequest(r2.request)
-        setApplications(r2.applications ?? [])
+        const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json()).catch(() => null)
+        if (r2 && !r2.error) {
+          setRequest(r2.request ?? null)
+          setApplications(r2.applications ?? [])
+        }
         return
       }
       if (!res.ok) {
@@ -78,9 +80,11 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       }
       toast.success(action === "accept" ? "수락 완료 — 매칭되었습니다" : "거부 처리됨")
       onChanged()
-      const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
-      setRequest(r2.request)
-      setApplications(r2.applications ?? [])
+      const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json()).catch(() => null)
+      if (r2 && !r2.error) {
+        setRequest(r2.request ?? null)
+        setApplications(r2.applications ?? [])
+      }
     } catch {
       toast.error("처리 실패")
     } finally {
@@ -100,10 +104,12 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
       }
       toast.success("거래완료 처리되었습니다.")
       onChanged()
-      const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json())
-      setRequest(r2.request)
-      setApplications(r2.applications ?? [])
-      setMyRating(r2.myRating ?? null)
+      const r2 = await fetch(`/api/delivery/${requestId}`).then((x) => x.json()).catch(() => null)
+      if (r2 && !r2.error) {
+        setRequest(r2.request ?? null)
+        setApplications(r2.applications ?? [])
+        setMyRating(r2.myRating ?? null)
+      }
     } catch {
       toast.error("처리 실패")
     } finally {
