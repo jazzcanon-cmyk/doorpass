@@ -991,9 +991,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       const { base64: imageBase64, mediaType: imageMediaType } = await fileToResizedBase64(file)
 
       const res = await fetch("/api/ocr", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ imageBase64, imageMediaType, type: "sms" }),
+        method:      "POST",
+        credentials: "include",
+        headers:     { "Content-Type": "application/json" },
+        body:        JSON.stringify({ imageBase64, imageMediaType, type: "sms" }),
       })
       const json = (await res.json()) as { results?: SmsOcrResult[]; error?: string }
 
