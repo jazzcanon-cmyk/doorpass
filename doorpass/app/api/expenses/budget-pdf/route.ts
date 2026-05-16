@@ -5,12 +5,8 @@ import path from "path"
 import { NextRequest, NextResponse } from "next/server"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { requireAuth } from "@/lib/auth"
 
 // ─── 한국어 폰트 로딩 (NanumGothic) ──────────────────────────────────────────
 // 인스턴스당 1회 읽어 캐시. _pdf-generator.ts 와 동일 패턴.
@@ -36,6 +32,9 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 export async function GET(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get("user_id")

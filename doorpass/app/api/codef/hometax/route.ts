@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getCodefToken, codefRequest, guessCategory, fromYYYYMMDD } from '@/lib/codef'
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAuth } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  const { user, unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
-    const { userId, startDate, endDate } = await req.json()
-    const { data: conn } = await supabase.from('codef_connections').select('connected_id').eq('user_id', userId).eq('service_type', 'hometax').single()
+    const { startDate, endDate } = await req.json()
+
+    // 인증된 사용자의 ID를 사용 (요청 body의 userId는 보안상 무시)
+    const meta = user!.user_metadata as Record<string, unknown> | undefined
+    const userId = (
+      (meta?.provider_id as string | undefined) ??
+      (meta?.sub as string | undefined) ??
+      user!.id
+    ) as string
+
+    const { data: conn } = await supabaseAdmin.from('codef_connections').select('connected_id').eq('user_id', userId).eq('service_type', 'hometax').single()
     if (!conn?.connected_id) return NextResponse.json({ success: false, message: '홈택스 계정이 연결되지 않았습니다.' }, { status: 400 })
 
     const token = await getCodefToken()
@@ -24,10 +35,13 @@ export async function POST(req: NextRequest) {
     for (const r of result.data) {
       const amount = parseInt(r.totalAmount || '0', 10)
       if (!amount) continue
-      const memoKey = `현금영수증_${r.approvalNo}`
-      const { data: existing } = await supabase.from('expenses').select('id').eq('user_id', userId).eq('memo', memoKey).maybeSingle()
+      // approvalNo가 없으면 날짜+금액+업체명으로 고유 키 생성 (null 방지)
+      const memoKey = r.approvalNo
+        ? `현금영수증_${r.approvalNo}`
+        : `현금영수증_${r.approvalDate}_${amount}_${(r.storeName ?? '').slice(0, 10)}`
+      const { data: existing } = await supabaseAdmin.from('expenses').select('id').eq('user_id', userId).eq('memo', memoKey).maybeSingle()
       if (existing) { skipped++; continue }
-      const { error } = await supabase.from('expenses').insert({
+      const { error } = await supabaseAdmin.from('expenses').insert({
         user_id: userId, receipt_date: fromYYYYMMDD(r.approvalDate), amount,
         vendor_name: r.storeName, business_number: r.storeBusinessNo?.replace(/-/g, '') || '',
         category: guessCategory(r.industryCategory || r.storeName),

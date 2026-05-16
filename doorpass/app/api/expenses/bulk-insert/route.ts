@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { requireAuth } from "@/lib/auth"
 
 interface ExpenseItem {
   receipt_date: string
@@ -17,6 +13,9 @@ interface ExpenseItem {
 }
 
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const body = (await req.json()) as { user_id: string; items: ExpenseItem[] }
     const { user_id, items } = body
@@ -26,8 +25,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 승인된 신규 항목을 expenses에 일괄 INSERT
+    // user_id는 string으로 유지 (Number() 변환 시 UUID나 대형 Kakao ID에서 NaN/정밀도 손실 위험)
     const rows = items.map((item) => ({
-      user_id:          Number(user_id),
+      user_id:          user_id,
       receipt_date:     item.receipt_date,
       amount:           item.amount,
       vendor_name:      item.vendor_name ?? null,

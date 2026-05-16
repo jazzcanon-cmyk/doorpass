@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
-import { createClient } from "@supabase/supabase-js"
-
-// 서비스 롤 키로 RLS 우회
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { requireAuth } from "@/lib/auth"
 
 interface Expense {
   id: string
@@ -31,7 +26,8 @@ function formatBizNo(raw: string | null): string {
 
 // import_source → 증빙유형
 function toEvidenceType(source: string | null): string {
-  if (source === "ocr" || source === "statement") return "신용카드매출전표"
+  if (source === "ocr" || source === "statement" || source === "codef_card") return "신용카드매출전표"
+  if (source === "codef_hometax") return "현금영수증"
   return "간이영수증" // manual 및 기타
 }
 
@@ -86,6 +82,9 @@ function getPeriodLabel(period: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get("user_id")

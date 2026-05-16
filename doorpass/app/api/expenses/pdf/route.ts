@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateExpensePdf } from "../_pdf-generator"
+import { requireAuth } from "@/lib/auth"
 
 export async function GET(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
+
   try {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get("user_id")
