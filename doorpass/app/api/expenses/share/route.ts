@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { generateExpensePdf } from "../_pdf-generator"
+import { requireAuth } from "@/lib/auth"
 
 export async function GET(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   // 빌드 시 환경변수 미확정 문제 방지 — 함수 안에서 초기화
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

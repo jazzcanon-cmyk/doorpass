@@ -40,8 +40,8 @@ export async function POST(request: Request) {
   const isManager = approved.role === 'admin' || approved.role === 'sub_admin'
 
   if (!isManager) {
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const todayStart = new Date(`${kstDate}T00:00:00+09:00`)
 
     const { count } = await supabaseAdmin
       .from('referral_tokens')

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCodefToken, encryptRSA, codefRequest } from '@/lib/codef'
+import { requireAuth } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const { phoneNo, userName, identity } = await req.json() as {
       phoneNo: string; userName: string; identity: string

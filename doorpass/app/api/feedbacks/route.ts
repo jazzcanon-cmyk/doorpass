@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { sendPushToUser } from "@/lib/push"
@@ -38,10 +38,7 @@ export async function POST(request: Request) {
     const { user, unauthorized } = await requireAuth()
     if (unauthorized) return unauthorized
 
-    const email = user?.email
-    if (!email) {
-      return NextResponse.json({ error: "이메일 정보가 필요합니다." }, { status: 400 })
-    }
+    const email = resolveUserEmail(user!)
 
     let body: {
       category?: string
@@ -67,8 +64,8 @@ export async function POST(request: Request) {
     }
 
     // 일일 5건 제한 (스팸 방지)
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
+    const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const startOfDay = new Date(`${kstDate}T00:00:00+09:00`)
     const { count } = await supabaseAdmin
       .from("feedbacks")
       .select("id", { count: "exact", head: true })
@@ -157,8 +154,7 @@ export async function GET() {
     const { user, unauthorized } = await requireAuth()
     if (unauthorized) return unauthorized
 
-    const email = user?.email
-    if (!email) return NextResponse.json({ feedbacks: [] })
+    const email = resolveUserEmail(user!)
 
     const { data, error } = await supabaseAdmin
       .from("feedbacks")

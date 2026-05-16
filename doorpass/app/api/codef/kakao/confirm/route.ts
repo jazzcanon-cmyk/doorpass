@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getCodefToken, encryptRSA, codefRequest } from '@/lib/codef'
+import { requireAuth } from '@/lib/auth'
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const { userId, phoneNo, userName, identity, jobId, extraInfo } = await req.json() as {
       userId: number; phoneNo: string; userName: string; identity: string; jobId: string; extraInfo: unknown

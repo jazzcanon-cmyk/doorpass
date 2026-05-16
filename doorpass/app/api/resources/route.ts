@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, requireAdminApi } from "@/lib/auth"
+import { requireAuth, requireAdminApi, resolveUserEmail } from "@/lib/auth"
 import { logActivity, getIp } from "@/lib/activity-logger"
 
 const supabase = supabaseAdmin
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       .select("*")
       .order("created_at", { ascending: false })
     if (error) throw new Error(error.message)
-    logActivity(user!.email!, "resource_view", { count: data?.length ?? 0 }, getIp(request))
+    logActivity(resolveUserEmail(user!), "resource_view", { count: data?.length ?? 0 }, getIp(request))
     return NextResponse.json({ resources: data ?? [] })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "자료를 불러오지 못했습니다."

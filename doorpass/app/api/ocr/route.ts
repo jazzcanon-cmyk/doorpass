@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@supabase/supabase-js"
+import { requireAuth } from "@/lib/auth"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -67,6 +68,8 @@ function extractReceiptsPath(url: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const body = (await req.json()) as {
       imageUrl?: string    // 공개 URL 또는 외부 URL (income/business)

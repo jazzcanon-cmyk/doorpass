@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth"
 
 // 국세청 사업자 상태 조회 API 응답 단건
 interface NtsBusinessItem {
@@ -25,6 +26,8 @@ export interface CheckedBusiness {
 
 // 사업자등록번호 배열을 받아 국세청 상태를 조회하는 API
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     const body = (await req.json()) as { b_no: string[] }
 

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, resolveUserEmail } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function GET() {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
 
-  const email = user!.email!
+  const email = resolveUserEmail(user!)
 
   const { data: allPoints } = await supabaseAdmin
     .from('user_points')

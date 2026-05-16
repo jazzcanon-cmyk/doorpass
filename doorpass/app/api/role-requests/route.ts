@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth, getUserRole } from "@/lib/auth"
+import { requireAuth, getUserRole, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 
@@ -13,7 +13,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("role_requests")
     .select("*")
-    .eq("user_email", user!.email!)
+    .eq("user_email", resolveUserEmail(user!))
     .order("created_at", { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -44,14 +44,14 @@ export async function POST(request: Request) {
   const { data: userData } = await supabase
     .from("approved_users")
     .select("name")
-    .eq("email", user!.email!)
+    .eq("email", resolveUserEmail(user!))
     .maybeSingle()
 
   // 대기 중인 요청 중복 방지
   const { data: existing } = await supabase
     .from("role_requests")
     .select("id")
-    .eq("user_email", user!.email!)
+    .eq("user_email", resolveUserEmail(user!))
     .eq("status", "pending")
     .maybeSingle()
 
@@ -59,12 +59,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "이미 대기 중인 요청이 있습니다." }, { status: 400 })
   }
 
-  const userName = userData?.name ?? user!.email!.split("@")[0]
+  const userName = userData?.name ?? resolveUserEmail(user!).split("@")[0]
 
   const { data, error } = await supabase
     .from("role_requests")
     .insert({
-      user_email: user!.email!,
+      user_email: resolveUserEmail(user!),
       user_name: userName,
       requested_role: "editor",
       reason,

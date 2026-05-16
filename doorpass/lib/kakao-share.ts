@@ -123,9 +123,10 @@ export function shareExpensePdf(opts: ShareExpensePdfOptions): boolean {
       ? `${window.location.origin}/icon-512x512.png`
       : ""
 
-  // shareId가 있으면 doorpass.kr 리다이렉트 URL 사용, 없으면 Supabase 직접 URL 폴백
+  // shareId가 있으면 앱 origin의 리다이렉트 URL 사용, 없으면 Supabase 직접 URL 폴백
+  const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? "https://doorpass.kr")
   const shareUrl = opts.shareId
-    ? `https://doorpass.kr/api/share/${opts.shareId}`
+    ? `${origin}/api/share/${opts.shareId}`
     : opts.pdfUrl
 
   const link: KakaoShareLink = {

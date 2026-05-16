@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { requireAuth } from "@/lib/auth"
 
 // 서비스 롤 키로 RLS 우회
 const supabaseAdmin = createClient(
@@ -8,6 +9,8 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: NextRequest) {
+  const { unauthorized } = await requireAuth()
+  if (unauthorized) return unauthorized
   try {
     // FormData로 이미지 파일 + 두 가지 ID 수신:
     //   userId       = approved_users.id (소형 정수) → income.user_id 외래키

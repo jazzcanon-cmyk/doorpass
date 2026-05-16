@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { getAttendanceStats } from "@/lib/attendance"
 import {
   generalLimiter,
@@ -11,7 +11,7 @@ import {
 export async function GET(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
-  const email = user!.email!
+  const email = resolveUserEmail(user!)
 
   const rl = await checkRateLimit(
     generalLimiter,
