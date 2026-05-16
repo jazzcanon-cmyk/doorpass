@@ -17,26 +17,61 @@ export async function POST(req: NextRequest) {
   if (unauthorized) return unauthorized
 
   try {
-    const body = (await req.json()) as { user_id: string; items: ExpenseItem[]; import_source?: string }
-    const { user_id, items, import_source = "statement" } = body
+    const body = (await req.json()) as {
+      user_id: string
+      items: ExpenseItem[]
+      import_source?: string
+      image_hash?: string
+    }
+    const { user_id, items, import_source = "statement", image_hash } = body
 
     if (!user_id || !items?.length) {
       return NextResponse.json({ error: "user_id, items 필수" }, { status: 400 })
     }
 
-    // 승인된 신규 항목을 expenses에 일괄 INSERT
+    // 중복 체크: date+amount+vendor_name 조합으로 이미 등록된 항목 스킵
+    const toInsert: ExpenseItem[] = []
+    const skipped: string[] = []
+
+    for (const item of items) {
+      const { data: existing } = await supabaseAdmin
+        .from("expenses")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("receipt_date", item.receipt_date)
+        .eq("amount", Number(item.amount))
+        .eq("vendor_name", item.vendor_name ?? "")
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        skipped.push(item.vendor_name ?? "알수없음")
+      } else {
+        toInsert.push(item)
+      }
+    }
+
+    if (toInsert.length === 0) {
+      return NextResponse.json({
+        inserted: 0,
+        skipped,
+        message: `모두 이미 등록된 내역입니다 (${skipped.length}건 건너뜀)`,
+      })
+    }
+
     // user_id는 string으로 유지 (Number() 변환 시 UUID나 대형 Kakao ID에서 NaN/정밀도 손실 위험)
-    const rows = items.map((item) => ({
-      user_id:          user_id,
-      receipt_date:     item.receipt_date,
-      amount:           Number(item.amount),
-      vendor_name:      item.vendor_name ?? null,
-      category:         item.category   ?? "기타",
-      is_deductible:    item.is_deductible === true,
-      is_expense:       item.is_expense  !== false,
-      deduction_reason: item.deduction_reason ?? null,
+    const rows = toInsert.map((item) => ({
+      user_id:           user_id,
+      receipt_date:      item.receipt_date,
+      amount:            Number(item.amount),
+      vendor_name:       item.vendor_name ?? null,
+      category:          item.category ?? "기타",
+      is_deductible:     item.is_deductible === true,
+      is_expense:        item.is_expense !== false,
+      deduction_reason:  item.deduction_reason ?? null,
       receipt_image_url: null,
-      import_source:    import_source,
+      import_source:     import_source,
+      image_hash:        image_hash ?? null,
     }))
 
     const { error } = await supabaseAdmin.from("expenses").insert(rows)
@@ -50,7 +85,11 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    return NextResponse.json({ inserted: rows.length })
+    const message = skipped.length > 0
+      ? `${toInsert.length}건 추가, ${skipped.length}건 중복 건너뜀`
+      : `${toInsert.length}건 추가 완료`
+
+    return NextResponse.json({ inserted: toInsert.length, skipped, message })
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err)
     console.error("일괄 추가 오류:", msg)

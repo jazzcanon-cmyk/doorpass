@@ -245,6 +245,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [smsResults, setSmsResults]               = useState<SmsOcrResult[]>([])
   const [selectedSmsItems, setSelectedSmsItems]   = useState<Set<number>>(new Set())
   const [insertingSms, setInsertingSms]           = useState(false)
+  const [smsImageHash, setSmsImageHash]           = useState<string | null>(null)
 
   // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -996,7 +997,12 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         headers:     { "Content-Type": "application/json" },
         body:        JSON.stringify({ imageBase64, imageMediaType, type: "sms" }),
       })
-      const json = (await res.json()) as { results?: SmsOcrResult[]; error?: string }
+      const json = (await res.json()) as {
+        results?: SmsOcrResult[]
+        error?: string
+        imageHash?: string
+        alreadyProcessed?: boolean
+      }
 
       if (!res.ok || json.error) {
         toast.error(json.error ?? "카드결제 문자 분석에 실패했습니다. 수동으로 입력해주세요.")
@@ -1006,6 +1012,10 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         toast.warning("카드결제 문자를 찾지 못했습니다. 수동으로 입력해주세요.")
         return
       }
+      if (json.alreadyProcessed) {
+        toast.warning("이미 처리된 이미지입니다. 그래도 내역을 확인하려면 추가 버튼을 누르세요.")
+      }
+      setSmsImageHash(json.imageHash ?? null)
       // 전체 항목 선택 상태로 모달 열기
       setSelectedSmsItems(new Set(json.results.map((_, i) => i)))
       setSmsResults(json.results)
@@ -1041,12 +1051,24 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         method:      "POST",
         credentials: "include",
         headers:     { "Content-Type": "application/json" },
-        body:        JSON.stringify({ user_id: String(approvedUserId), items, import_source: "sms_ocr" }),
+        body:        JSON.stringify({
+          user_id:      String(approvedUserId),
+          items,
+          import_source: "sms_ocr",
+          image_hash:   smsImageHash ?? undefined,
+        }),
       })
-      const json = (await res.json()) as { inserted?: number; error?: string }
+      const json = (await res.json()) as { inserted?: number; skipped?: string[]; message?: string; error?: string }
       if (!res.ok) throw new Error(json.error ?? "추가 실패")
-      toast.success(`✅ ${json.inserted}건이 추가됐습니다!`)
-      setSmsModalOpen(false); setSmsResults([]); setSelectedSmsItems(new Set())
+      if (json.message) {
+        const skippedCount = json.skipped?.length ?? 0
+        if ((json.inserted ?? 0) > 0) {
+          toast.success(`✅ ${json.message}`)
+        } else if (skippedCount > 0) {
+          toast.warning(`⚠️ ${json.message}`)
+        }
+      }
+      setSmsModalOpen(false); setSmsResults([]); setSelectedSmsItems(new Set()); setSmsImageHash(null)
       await fetchData(approvedUserId)
     } catch (err) {
       console.error("SMS 항목 추가 오류:", err)

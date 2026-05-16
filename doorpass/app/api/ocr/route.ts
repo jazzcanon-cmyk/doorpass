@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@supabase/supabase-js"
-import { requireAuth } from "@/lib/auth"
+import { createHash } from "crypto"
+import { requireAuth, lookupApprovedUser } from "@/lib/auth"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -80,7 +81,7 @@ function extractReceiptsPath(url: string): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
   try {
     const body = (await req.json()) as {
@@ -111,6 +112,23 @@ export async function POST(req: NextRequest) {
         const path = extractReceiptsPath(imageUrl!)
         const r = path ? await downloadFromStorage(path) : await fetchImageBase64(imageUrl!)
         smsBase64 = r.base64; smsMediaType = r.mediaType
+      }
+
+      // 이미지 SHA-256 해시 (중복 업로드 감지용)
+      const imageHash = createHash("sha256").update(Buffer.from(smsBase64, "base64")).digest("hex")
+
+      // 이 이미지를 이미 처리한 적 있는지 approved_user 기준으로 체크
+      let alreadyProcessed = false
+      const approvedData = await lookupApprovedUser<{ id: number }>(user!, "id")
+      if (approvedData?.id) {
+        const { data: existingHash } = await supabaseAdmin
+          .from("expenses")
+          .select("id")
+          .eq("user_id", approvedData.id)
+          .eq("image_hash", imageHash)
+          .limit(1)
+          .maybeSingle()
+        alreadyProcessed = !!existingHash
       }
 
       const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)
@@ -186,7 +204,7 @@ export async function POST(req: NextRequest) {
       const validResults = (smsParsed.results ?? []).filter(
         (r) => r.receipt_date && typeof r.amount === "number" && r.vendor_name
       )
-      return NextResponse.json({ results: validResults })
+      return NextResponse.json({ results: validResults, imageHash, alreadyProcessed })
     }
 
     // ── 기존 타입 (expense / income / business) ──────────────────────────────
