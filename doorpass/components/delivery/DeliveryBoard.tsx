@@ -266,7 +266,7 @@ export function DeliveryBoard({ currentEmail, branchId }: Props) {
             {(() => {
               const firstDay = new Date(calYear, calMonth, 1).getDay()
               const lastDate = new Date(calYear, calMonth + 1, 0).getDate()
-              const today = new Date().toISOString().slice(0, 10)
+              const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
               const cells = []
               for (let i = 0; i < firstDay; i++) {
                 cells.push(<div key={'e' + i} className='h-10' />)

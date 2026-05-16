@@ -48,6 +48,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
     if (selectedDistrict === null) return toast.error("지역을 선택해주세요")
     if (!contact.trim()) return toast.error("연락처를 입력해주세요")
     if (payType !== "negotiable" && !payAmount) return toast.error("금액을 입력해주세요")
+    if (payType !== "negotiable" && Number(payAmount) <= 0) return toast.error("금액은 1원 이상이어야 합니다")
 
     setSubmitting(true)
     try {
@@ -104,7 +105,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
             <Input
               type="date"
               value={requestDate}
-              min={new Date().toISOString().split("T")[0]}
+              min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0]}
               onChange={(e) => setRequestDate(e.target.value)}
               className="bg-white/5 border-white/10 text-white [color-scheme:dark]"
             />
@@ -196,6 +197,7 @@ export function DeliveryRequestModal({ open, onClose, onCreated, branchId, postT
                 type="number"
                 inputMode="numeric"
                 placeholder="예: 100"
+                min="0"
                 value={availableVolume}
                 onChange={(e) => setAvailableVolume(e.target.value)}
                 className="bg-white/5 border-white/10 text-white"

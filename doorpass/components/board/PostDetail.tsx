@@ -85,7 +85,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
         ...prev,
         comments: prev.comments.map((c: Comment) =>
           c.id === commentId
-            ? { ...c, liked: !c.liked, like_count: c.liked ? c.like_count - 1 : c.like_count + 1 }
+            ? { ...c, liked: !c.liked, like_count: c.liked ? Math.max(0, c.like_count - 1) : c.like_count + 1 }
             : c
         ),
       }
@@ -117,7 +117,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
   }
 
   const submitComment = async () => {
-    if (!comment.trim()) return
+    if (!comment.trim() || submitting) return
     setSubmitting(true)
     try {
       const res = await fetch("/api/posts/" + postId + "/comments", {

@@ -127,8 +127,8 @@ const PERIOD_LABELS: Record<string, string> = {
   h1: "상반기", h2: "하반기",
 }
 
-const todayStr = () => new Date().toISOString().split("T")[0]
-const thisMonthStr = () => new Date().toISOString().slice(0, 7) // YYYY-MM
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+const thisMonthStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` } // YYYY-MM
 
 const EMPTY_EXPENSE_FORM: ManualExpenseForm = {
   receipt_date: todayStr(),
@@ -750,7 +750,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       // income_date: YYYY-MM → YYYY-MM-01
       const incomeDate = incomeForm.income_date
         ? `${incomeForm.income_date}-01`
-        : new Date().toISOString().slice(0, 7) + "-01"
+        : thisMonthStr() + "-01"
 
       // approved_users.id를 user_id로 사용 (카카오 ID 아님)
       const { error } = await supabase.from("income").insert({

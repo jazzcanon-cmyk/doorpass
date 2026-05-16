@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Button } from "@/components/ui/button"
 import { CARD_ORGS } from "@/lib/codef"
 
-function getDefaultStart() { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0] }
-function getDefaultEnd() { return new Date().toISOString().split("T")[0] }
+function localDateStr(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+function getDefaultStart() { const d = new Date(); d.setMonth(d.getMonth() - 1); return localDateStr(d) }
+function getDefaultEnd() { return localDateStr(new Date()) }
 
 type Step = "select-type" | "select-card" | "credentials" | "connecting" | "select-date" | "importing" | "done" | "kakao-phone" | "kakao-waiting"
 
