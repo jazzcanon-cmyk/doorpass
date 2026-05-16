@@ -112,7 +112,6 @@ export async function lookupAddress(query: string): Promise<AddressLookup> {
 
   try {
     const url = `${KAKAO_LOCAL_URL}?query=${encodeURIComponent(expandedQuery)}&analyze_type=similar`
-    console.log(`[address-convert] 카카오 API 호출: query="${expandedQuery}"`)
     const res = await fetch(url, {
       headers: { Authorization: `KakaoAK ${apiKey}` },
       signal: controller.signal,
@@ -124,9 +123,6 @@ export async function lookupAddress(query: string): Promise<AddressLookup> {
 
     const data = (await res.json()) as KakaoResponse
     const docs = data.documents ?? []
-    console.log(
-      `[address-convert] 응답 — documents=${docs.length}, total=${data.meta?.total_count ?? "?"}`
-    )
 
     let roadFull: string | null = null
     for (const doc of docs) {
@@ -138,14 +134,10 @@ export async function lookupAddress(query: string): Promise<AddressLookup> {
     }
 
     if (!roadFull) {
-      console.log(`[address-convert] 도로명 매칭 없음: "${expandedQuery}"`)
       return empty
     }
 
     const { core, name } = extractRoadParts(roadFull)
-    console.log(
-      `[address-convert] 매칭 — full="${roadFull}", core="${core ?? ""}", name="${name ?? ""}"`
-    )
     return {
       expandedQuery,
       roadFull,

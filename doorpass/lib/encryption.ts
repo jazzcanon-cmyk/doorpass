@@ -76,10 +76,3 @@ export function isValidEncryptedPassword(encryptedData: string): boolean {
   }
 }
 
-// 테스트용
-if (process.env.NODE_ENV === 'development') {
-  console.log('✅ 암호화 시스템 준비 완료');
-  // const test = encryptPassword('1234');
-  // console.log('암호화됨:', test);
-  // console.log('복호화됨:', decryptPassword(test));
-}

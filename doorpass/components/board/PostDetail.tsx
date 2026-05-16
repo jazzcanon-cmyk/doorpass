@@ -203,7 +203,7 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
           <span>{post.author}</span><span>{ago(post.created_at)}</span>
           <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{post.view_count}</span>
         </div>
-        {post.image_url && <img src={post.image_url} alt="" className="w-full h-auto rounded-lg mb-4" />}
+        {post.image_url && <img src={post.image_url} alt={post.title} className="w-full h-auto rounded-lg mb-4" />}
         <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
       </CardContent></Card>
       <div className="mb-3">

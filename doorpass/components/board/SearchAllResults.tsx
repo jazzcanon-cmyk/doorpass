@@ -59,7 +59,7 @@ export function SearchAllResults({ query, clearSearch }: { query: string; clearS
                   <Card key={p.id} className="cursor-pointer hover:border-primary/50 transition-all" onClick={() => goToDetail(p.id)}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        {p.image_url && <img src={p.image_url} alt="" className="w-14 rounded-lg object-contain bg-secondary flex-shrink-0" />}
+                        {p.image_url && <img src={p.image_url} alt="게시글 이미지" className="w-14 rounded-lg object-contain bg-secondary flex-shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground text-sm line-clamp-2">
                             <Highlight text={p.title} query={query} />

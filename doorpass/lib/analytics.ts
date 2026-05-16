@@ -11,8 +11,6 @@ async function track(type: string, data: Record<string, unknown>): Promise<void>
     if (!res.ok) {
       const text = await res.text()
       console.error(`[Analytics] track failed HTTP ${res.status}:`, text)
-    } else {
-      console.log(`[Analytics] tracked OK: ${type}`, data)
     }
   } catch (err) {
     console.error("[Analytics] fetch error:", err)
@@ -22,25 +20,20 @@ async function track(type: string, data: Record<string, unknown>): Promise<void>
 export function trackSearch(query: string, results: number, userEmail?: string): void {
   if (query.trim().length < 2) return
   track("search", { query: query.trim(), results, userEmail })
-  console.log(`[Analytics] search: "${query}" (${results}건)`)
 }
 
 export function trackBuildingView(buildingId: string, buildingName: string, userEmail?: string): void {
   track("building_view", { buildingId, buildingName, userEmail })
-  console.log(`[Analytics] building_view: ${buildingName}`)
 }
 
 export function trackPostView(postId: number, postTitle: string): void {
   track("post_view", { postId, postTitle })
-  console.log(`[Analytics] post_view: "${postTitle}"`)
 }
 
 export function trackButtonClick(buttonName: string): void {
   track("button_click", { buttonName })
-  console.log(`[Analytics] click: ${buttonName}`)
 }
 
 export function trackPageView(pagePath: string): void {
   track("page_view", { pagePath })
-  console.log(`[Analytics] page_view: ${pagePath}`)
 }

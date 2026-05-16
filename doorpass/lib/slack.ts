@@ -57,7 +57,6 @@ export async function sendSlackMessage(
       return { ok: false, error: `HTTP ${response.status}: ${body}` }
     }
 
-    console.log(`[Slack ✓] 전송 성공 | "${label}"`)
     return { ok: true }
   } catch (err) {
     console.error(`[Slack ✗] fetch 예외 | "${label}" |`, err)
