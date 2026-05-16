@@ -588,8 +588,22 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         console.warn("중복 확인 실패, 업로드 계속 진행")
       }
 
-      // ② Storage 업로드 (카카오 ID 기반 경로 유지)
-      const ext = file.name.split(".").pop() ?? "jpg"
+      // ② 파일 크기·형식 검증 (magic bytes)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("파일 크기는 5MB 이하여야 합니다.")
+        return
+      }
+      const headBytes = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+      const isJpeg = headBytes[0] === 0xff && headBytes[1] === 0xd8 && headBytes[2] === 0xff
+      const isPng = headBytes[0] === 0x89 && headBytes[1] === 0x50 && headBytes[2] === 0x4e && headBytes[3] === 0x47
+      const isWebp = headBytes[0] === 0x52 && headBytes[1] === 0x49 && headBytes[2] === 0x46 && headBytes[3] === 0x46 &&
+        headBytes[8] === 0x57 && headBytes[9] === 0x45 && headBytes[10] === 0x42 && headBytes[11] === 0x50
+      if (!isJpeg && !isPng && !isWebp) {
+        toast.error("허용되지 않는 파일 형식입니다. (JPEG, PNG, WebP만 가능)")
+        return
+      }
+      const ext = isJpeg ? "jpg" : isPng ? "png" : "webp"
+      // ③ Storage 업로드 (카카오 ID 기반 경로 유지)
       const filename = `${currentUser.userId}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage.from("receipts").upload(filename, file)
       if (uploadError) throw uploadError

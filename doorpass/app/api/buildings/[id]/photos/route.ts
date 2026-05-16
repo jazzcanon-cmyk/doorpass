@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, resolveUserEmail } from "@/lib/auth"
+import { requireAuth, resolveUserEmail, lookupApprovedUser } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { addPoints } from "@/lib/points"
 
@@ -116,7 +116,7 @@ export async function POST(
       .from("building_photos")
       .insert({
         building_id: Number(buildingId),
-        uploader_email: user!.email!,
+        uploader_email: resolveUserEmail(user!),
         photo_url: photoUrl,
         photo_type: photoType,
         caption,
@@ -177,12 +177,8 @@ export async function DELETE(
       return NextResponse.json({ error: "건물 불일치" }, { status: 400 })
     }
 
-    const { data: me } = await supabaseAdmin
-      .from("approved_users")
-      .select("role")
-      .eq("email", user!.email!)
-      .maybeSingle()
-    const role = (me as { role?: string } | null)?.role
+    const me = await lookupApprovedUser<{ role: string | null }>(user!, "role")
+    const role = me?.role
     const isManager = role === "admin" || role === "sub_admin"
 
     if (!isManager) {

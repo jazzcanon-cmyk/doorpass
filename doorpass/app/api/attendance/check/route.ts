@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, resolveUserEmail } from "@/lib/auth"
 import { processAttendance } from "@/lib/attendance"
 import { addPoints } from "@/lib/points"
 import {
@@ -17,7 +17,7 @@ const RATE_LIMIT_RESPONSE = NextResponse.json(
 export async function POST(request: Request) {
   const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
-  const email = user!.email!
+  const email = resolveUserEmail(user!)
 
   const rl = await checkRateLimit(
     generalLimiter,

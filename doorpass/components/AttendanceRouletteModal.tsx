@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -147,14 +147,21 @@ export function AttendanceRouletteModal({
   const [rotation, setRotation] = useState(0)
   const [result, setResult] = useState<CheckResponse | null>(null)
   const [errorMsg, setErrorMsg] = useState<string>("")
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 모달 열릴 때 상태 초기화
+  // 모달 열릴 때 상태 초기화, 닫히거나 언마운트 시 타이머 정리
   useEffect(() => {
     if (open) {
       setPhase("idle")
       setRotation(0)
       setResult(null)
       setErrorMsg("")
+    }
+    return () => {
+      if (spinTimerRef.current) {
+        clearTimeout(spinTimerRef.current)
+        spinTimerRef.current = null
+      }
     }
   }, [open])
 
@@ -196,7 +203,7 @@ export function AttendanceRouletteModal({
     setRotation(finalRotation)
 
     // 애니메이션 완료 후 결과 표시
-    setTimeout(() => setPhase("result"), 3200)
+    spinTimerRef.current = setTimeout(() => setPhase("result"), 3200)
   }
 
   const isBonus = phase === "bonus"
