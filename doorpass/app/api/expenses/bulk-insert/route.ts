@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const rows = items.map((item) => ({
       user_id:          user_id,
       receipt_date:     item.receipt_date,
-      amount:           item.amount,
+      amount:           Number(item.amount),
       vendor_name:      item.vendor_name ?? null,
       category:         item.category   ?? "기타",
       is_deductible:    item.is_deductible === true,
@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ inserted: rows.length })
   } catch (err) {
-    console.error("일괄 추가 오류:", err)
-    return NextResponse.json({ error: "일괄 추가 중 오류" }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("일괄 추가 오류:", msg)
+    return NextResponse.json({ error: msg || "일괄 추가 중 오류" }, { status: 500 })
   }
 }

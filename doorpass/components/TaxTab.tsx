@@ -1024,15 +1024,22 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     const items = smsResults
       .filter((_, i) => selectedSmsItems.has(i))
       .map(({ receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason }) => ({
-        receipt_date, amount, vendor_name, category, is_deductible, is_expense, deduction_reason,
+        receipt_date,
+        amount:           Number(amount),
+        vendor_name,
+        category,
+        is_deductible,
+        is_expense,
+        deduction_reason,
       }))
     if (!items.length) { toast.warning("추가할 항목을 선택하세요."); return }
     setInsertingSms(true)
     try {
       const res = await fetch("/api/expenses/bulk-insert", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ user_id: String(approvedUserId), items, import_source: "sms_ocr" }),
+        method:      "POST",
+        credentials: "include",
+        headers:     { "Content-Type": "application/json" },
+        body:        JSON.stringify({ user_id: String(approvedUserId), items, import_source: "sms_ocr" }),
       })
       const json = (await res.json()) as { inserted?: number; error?: string }
       if (!res.ok) throw new Error(json.error ?? "추가 실패")

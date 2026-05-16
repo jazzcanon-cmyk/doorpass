@@ -132,25 +132,37 @@ export async function POST(req: NextRequest) {
             {
               type: "text",
               text: `이 이미지는 한국 카드결제 문자 스크린샷입니다.
-카드결제 승인 문자를 모두 찾아서 각각 JSON으로 추출하세요.
-카드결제 문자가 전혀 없으면 {"error": "카드결제 문자가 아닙니다"}를 반환하세요.
+카드결제 문자의 형식은 다음과 같습니다:
+[카드사명] 승인/결제
+가맹점명: OOO (또는 가맹점명이 바로 나옴)
+금액: OO,OOO원
+날짜: YYYY.MM.DD HH:MM
 
-카드결제 문자가 있으면 아래 형식으로 반환:
-{
-  "results": [
-    {
-      "receipt_date": "결제일 (YYYY-MM-DD, 연도 없으면 ${today.slice(0, 4)} 기준)",
-      "amount": 결제금액 숫자만 (원 단위, 쉼표 제거),
-      "vendor_name": "가맹점명",
-      "card_company": "카드사명 (BC카드/신한카드/국민카드/삼성카드/현대카드/롯데카드/하나카드/우리카드/농협카드 등)",
-      "approval_number": "승인번호 (없으면 null)",
-      "category": "유류비|수리비|식비|통신비|기타 중 가장 적합한 것",
-      "is_deductible": 사업용 부가세공제 가능하면 true,
-      "is_expense": 사업 관련 경비처리 가능하면 true,
-      "deduction_reason": "AI 판단 이유 한 문장 (한국어)"
-    }
-  ]
-}`,
+반드시 다음 규칙으로 추출하세요:
+1. vendor_name: 가맹점명만 추출
+   - 카드사명(BC카드/신한카드/우리카드 등) 제외
+   - '승인' '결제' '취소' 단어 제외
+   - 금액 숫자 제외
+   - 실제 상호명만 추출 (예: GS칼텍스, 맥도날드, 이마트)
+2. amount: 숫자만 (콤마 없이, 원 제외)
+3. receipt_date: YYYY-MM-DD 형식 (연도 없으면 ${today.slice(0, 4)} 기준)
+4. card_company: 카드사명만
+5. approval_number: 승인번호 (없으면 null)
+6. category: 아래 기준으로 분류
+   - 주유소/충전소/칼텍스/GS/SK에너지 → 유류비
+   - 정비/카센터/자동차 → 수리비
+   - 식당/카페/맥도날드/편의점 → 식비
+   - 통신사/SKT/KT/LG → 통신비
+   - 그 외 → 기타
+7. is_deductible: 유류비·수리비·통신비면 true
+8. is_expense: 업무 관련이면 true
+9. deduction_reason: 한국어로 판단 이유
+
+카드결제 문자가 여러 개면 배열로:
+{"results": [{"vendor_name": "...", "amount": 숫자, "receipt_date": "YYYY-MM-DD", "card_company": "...", "approval_number": null, "category": "...", "is_deductible": true, "is_expense": true, "deduction_reason": "..."}]}
+
+카드결제 문자가 아니면:
+{"error": "카드결제 문자가 아닙니다"}`,
             },
           ],
         }],
