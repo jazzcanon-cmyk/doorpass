@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, canEditBuilding, resolveUserEmail } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { requireAuth, resolveUserEmail, lookupApprovedUser } from '@/lib/auth';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
 import { encryptPassword } from '@/lib/encryption';
 import { trackActivity } from '@/lib/activity-tracker';
@@ -14,19 +13,14 @@ export async function POST(
     const { user, unauthorized } = await requireAuth();
     if (unauthorized) return unauthorized;
 
-    if (!(await canEditBuilding(user!.email))) {
+    const approvedInfo = await lookupApprovedUser<{ role: string | null }>(user!, "role");
+    const role = approvedInfo?.role as string | null;
+    if (!role || !["admin", "sub_admin", "editor"].includes(role)) {
       return NextResponse.json(
         { error: '건물 정보 수정 권한이 없습니다. 설정에서 편집자 권한을 요청하세요.' },
         { status: 403 }
       );
     }
-
-    const { data: approvedUser } = await supabaseAdmin
-      .from('approved_users')
-      .select('role')
-      .eq('email', user!.email!)
-      .maybeSingle();
-    const role = approvedUser?.role;
     const isManager = role === 'admin' || role === 'sub_admin';
 
     const { id: buildingId } = await params;

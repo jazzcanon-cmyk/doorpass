@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth, resolveUserEmail } from '@/lib/auth'
+import { requireAuth, resolveUserEmail, lookupApprovedUser } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { addPoints, type PointAction } from '@/lib/points'
 import { encryptPassword } from '@/lib/encryption'
@@ -27,15 +27,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '수정 불가 필드' }, { status: 400 })
     }
 
-    const { data: userInfo } = await supabaseAdmin
-      .from('approved_users')
-      .select('role')
-      .eq('email', user!.email!)
-      .maybeSingle()
+    const userInfo = await lookupApprovedUser<{ role: string | null; branch_id: string | null }>(user!, 'role, branch_id')
 
     const role = userInfo?.role as string | null
     if (!role || !['editor', 'sub_admin', 'admin'].includes(role)) {
-      console.warn('[save-field] 권한 없음:', user!.email, 'role:', role)
+      console.warn('[save-field] 권한 없음:', resolveUserEmail(user!), 'role:', role)
       return NextResponse.json({ error: '수정 권한이 없습니다.' }, { status: 403 })
     }
 
@@ -53,12 +49,19 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabaseAdmin
       .from('buildings')
-      .select('name, address, password, password_encrypted, memo, has_elevator')
+      .select('name, address, password, password_encrypted, memo, has_elevator, branch_id')
       .eq('id', buildingId)
       .maybeSingle()
 
     if (!existing) {
       return NextResponse.json({ error: '건물을 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    if (role === 'sub_admin') {
+      const buildingBranchId = (existing as Record<string, unknown>).branch_id as string | null
+      if (buildingBranchId && buildingBranchId !== userInfo?.branch_id) {
+        return NextResponse.json({ error: '다른 대리점 건물은 수정할 수 없습니다.' }, { status: 403 })
+      }
     }
 
     const updatePayload: Record<string, unknown> =

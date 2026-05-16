@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
-import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth, resolveUserEmail } from "@/lib/auth"
+import { requireAuth, canRevealBuildingPassword, getBuildingsListAuth, resolveUserEmail, lookupApprovedUser } from "@/lib/auth"
 import { encryptPassword, decryptPassword, isValidEncryptedPassword } from "@/lib/encryption"
 import { logActivity, getIp } from "@/lib/activity-logger"
 import { normalizeAddress } from "@/lib/geo-utils"
@@ -340,13 +340,8 @@ export async function GET(request: Request) {
       const sortByCol = VALID_SORT_COLS.has(sortByParam) ? sortByParam : "created_at"
       const ascending = searchParams.get("sortOrder") === "asc"
 
-      const { data: me, error: meErr } = await supabaseAdmin
-        .from("approved_users")
-        .select("role, branch_id")
-        .eq("email", user!.email)
-        .maybeSingle()
+      const me = await lookupApprovedUser<{ role: string | null; branch_id: string | null }>(user!, "role, branch_id")
 
-      if (meErr) throw new Error(meErr.message)
       if (!me || (me.role !== "admin" && me.role !== "sub_admin")) {
         return NextResponse.json({ error: "권한 없음" }, { status: 403 })
       }
@@ -440,11 +435,7 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized
 
   // 승인된 사용자인지 확인
-  const { data: approvedUser } = await supabaseAdmin
-    .from("approved_users")
-    .select("role, branch_id, name")
-    .eq("email", user!.email)
-    .maybeSingle()
+  const approvedUser = await lookupApprovedUser<{ role: string | null; branch_id: string | null; name: string | null }>(user!, "role, branch_id, name")
 
   if (!approvedUser) {
     return NextResponse.json({ error: "승인된 사용자만 건물을 등록할 수 있습니다." }, { status: 403 })

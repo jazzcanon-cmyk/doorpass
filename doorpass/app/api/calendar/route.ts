@@ -29,15 +29,17 @@ function canMutateMemo(
 }
 
 export async function GET() {
-  const { unauthorized } = await requireAuth()
+  const { user, unauthorized } = await requireAuth()
   if (unauthorized) return unauthorized
   try {
+    const identifier = getUserIdentifier(user!)
     const { data, error } = await supabase
       .from("calendar_memos")
       .select("*")
       .order("created_at", { ascending: true })
     if (error) throw new Error(error.message)
-    return NextResponse.json({ memos: data ?? [] })
+    const memos = (data ?? []).filter((m: Record<string, unknown>) => !m.is_private || m.kakao_id === identifier)
+    return NextResponse.json({ memos })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "메모를 불러오지 못했습니다."
     return NextResponse.json({ error: message }, { status: 500 })

@@ -296,6 +296,17 @@ async function lookupManagerRole(user: User): Promise<string | null> {
 }
 
 /**
+ * approved_users 단일 행 조회 — Kakao + 이메일 dual-lookup.
+ * email-only 조회(eq("email", user.email))의 카카오 null-email 버그를 방지한다.
+ */
+export async function lookupApprovedUser<T extends Record<string, unknown> = { role: string | null }>(
+  user: User,
+  select: string = "role"
+): Promise<T | null> {
+  return fetchApprovedUserForAuth<T>(supabaseAdmin, user, select)
+}
+
+/**
  * API 라우트에서 admin 또는 sub_admin 권한 검증.
  * email 우선, 없으면 카카오 provider_id로 fallback.
  */
