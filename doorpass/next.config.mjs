@@ -26,7 +26,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ['recharts', 'lucide-react'],
+    optimizePackageImports: ['recharts', 'lucide-react', 'sonner', '@radix-ui/react-dialog', '@radix-ui/react-slot'],
   },
 }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Image from "next/image"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -7,12 +8,20 @@ import { Navigation, Pencil, X, Check, MapPin, Lock, Trash2, Loader2, Camera, Fl
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ApprovalRequestModal } from "@/components/ApprovalRequestModal"
 import { PointPopup } from "@/components/PointPopup"
-import { BuildingPhotoModal } from "@/components/BuildingPhotoModal"
 import { shortenAddress } from "@/lib/utils"
 import { EditableRow } from "./EditableRow"
 import { useBuildingCard, type Building } from "./useBuildingCard"
+
+// 클릭 시에만 열리는 모달 → lazy load (초기 번들 제외)
+const ApprovalRequestModal = dynamic(
+  () => import("@/components/ApprovalRequestModal").then((m) => ({ default: m.ApprovalRequestModal })),
+  { ssr: false }
+)
+const BuildingPhotoModal = dynamic(
+  () => import("@/components/BuildingPhotoModal").then((m) => ({ default: m.BuildingPhotoModal })),
+  { ssr: false }
+)
 
 interface BuildingCardProps {
   building: Building
