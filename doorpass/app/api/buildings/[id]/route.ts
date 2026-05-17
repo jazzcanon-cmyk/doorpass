@@ -193,7 +193,7 @@ export async function PUT(request: Request, { params }: { params: Params }) {
           tasks.push(addPoints({ email: userEmail, action: "building_memo", buildingId: Number(id), buildingName: name ?? existingBuilding.name ?? undefined }))
         }
       }
-      Promise.allSettled(tasks).catch(console.error)
+      void Promise.allSettled(tasks)
     }
 
     return NextResponse.json({ success: true })

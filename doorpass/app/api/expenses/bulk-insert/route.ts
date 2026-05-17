@@ -28,6 +28,24 @@ export async function POST(req: NextRequest) {
     if (!user_id || !items?.length) {
       return NextResponse.json({ error: "user_id, items 필수" }, { status: 400 })
     }
+    if (items.length > 500) {
+      return NextResponse.json({ error: "한 번에 최대 500건까지만 추가할 수 있습니다." }, { status: 400 })
+    }
+
+    // 항목별 기본 검증
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+    for (const item of items) {
+      const amt = Number(item.amount)
+      if (!Number.isFinite(amt) || amt <= 0 || amt > 100_000_000) {
+        return NextResponse.json({ error: `금액이 올바르지 않습니다: ${item.amount}` }, { status: 400 })
+      }
+      if (!DATE_RE.test(item.receipt_date) || isNaN(new Date(item.receipt_date).getTime())) {
+        return NextResponse.json({ error: `날짜 형식이 올바르지 않습니다: ${item.receipt_date}` }, { status: 400 })
+      }
+      if (item.vendor_name && item.vendor_name.length > 200) {
+        item.vendor_name = item.vendor_name.slice(0, 200)
+      }
+    }
 
     // 중복 체크: N+1 방지 — 해당 날짜 범위의 기존 항목을 1회 조회 후 인메모리 비교
     const dates = [...new Set(items.map((i) => i.receipt_date))]

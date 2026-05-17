@@ -11,8 +11,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const { id } = await ctx.params
     const body = await request.json().catch(() => ({}))
     const { message, name, phone } = body
-    const applicantRealName = name?.toString().trim() || null
-    const applicantPhone = phone?.toString().trim() || null
+    const applicantRealName = name?.toString().trim().slice(0, 50) || null
+    const applicantPhone = phone?.toString().trim().slice(0, 20) || null
 
     const { data: req } = await supabaseAdmin
       .from("delivery_requests")
@@ -56,7 +56,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
         request_id: id,
         applicant_email: resolveUserEmail(user!),
         applicant_name: applicantName,
-        message: (message ?? "").toString().trim() || null,
+        message: (message ?? "").toString().trim().slice(0, 500) || null,
         applicant_real_name: applicantRealName,
         applicant_phone: applicantPhone,
         status: "pending",

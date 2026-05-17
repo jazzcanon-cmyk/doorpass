@@ -22,44 +22,36 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       return NextResponse.json({ error: "대리점을 찾을 수 없습니다" }, { status: 404 })
     }
 
-    const { data: users, count: userCount } = await supabaseAdmin
-      .from("approved_users")
-      .select("email", { count: "exact" })
-      .eq("branch_id", branchId)
-
-    const { count: buildingCount } = await supabaseAdmin
-      .from("buildings")
-      .select("id", { count: "exact", head: true })
-      .eq("branch_id", branchId)
-
-    const userEmails = (users || []).map((u) => u.email).filter((v): v is string => Boolean(v))
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    let activeUsers = 0
-    if (userEmails.length > 0) {
-      const { data: recentLogins } = await supabaseAdmin
-        .from("login_history")
-        .select("user_email")
-        .in("user_email", userEmails)
-        .gte("login_at", thirtyDaysAgo.toISOString())
-      activeUsers = new Set((recentLogins || []).map((l) => l.user_email).filter(Boolean)).size
-    }
-
-    // 6개월 로그인 집계 — 루프 당 1 쿼리(N+1) 대신 단일 쿼리 후 인메모리 집계
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
     sixMonthsAgo.setDate(1)
     sixMonthsAgo.setHours(0, 0, 0, 0)
 
+    // 독립적인 쿼리 3개 병렬 실행
+    const [usersRes, buildingCountRes, buildingsRes] = await Promise.all([
+      supabaseAdmin.from("approved_users").select("email", { count: "exact" }).eq("branch_id", branchId),
+      supabaseAdmin.from("buildings").select("id", { count: "exact", head: true }).eq("branch_id", branchId),
+      supabaseAdmin.from("buildings").select("region").eq("branch_id", branchId),
+    ])
+
+    const users = usersRes.data
+    const userCount = usersRes.count
+    const buildingCount = buildingCountRes.count
+
+    const userEmails = (users || []).map((u) => u.email).filter((v): v is string => Boolean(v))
+
+    // 로그인 이력 쿼리: recentLogins + allMonthlyRows 병렬
+    let activeUsers = 0
     let allMonthlyRows: Array<{ login_at: string }> = []
     if (userEmails.length > 0) {
-      const { data } = await supabaseAdmin
-        .from("login_history")
-        .select("login_at")
-        .in("user_email", userEmails)
-        .gte("login_at", sixMonthsAgo.toISOString())
-      allMonthlyRows = data ?? []
+      const [recentLoginsRes, monthlyLoginsRes] = await Promise.all([
+        supabaseAdmin.from("login_history").select("user_email").in("user_email", userEmails).gte("login_at", thirtyDaysAgo.toISOString()),
+        supabaseAdmin.from("login_history").select("login_at").in("user_email", userEmails).gte("login_at", sixMonthsAgo.toISOString()),
+      ])
+      activeUsers = new Set((recentLoginsRes.data || []).map((l) => l.user_email).filter(Boolean)).size
+      allMonthlyRows = monthlyLoginsRes.data ?? []
     }
 
     const loginCountByMonth = new Map<string, number>()
@@ -77,53 +69,32 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       monthlyLogins.push({ month, count: loginCountByMonth.get(key) ?? 0 })
     }
 
-    const { data: buildings } = await supabaseAdmin
-      .from("buildings")
-      .select("region")
-      .eq("branch_id", branchId)
-
     const buildingRegionMap = new Map<string, number>()
-    for (const b of buildings || []) {
+    for (const b of buildingsRes.data || []) {
       const region = String(b.region || "미분류")
       buildingRegionMap.set(region, (buildingRegionMap.get(region) || 0) + 1)
     }
     const buildingsByRegion = Array.from(buildingRegionMap.entries()).map(([region, count]) => ({ region, count }))
 
-    let recentActivities: Array<{ type: string; user: string; timestamp: string; description: string }> = []
-    if (userEmails.length > 0) {
-      const { data: recentActivity } = await supabaseAdmin
-        .from("login_history")
-        .select("user_email, login_at")
-        .in("user_email", userEmails)
-        .order("login_at", { ascending: false })
-        .limit(10)
+    // 최근 활동 + 관리자 이름 + 부관리자 목록 병렬 조회
+    const [recentActivityRes, managerRes, subAdminRes] = await Promise.all([
+      userEmails.length > 0
+        ? supabaseAdmin.from("login_history").select("user_email, login_at").in("user_email", userEmails).order("login_at", { ascending: false }).limit(10)
+        : Promise.resolve({ data: [] as Array<{ user_email: string; login_at: string }> }),
+      branch.manager_email && !branch.manager_name
+        ? supabaseAdmin.from("approved_users").select("name").eq("email", branch.manager_email).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabaseAdmin.from("approved_users").select("id, email, name, kakao_name, role").eq("branch_id", branchId).eq("role", "sub_admin").order("created_at", { ascending: false }),
+    ])
 
-      recentActivities = (recentActivity || []).map((activity) => ({
-        type: "로그인",
-        user: activity.user_email,
-        timestamp: activity.login_at,
-        description: `${activity.user_email} 님이 로그인했습니다`,
-      }))
-    }
-
-    // approved_users에서 실제 이름 조회 (branches.manager_name이 null일 수 있으므로)
-    let resolvedManagerName: string | null = branch.manager_name ?? null
-    if (branch.manager_email && !resolvedManagerName) {
-      const { data: managerUser } = await supabaseAdmin
-        .from("approved_users")
-        .select("name")
-        .eq("email", branch.manager_email)
-        .maybeSingle()
-      resolvedManagerName = managerUser?.name ?? null
-    }
-
-    // 이 대리점의 모든 부관리자 (다중 지원)
-    const { data: subAdminRows } = await supabaseAdmin
-      .from("approved_users")
-      .select("id, email, name, kakao_name, role")
-      .eq("branch_id", branchId)
-      .eq("role", "sub_admin")
-      .order("created_at", { ascending: false })
+    const recentActivities = (recentActivityRes.data || []).map((activity) => ({
+      type: "로그인",
+      user: activity.user_email,
+      timestamp: activity.login_at,
+      description: `${activity.user_email} 님이 로그인했습니다`,
+    }))
+    const resolvedManagerName: string | null = branch.manager_name ?? managerRes.data?.name ?? null
+    const subAdminRows = subAdminRes.data
 
     return NextResponse.json({
       branch: {
@@ -190,15 +161,10 @@ export async function DELETE(_request: Request, { params }: { params: Params }) 
   try {
     const { branchId } = await params
 
-    const { count: userCount } = await supabaseAdmin
-      .from("approved_users")
-      .select("id", { count: "exact", head: true })
-      .eq("branch_id", branchId)
-
-    const { count: buildingCount } = await supabaseAdmin
-      .from("buildings")
-      .select("id", { count: "exact", head: true })
-      .eq("branch_id", branchId)
+    const [{ count: userCount }, { count: buildingCount }] = await Promise.all([
+      supabaseAdmin.from("approved_users").select("id", { count: "exact", head: true }).eq("branch_id", branchId),
+      supabaseAdmin.from("buildings").select("id", { count: "exact", head: true }).eq("branch_id", branchId),
+    ])
 
     if ((userCount || 0) > 0 || (buildingCount || 0) > 0) {
       return NextResponse.json(

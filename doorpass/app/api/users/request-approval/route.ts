@@ -97,27 +97,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
     }
 
-    // 2. 대리점 정보 조회
-    const { data: branch } = await supabaseAdmin
-      .from('branches')
-      .select('name')
-      .eq('id', branchId)
-      .single()
+    // 2+3. 대리점 정보 + 부관리자 + 관리자 병렬 조회
+    const [branchRes, subAdminsRes, adminRes] = await Promise.all([
+      supabaseAdmin.from('branches').select('name').eq('id', branchId).single(),
+      supabaseAdmin.from('approved_users').select('email').eq('branch_id', branchId).eq('role', 'sub_admin'),
+      supabaseAdmin.from('approved_users').select('email').eq('role', 'admin').maybeSingle(),
+    ])
 
-    const branchDisplayName = branch?.name || '미지정'
-
-    // 3. 부관리자(다중)/관리자 찾기
-    const { data: subAdmins } = await supabaseAdmin
-      .from('approved_users')
-      .select('email')
-      .eq('branch_id', branchId)
-      .eq('role', 'sub_admin')
-
-    const { data: admin } = await supabaseAdmin
-      .from('approved_users')
-      .select('email')
-      .eq('role', 'admin')
-      .maybeSingle()
+    const branchDisplayName = branchRes.data?.name || '미지정'
+    const subAdmins = subAdminsRes.data
+    const admin = adminRes.data
 
     // 4. PWA 푸시 알림 — 기타는 관리자만, 일반 대리점은 부관리자+관리자
     const baseUrl = request.nextUrl.origin

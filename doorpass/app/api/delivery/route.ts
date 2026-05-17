@@ -176,6 +176,15 @@ export async function POST(request: Request) {
     const resolvedRequestDate = requestDate ?? availableDate ?? null
 
     if (!resolvedRequestDate) return NextResponse.json({ error: "날짜 필요" }, { status: 400 })
+    // 날짜 형식 및 범위 검증
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedRequestDate)) {
+      return NextResponse.json({ error: "날짜 형식이 올바르지 않습니다." }, { status: 400 })
+    }
+    const reqDateMs = new Date(resolvedRequestDate).getTime()
+    const nowMs = Date.now()
+    if (isNaN(reqDateMs) || reqDateMs < nowMs - 365 * 24 * 3600 * 1000 || reqDateMs > nowMs + 365 * 24 * 3600 * 1000) {
+      return NextResponse.json({ error: "날짜 범위가 올바르지 않습니다." }, { status: 400 })
+    }
     if (!volume || !VOLUMES.includes(volume as (typeof VOLUMES)[number])) {
       return NextResponse.json({ error: "물량 선택 필요" }, { status: 400 })
     }
@@ -183,12 +192,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "단가 방식 필요" }, { status: 400 })
     }
     if (!contact?.trim()) return NextResponse.json({ error: "연락처 필요" }, { status: 400 })
+    if (contact.trim().length > 50) return NextResponse.json({ error: "연락처가 너무 깁니다." }, { status: 400 })
+    if (area && area.trim().length > 200) return NextResponse.json({ error: "지역 설명이 너무 깁니다." }, { status: 400 })
+    if (memo && memo.trim().length > 500) return NextResponse.json({ error: "메모가 너무 깁니다." }, { status: 400 })
 
+    const rawAmount = Number(payAmount)
     const amount =
       payType === "negotiable"
         ? null
-        : Number(payAmount) > 0
-        ? Math.floor(Number(payAmount))
+        : Number.isFinite(rawAmount) && rawAmount > 0 && rawAmount <= 10_000_000
+        ? Math.floor(rawAmount)
         : null
 
     let resolvedBranchId = branchId?.trim() || null
