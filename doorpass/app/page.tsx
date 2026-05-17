@@ -1,19 +1,34 @@
 "use client"
+import dynamic from "next/dynamic"
 import { CalendarModal } from "@/components/calendar"
 import { useState, useEffect, useCallback } from "react"
-import { Board } from "@/components/board"
-import { DeliveryBoard } from "@/components/delivery/DeliveryBoard"
+import { Loader2 } from "lucide-react"
 import { WelcomeDialog } from "@/components/WelcomeDialog"
 import { AttendanceRouletteModal } from "@/components/AttendanceRouletteModal"
 import { KakaoChannelButton } from "@/components/KakaoChannelButton"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
-import { NearbyTab } from "@/components/NearbyTab"
 import { SearchTab } from "@/components/SearchTab"
-import { TaxTab } from "@/components/TaxTab"
 import { NewBuildingModal } from "@/components/NewBuildingModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
+
+const NearbyTab = dynamic(() => import("@/components/NearbyTab").then((m) => ({ default: m.NearbyTab })), {
+  loading: () => <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-white/40" /></div>,
+  ssr: false,
+})
+const Board = dynamic(() => import("@/components/board").then((m) => ({ default: m.Board })), {
+  loading: () => <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-white/40" /></div>,
+  ssr: false,
+})
+const DeliveryBoard = dynamic(() => import("@/components/delivery/DeliveryBoard").then((m) => ({ default: m.DeliveryBoard })), {
+  loading: () => <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-white/40" /></div>,
+  ssr: false,
+})
+const TaxTab = dynamic(() => import("@/components/TaxTab").then((m) => ({ default: m.TaxTab })), {
+  loading: () => <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-white/40" /></div>,
+  ssr: false,
+})
 import { trackBuildingView, trackPageView } from "@/lib/analytics"
 import { pageview, gaEvents } from "@/lib/gtag"
 import { useAuth } from "@/hooks/useAuth"

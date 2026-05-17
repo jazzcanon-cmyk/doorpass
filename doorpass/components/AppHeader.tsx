@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { RefreshCw, Search, Navigation, MessageSquare, LogOut, Settings, Truck, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -40,7 +41,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => onTabChange("search")} className="flex-shrink-0 focus:outline-none">
-              <img src="/icon-light-32x32.png" alt="DoorPass" width={32} height={32} className="rounded-lg" />
+              <Image src="/icon-light-32x32.png" alt="DoorPass" width={32} height={32} className="rounded-lg" priority />
             </button>
             <div>
               <p className="text-[11px] text-white/40 flex items-center gap-1">

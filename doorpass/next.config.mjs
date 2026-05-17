@@ -10,7 +10,10 @@ const nextConfig = {
   turbopack: {
     root: resolve(__dirname, '..'),
   },
+  poweredByHeader: false,
+  compress: true,
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -18,6 +21,9 @@ const nextConfig = {
         pathname: '/storage/**',
       },
     ],
+  },
+  experimental: {
+    optimizePackageImports: ['recharts', 'lucide-react'],
   },
 }
 

@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 import { User, ShieldCheck, Ban, Crown, RotateCcw, Phone } from "lucide-react"
 import { formatDate, providerLabel } from "@/lib/admin-api"
 import type { AuthUser } from "@/types/admin-users"
@@ -88,8 +89,7 @@ export function AuthUserRow({ u, currentUserEmail, onBlock, onUnblock, onDetail,
     >
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.06] border border-white/10">
         {u.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={u.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover" />
+          <Image src={u.avatar_url} alt="" width={36} height={36} className="rounded-xl object-cover" unoptimized />
         ) : (
           <User className="h-4 w-4 text-white/40" />
         )}

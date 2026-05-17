@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { toast } from "sonner"
 import {
   ArrowLeft, Loader2, User, Ban, ShieldCheck,
@@ -173,8 +174,7 @@ export default function UserDetailPage() {
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/[0.06] border border-white/10 flex-shrink-0">
               {user.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                <Image src={user.avatar_url} alt="" width={48} height={48} className="rounded-xl object-cover" unoptimized />
               ) : (
                 <User className="h-5 w-5 text-white/40" />
               )}
