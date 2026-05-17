@@ -63,6 +63,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.6",
     "@playwright/test": "^1.45.0",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4.2.0",

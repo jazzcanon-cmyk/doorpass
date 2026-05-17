@@ -1,18 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import { Noto_Sans_KR } from 'next/font/google'
 import './globals.css'
 import LeafletPreloader from '@/components/LeafletPreloader'
 import { KakaoScript } from '@/components/KakaoScript'
 import { Toaster } from 'sonner'
-
-const notoSansKR = Noto_Sans_KR({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  display: 'swap',
-  preload: false,
-  variable: '--font-sans',
-})
 
 export const viewport: Viewport = {
   themeColor: '#2E3192',
@@ -48,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={notoSansKR.variable}>
+    <html lang="ko">
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -72,7 +63,7 @@ export default function RootLayout({
           });
         `}
       </Script>
-      <body className="font-sans antialiased">
+      <body className="antialiased">
         <Script id="microsoft-clarity" strategy="lazyOnload">
           {`
             (function(c,l,a,r,i,t,y){

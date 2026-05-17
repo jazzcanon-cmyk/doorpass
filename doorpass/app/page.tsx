@@ -1,6 +1,5 @@
 "use client"
 import dynamic from "next/dynamic"
-import { CalendarModal } from "@/components/calendar"
 import { useState, useEffect, useCallback } from "react"
 import { Loader2 } from "lucide-react"
 import { KakaoChannelButton } from "@/components/KakaoChannelButton"
@@ -10,6 +9,7 @@ import { SearchTab } from "@/components/SearchTab"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 
+const CalendarModal = dynamic(() => import("@/components/calendar").then((m) => ({ default: m.CalendarModal })), { ssr: false })
 const WelcomeDialog = dynamic(() => import("@/components/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })), { ssr: false })
 const AttendanceRouletteModal = dynamic(() => import("@/components/AttendanceRouletteModal").then((m) => ({ default: m.AttendanceRouletteModal })), { ssr: false })
 const NewBuildingModal = dynamic(() => import("@/components/NewBuildingModal").then((m) => ({ default: m.NewBuildingModal })), { ssr: false })
@@ -74,6 +74,7 @@ export default function Home() {
   })
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
   const [isAddBuildingOpen, setIsAddBuildingOpen] = useState(false)
+  const [showBanner, setShowBanner] = useState(false)
   const [selectedRadius, setSelectedRadius] = useState<number>(() => {
     try {
       const saved = loadAppState()
@@ -95,6 +96,11 @@ export default function Home() {
   const error = locationError ?? buildingsError
 
   useEffect(() => { trackPageView("/"); pageview("/") }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowBanner(true), 3000)
+    return () => clearTimeout(t)
+  }, [])
 
   const refreshLocation = useCallback(() => {
     getLocation(
@@ -372,20 +378,22 @@ export default function Home() {
         <TaxTab currentUser={currentUser} />
       )}
 
-      <footer className="relative border-t border-white/[0.08] py-6">
-        <div className="container mx-auto px-4 flex flex-col items-center gap-3">
-          <div className="w-full max-w-sm bg-white/5 border border-yellow-400/30 rounded-2xl p-4 space-y-3">
-            <p className="text-white font-medium">📢 카카오 채널에서 알림받기</p>
-            <ul className="space-y-1 text-sm text-gray-300">
-              <li>✅ 가입 승인 · 자격 변경 알림</li>
-              <li>✅ 비밀번호 변경 안내</li>
-              <li>✅ 대체배송 요청 알림</li>
-            </ul>
-            <KakaoChannelButton className="w-full" />
+      {showBanner && (
+        <footer className="relative border-t border-white/[0.08] py-6">
+          <div className="container mx-auto px-4 flex flex-col items-center gap-3">
+            <div className="w-full max-w-sm bg-white/5 border border-yellow-400/30 rounded-2xl p-4 space-y-3">
+              <p className="text-white font-medium">📢 카카오 채널에서 알림받기</p>
+              <ul className="space-y-1 text-sm text-gray-300">
+                <li>✅ 가입 승인 · 자격 변경 알림</li>
+                <li>✅ 비밀번호 변경 안내</li>
+                <li>✅ 대체배송 요청 알림</li>
+              </ul>
+              <KakaoChannelButton className="w-full" />
+            </div>
+            <p className="text-[11px] text-white/20">배달/택배 기사님들의 빠른 배송을 응원합니다 🚚</p>
           </div>
-          <p className="text-[11px] text-white/20">배달/택배 기사님들의 빠른 배송을 응원합니다 🚚</p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </main>
   )
 }
