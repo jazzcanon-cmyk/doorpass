@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, resolveUserEmail, lookupApprovedUser } from '@/lib/auth';
 import { createSupabaseRouteHandlerClient } from '@/lib/supabase-route';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { encryptPassword } from '@/lib/encryption';
 import { trackActivity } from '@/lib/activity-tracker';
 import { getIp } from '@/lib/activity-logger';
@@ -13,7 +14,7 @@ export async function POST(
     const { user, unauthorized } = await requireAuth();
     if (unauthorized) return unauthorized;
 
-    const approvedInfo = await lookupApprovedUser<{ role: string | null }>(user!, "role");
+    const approvedInfo = await lookupApprovedUser<{ role: string | null; branch_id: string | null }>(user!, "role, branch_id");
     const role = approvedInfo?.role as string | null;
     if (!role || !["admin", "sub_admin", "editor"].includes(role)) {
       return NextResponse.json(
@@ -24,6 +25,19 @@ export async function POST(
     const isManager = role === 'admin' || role === 'sub_admin';
 
     const { id: buildingId } = await params;
+
+    // sub_admin은 자신의 대리점 건물만 수정 가능
+    if (role === 'sub_admin') {
+      const { data: building } = await supabaseAdmin
+        .from('buildings')
+        .select('branch_id')
+        .eq('id', buildingId)
+        .maybeSingle();
+      if (building?.branch_id !== approvedInfo?.branch_id) {
+        return NextResponse.json({ error: '다른 대리점 건물은 수정할 수 없습니다.' }, { status: 403 });
+      }
+    }
+
     const { password } = await request.json();
 
     const isEmpty = !password || password.trim() === '';

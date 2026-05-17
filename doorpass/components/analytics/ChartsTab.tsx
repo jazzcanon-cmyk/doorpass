@@ -83,22 +83,23 @@ export function ChartsTab({ chartView, onChartViewChange, dailyActivity, hourlyA
             <p className="text-center py-8 text-muted-foreground text-sm">데이터 없음</p>
           ) : (
             <div className="grid grid-cols-12 gap-1">
-              {Array.from({ length: 24 }, (_, h) => {
+              {Array.from({ length: 24 }, (_, kstH) => {
+                const utcH = (kstH - 9 + 24) % 24
                 const iso = hourlyActivity.find(a => {
                   const hour = new Date(a.hour + ":00:00Z").getUTCHours()
-                  return hour === h
+                  return hour === utcH
                 })
                 const count = iso?.count ?? 0
                 const intensity = Math.min(count / maxHourly, 1)
                 return (
-                  <div key={h} className="flex flex-col items-center gap-0.5">
+                  <div key={kstH} className="flex flex-col items-center gap-0.5">
                     <div
                       className="w-full aspect-square rounded-sm transition-colors"
                       style={{ background: `rgba(129, 140, 248, ${0.1 + intensity * 0.9})` }}
-                      title={`${h}시: ${count}건`}
+                      title={`${kstH}시: ${count}건`}
                     />
-                    {h % 4 === 0 && (
-                      <span className="text-[8px] text-muted-foreground">{h}시</span>
+                    {kstH % 4 === 0 && (
+                      <span className="text-[8px] text-muted-foreground">{kstH}시</span>
                     )}
                   </div>
                 )

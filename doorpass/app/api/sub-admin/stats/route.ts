@@ -55,9 +55,8 @@ export async function GET() {
       })
     }
 
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    startOfMonth.setHours(0, 0, 0, 0)
+    const nowKst = new Date(Date.now() + 9 * 3600000)
+    const startOfMonth = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), 1))
     const startIso = startOfMonth.toISOString()
 
     let usersQ = supabaseAdmin.from("approved_users").select("id", { count: "exact", head: true })

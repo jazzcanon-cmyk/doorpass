@@ -196,7 +196,7 @@ export async function GET(request: Request) {
   if (hasSearchParam && !hasPageParam) {
     try {
       const { user, revealPasswords } = await getBuildingsListAuth()
-      const searchTerm = (searchParams.get("search") ?? "").trim()
+      const searchTerm = (searchParams.get("search") ?? "").trim().slice(0, 200)
       if (!searchTerm) {
         return NextResponse.json({ buildings: [], total: 0 }, { headers: BUILDING_CACHE_HEADERS })
       }
