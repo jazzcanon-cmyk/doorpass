@@ -195,7 +195,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const [savingExpense, setSavingExpense] = useState(false)
   const expenseFileRef   = useRef<HTMLInputElement>(null)
   const statementFileRef = useRef<HTMLInputElement>(null)  // 카드명세서 전용
-  const smsFileRef       = useRef<HTMLInputElement>(null)  // 카드문자 캡처 전용
+  // const smsFileRef    = useRef<HTMLInputElement>(null)  // [구] 카드문자 캡처 전용 (이미지 방식)
   const amountInputRef   = useRef<HTMLInputElement>(null)
 
   // 사업자 상태
@@ -239,13 +239,14 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   // 의심 중복 항목 중 사용자가 "그래도 추가"를 선택한 인덱스 집합
   const [suspectedIncluded, setSuspectedIncluded]     = useState<Set<number>>(new Set())
 
-  // 카드문자 OCR 상태
+  // 카드문자 OCR 상태 (텍스트 붙여넣기 방식)
   const [uploadingSms, setUploadingSms]           = useState(false)
   const [smsModalOpen, setSmsModalOpen]           = useState(false)
   const [smsResults, setSmsResults]               = useState<SmsOcrResult[]>([])
   const [selectedSmsItems, setSelectedSmsItems]   = useState<Set<number>>(new Set())
   const [insertingSms, setInsertingSms]           = useState(false)
-  const [smsImageHash, setSmsImageHash]           = useState<string | null>(null)
+  const [smsText, setSmsText]                     = useState("")
+  // const [smsImageHash, setSmsImageHash]        = useState<string | null>(null)  // [구] 이미지 해시 (미사용)
 
   // 비공개 버킷 — 영수증 서명 URL 캐시 { expenseId → signedUrl }
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
@@ -961,9 +962,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     }
   }
 
-  // ─── 카드문자 캡처 OCR ──────────────────────────────────────────────────
+  // ─── 카드문자 텍스트 붙여넣기 OCR ────────────────────────────────────────
 
-  // 브라우저에서 File → base64 (이미지 리사이즈 후 JPEG 압축)
+  /* [구] 카드문자 캡처 OCR — 이미지 방식, 텍스트 붙여넣기 방식으로 교체됨
   async function fileToResizedBase64(file: File, maxPx = 1920): Promise<{ base64: string; mediaType: string }> {
     return new Promise((resolve, reject) => {
       const img = new Image()
@@ -989,60 +990,57 @@ export function TaxTab({ currentUser }: TaxTabProps) {
   const handleSmsCaptureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("파일 크기는 5MB 이하여야 합니다.")
-      e.target.value = ""; return
-    }
+    if (file.size > 5 * 1024 * 1024) { toast.error("파일 크기는 5MB 이하여야 합니다."); e.target.value = ""; return }
     const headBytes = new Uint8Array(await file.slice(0, 12).arrayBuffer())
     const isJpeg = headBytes[0] === 0xff && headBytes[1] === 0xd8 && headBytes[2] === 0xff
     const isPng  = headBytes[0] === 0x89 && headBytes[1] === 0x50 && headBytes[2] === 0x4e && headBytes[3] === 0x47
     const isWebp = headBytes[0] === 0x52 && headBytes[1] === 0x49 && headBytes[2] === 0x46 && headBytes[3] === 0x46 &&
       headBytes[8] === 0x57 && headBytes[9] === 0x45 && headBytes[10] === 0x42 && headBytes[11] === 0x50
-    if (!isJpeg && !isPng && !isWebp) {
-      toast.error("허용되지 않는 파일 형식입니다. (JPEG, PNG, WebP만 가능)")
-      e.target.value = ""; return
-    }
-
+    if (!isJpeg && !isPng && !isWebp) { toast.error("허용되지 않는 파일 형식입니다."); e.target.value = ""; return }
     setUploadingSms(true)
     try {
       const { base64: imageBase64, mediaType: imageMediaType } = await fileToResizedBase64(file)
+      const res = await fetch("/api/ocr", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageBase64, imageMediaType, type: "sms" }) })
+      const json = (await res.json()) as { results?: SmsOcrResult[]; error?: string; imageHash?: string; alreadyProcessed?: boolean }
+      if (!res.ok || json.error) { toast.error(json.error ?? "분석 실패"); return }
+      if (!json.results || json.results.length === 0) { toast.warning("카드결제 문자를 찾지 못했습니다."); return }
+      if (json.alreadyProcessed) toast.warning("이미 처리된 이미지입니다.")
+      setSmsImageHash(json.imageHash ?? null)
+      setSelectedSmsItems(new Set(json.results.map((_, i) => i)))
+      setSmsResults(json.results)
+      setSmsModalOpen(true)
+    } catch (err) { console.error("카드문자 OCR 오류:", err); toast.error("분석에 실패했습니다.") }
+    finally { setUploadingSms(false); e.target.value = "" }
+  }
+  */
 
-      const res = await fetch("/api/ocr", {
+  const handleSmsTextSubmit = async () => {
+    if (!smsText.trim()) return
+    setUploadingSms(true)
+    try {
+      const res = await fetch("/api/ocr/sms-text", {
         method:      "POST",
         credentials: "include",
         headers:     { "Content-Type": "application/json" },
-        body:        JSON.stringify({ imageBase64, imageMediaType, type: "sms" }),
+        body:        JSON.stringify({ smsText }),
       })
-      const json = (await res.json()) as {
-        results?: SmsOcrResult[]
-        error?: string
-        imageHash?: string
-        alreadyProcessed?: boolean
-      }
-
+      const json = (await res.json()) as { results?: SmsOcrResult[]; error?: string }
       if (!res.ok || json.error) {
-        toast.error(json.error ?? "카드결제 문자 분석에 실패했습니다. 수동으로 입력해주세요.")
+        toast.error(json.error ?? "카드결제 문자 분석에 실패했습니다.")
         return
       }
       if (!json.results || json.results.length === 0) {
-        toast.warning("카드결제 문자를 찾지 못했습니다. 수동으로 입력해주세요.")
+        toast.warning("카드결제 문자를 찾지 못했습니다. 문자 내용을 확인해주세요.")
         return
       }
-      if (json.alreadyProcessed) {
-        toast.warning("이미 처리된 이미지입니다. 그래도 내역을 확인하려면 추가 버튼을 누르세요.")
-      }
-      setSmsImageHash(json.imageHash ?? null)
-      // 전체 항목 선택 상태로 모달 열기
       setSelectedSmsItems(new Set(json.results.map((_, i) => i)))
       setSmsResults(json.results)
       setSmsModalOpen(true)
     } catch (err) {
-      console.error("카드문자 OCR 오류:", err)
-      toast.error("분석에 실패했습니다. 수동으로 입력해주세요.")
+      console.error("카드문자 분석 오류:", err)
+      toast.error("분석에 실패했습니다.")
     } finally {
       setUploadingSms(false)
-      e.target.value = ""
     }
   }
 
@@ -1071,8 +1069,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         body:        JSON.stringify({
           user_id:      String(approvedUserId),
           items,
-          import_source: "sms_ocr",
-          image_hash:   smsImageHash ?? undefined,
+          import_source: "sms_text",
         }),
       })
       const json = (await res.json()) as { inserted?: number; skipped?: string[]; message?: string; error?: string }
@@ -1085,7 +1082,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           toast.warning(`⚠️ ${json.message}`)
         }
       }
-      setSmsModalOpen(false); setSmsResults([]); setSelectedSmsItems(new Set()); setSmsImageHash(null)
+      setSmsModalOpen(false); setSmsResults([]); setSelectedSmsItems(new Set()); setSmsText("")
       await fetchData(approvedUserId)
     } catch (err) {
       console.error("SMS 항목 추가 오류:", err)
@@ -1526,18 +1523,32 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           )}
         </button>
 
-        {/* 카드문자 캡처 업로드 */}
-        <button
-          onClick={() => smsFileRef.current?.click()}
-          disabled={uploadingSms || !currentUser || !approvedUserId}
-          className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-violet-300 transition-all duration-200"
-        >
-          {uploadingSms ? (
-            <><span>⏳</span>분석 중...</>
-          ) : (
-            <><span>📱</span>카드문자 캡처 업로드</>
-          )}
-        </button>
+        {/* 카드문자 텍스트 붙여넣기 */}
+        <div className="space-y-2">
+          <textarea
+            value={smsText}
+            onChange={(e) => setSmsText(e.target.value)}
+            placeholder={"카드 결제 문자를 여기에 붙여넣으세요\n여러 건을 한 번에 붙여넣기 가능합니다"}
+            rows={4}
+            disabled={uploadingSms || !currentUser || !approvedUserId}
+            className="w-full rounded-xl bg-violet-500/10 border border-violet-500/30 px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-violet-400/60 resize-none disabled:opacity-50"
+          />
+          <button
+            onClick={() => void handleSmsTextSubmit()}
+            disabled={uploadingSms || !smsText.trim() || !currentUser || !approvedUserId}
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-violet-300 transition-all duration-200"
+          >
+            {uploadingSms ? (
+              <><span>⏳</span>분석 중...</>
+            ) : (
+              <><span>💬</span>카드문자 분석하기</>
+            )}
+          </button>
+        </div>
+        {/*
+        [구] 카드문자 캡처 업로드 버튼 — 텍스트 붙여넣기 방식으로 교체됨
+        <button onClick={() => smsFileRef.current?.click()} ...>📱 카드문자 캡처 업로드</button>
+        */}
 
         {/* 카드명세서 / 직접입력 / 자동수집 — 3등분 */}
         <div className="grid grid-cols-3 gap-2">
@@ -1577,10 +1588,11 @@ export function TaxTab({ currentUser }: TaxTabProps) {
         <input ref={statementFileRef} type="file" accept="image/*" className="hidden"
           disabled={importingStatement || !currentUser || !approvedUserId}
           onChange={handleStatementFileChange} />
-        {/* 카드문자 캡처 전용 파일 입력 (숨김) */}
+        {/* [구] 카드문자 캡처 전용 파일 입력 — 텍스트 붙여넣기 방식으로 교체됨
         <input ref={smsFileRef} type="file" accept="image/*" className="hidden"
           disabled={uploadingSms || !currentUser || !approvedUserId}
           onChange={handleSmsCaptureFileChange} />
+        */}
 
         {/* 지출 목록 — 컴팩트 2줄, 기본 15개 + "더 보기" 5개씩 */}
         <div className="space-y-2">
@@ -2412,7 +2424,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">📱 카드문자 인식 결과</h2>
+              <h2 className="text-base font-semibold text-white">💬 카드문자 분석 결과</h2>
               <button
                 onClick={() => { if (!insertingSms) setSmsModalOpen(false) }}
                 className="text-white/40 hover:text-white text-xl leading-none"
@@ -2422,7 +2434,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             {smsResults.length === 0 ? (
               <div className="rounded-xl bg-white/5 border border-dashed border-white/10 py-10 text-center">
                 <p className="text-sm text-white/40">인식된 결제 내역이 없습니다.</p>
-                <p className="text-xs text-white/30 mt-1">카드결제 문자 스크린샷을 다시 시도해주세요.</p>
+                <p className="text-xs text-white/30 mt-1">붙여넣기한 문자 내용을 다시 확인해주세요.</p>
               </div>
             ) : (
               <>
