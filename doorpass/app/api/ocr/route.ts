@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const today = new Date().toISOString().split("T")[0]
+    const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)
     const thisMonth = today.slice(0, 7) + "-01" // YYYY-MM-01
 
     // 2) 타입별 프롬프트 설정

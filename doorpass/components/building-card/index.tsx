@@ -158,7 +158,7 @@ export function BuildingCard({
           onClick={() => setShowPopup(false)}
         >
           <div
-            className="w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border max-h-[85vh] overflow-y-auto"
+            className="w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border max-h-[85dvh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 팝업 헤더 */}

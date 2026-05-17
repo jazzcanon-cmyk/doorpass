@@ -151,6 +151,7 @@ export default function SubAdminUsersPage() {
                     src={user.profile_image_url}
                     alt={displayName}
                     className="h-11 w-11 rounded-full object-cover border border-white/[0.08] flex-shrink-0"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="h-11 w-11 rounded-full bg-slate-700 flex items-center justify-center text-base font-semibold text-white/60 flex-shrink-0">

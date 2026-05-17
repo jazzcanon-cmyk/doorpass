@@ -86,6 +86,7 @@ export function ResourceCard({
                 src={res.url}
                 alt={res.title}
                 className="mt-2 w-full rounded-lg"
+                loading="lazy"
                 onClick={(e) => e.stopPropagation()}
               />
             )}

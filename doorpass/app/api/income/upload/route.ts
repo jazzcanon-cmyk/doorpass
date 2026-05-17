@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // 2) income 테이블에 임시 행 추가
     //    user_id는 approved_users.id(소형 정수) 사용 — 카카오 ID 아님
-    const thisMonth = new Date().toISOString().slice(0, 7) + "-01"
+    const thisMonth = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7) + "-01"
     const { data: insertData, error: insertError } = await supabaseAdmin
       .from("income")
       .insert({

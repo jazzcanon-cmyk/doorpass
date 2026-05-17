@@ -328,8 +328,9 @@ export function TaxTab({ currentUser }: TaxTabProps) {
     setLoading(true)
     try {
       const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]
+      const yr = now.getFullYear(); const mo = now.getMonth()
+      const startOfMonth = `${yr}-${String(mo + 1).padStart(2, "0")}-01`
+      const endOfMonth = `${yr}-${String(mo + 1).padStart(2, "0")}-${String(new Date(yr, mo + 1, 0).getDate()).padStart(2, "0")}`
 
       // 이번 달 지출 합계 (approved_users.id 기준)
       const { data: expMonthData } = await supabase
@@ -1944,7 +1945,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           onClick={() => { if (!savingExpense) setExpenseModalOpen(false) }}
         >
           <div
-            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85dvh]"
             style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2022,7 +2023,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           onClick={() => { if (!savingIncome) setIncomeModalOpen(false) }}
         >
           <div
-            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85dvh]"
             style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2205,7 +2206,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
             onClick={() => { if (!insertingStatement) { setStatementModalOpen(false); setStatementResult(null) } }}
           >
             <div
-              className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 max-h-[85vh] overflow-y-auto"
+              className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 max-h-[85dvh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 헤더 */}
@@ -2390,7 +2391,7 @@ export function TaxTab({ currentUser }: TaxTabProps) {
           onClick={() => { if (!insertingSms) setSmsModalOpen(false) }}
         >
           <div
-            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85vh]"
+            className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-t-3xl px-5 py-6 space-y-4 overflow-y-auto max-h-[85dvh]"
             style={{ WebkitOverflowScrolling: 'touch' }}
             onClick={(e) => e.stopPropagation()}
           >

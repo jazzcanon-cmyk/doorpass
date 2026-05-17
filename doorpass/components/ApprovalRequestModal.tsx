@@ -138,7 +138,7 @@ export function ApprovalRequestModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-full max-w-md overflow-y-auto border-white/10 bg-slate-900 text-white sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] w-full max-w-md overflow-y-auto border-white/10 bg-slate-900 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white text-base">비밀번호를 보려면 승인이 필요해요</DialogTitle>
           <p className="text-left text-sm text-white/60">

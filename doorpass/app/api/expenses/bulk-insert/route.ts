@@ -29,22 +29,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "user_id, items 필수" }, { status: 400 })
     }
 
-    // 중복 체크: date+amount+vendor_name 조합으로 이미 등록된 항목 스킵
+    // 중복 체크: N+1 방지 — 해당 날짜 범위의 기존 항목을 1회 조회 후 인메모리 비교
+    const dates = [...new Set(items.map((i) => i.receipt_date))]
+    const { data: existingRows } = await supabaseAdmin
+      .from("expenses")
+      .select("receipt_date, amount, vendor_name")
+      .eq("user_id", user_id)
+      .in("receipt_date", dates)
+
+    const existingSet = new Set(
+      (existingRows ?? []).map((e) => `${e.receipt_date}|${e.amount}|${e.vendor_name ?? ""}`)
+    )
+
     const toInsert: ExpenseItem[] = []
     const skipped: string[] = []
 
     for (const item of items) {
-      const { data: existing } = await supabaseAdmin
-        .from("expenses")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("receipt_date", item.receipt_date)
-        .eq("amount", Number(item.amount))
-        .eq("vendor_name", item.vendor_name ?? "")
-        .limit(1)
-        .maybeSingle()
-
-      if (existing) {
+      const key = `${item.receipt_date}|${Number(item.amount)}|${item.vendor_name ?? ""}`
+      if (existingSet.has(key)) {
         skipped.push(item.vendor_name ?? "알수없음")
       } else {
         toInsert.push(item)

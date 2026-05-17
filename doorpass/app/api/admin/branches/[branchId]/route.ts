@@ -46,26 +46,35 @@ export async function GET(_request: Request, { params }: { params: Params }) {
       activeUsers = new Set((recentLogins || []).map((l) => l.user_email).filter(Boolean)).size
     }
 
+    // 6개월 로그인 집계 — 루프 당 1 쿼리(N+1) 대신 단일 쿼리 후 인메모리 집계
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
+    sixMonthsAgo.setDate(1)
+    sixMonthsAgo.setHours(0, 0, 0, 0)
+
+    let allMonthlyRows: Array<{ login_at: string }> = []
+    if (userEmails.length > 0) {
+      const { data } = await supabaseAdmin
+        .from("login_history")
+        .select("login_at")
+        .in("user_email", userEmails)
+        .gte("login_at", sixMonthsAgo.toISOString())
+      allMonthlyRows = data ?? []
+    }
+
+    const loginCountByMonth = new Map<string, number>()
+    for (const row of allMonthlyRows) {
+      const key = row.login_at.slice(0, 7) // YYYY-MM
+      loginCountByMonth.set(key, (loginCountByMonth.get(key) ?? 0) + 1)
+    }
+
     const monthlyLogins: Array<{ month: string; count: number }> = []
     for (let i = 5; i >= 0; i--) {
       const date = new Date()
       date.setMonth(date.getMonth() - i)
       const month = date.toLocaleString("ko-KR", { month: "short" })
-      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1)
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
-
-      let count = 0
-      if (userEmails.length > 0) {
-        const { count: monthlyCount } = await supabaseAdmin
-          .from("login_history")
-          .select("id", { count: "exact", head: true })
-          .in("user_email", userEmails)
-          .gte("login_at", startOfMonth.toISOString())
-          .lte("login_at", endOfMonth.toISOString())
-        count = monthlyCount || 0
-      }
-
-      monthlyLogins.push({ month, count })
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      monthlyLogins.push({ month, count: loginCountByMonth.get(key) ?? 0 })
     }
 
     const { data: buildings } = await supabaseAdmin
