@@ -3,15 +3,16 @@ import dynamic from "next/dynamic"
 import { CalendarModal } from "@/components/calendar"
 import { useState, useEffect, useCallback } from "react"
 import { Loader2 } from "lucide-react"
-import { WelcomeDialog } from "@/components/WelcomeDialog"
-import { AttendanceRouletteModal } from "@/components/AttendanceRouletteModal"
 import { KakaoChannelButton } from "@/components/KakaoChannelButton"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
 import { SearchTab } from "@/components/SearchTab"
-import { NewBuildingModal } from "@/components/NewBuildingModal"
 import PushNotificationBanner from "@/components/PushNotificationBanner"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
+
+const WelcomeDialog = dynamic(() => import("@/components/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })), { ssr: false })
+const AttendanceRouletteModal = dynamic(() => import("@/components/AttendanceRouletteModal").then((m) => ({ default: m.AttendanceRouletteModal })), { ssr: false })
+const NewBuildingModal = dynamic(() => import("@/components/NewBuildingModal").then((m) => ({ default: m.NewBuildingModal })), { ssr: false })
 
 const NearbyTab = dynamic(() => import("@/components/NearbyTab").then((m) => ({ default: m.NearbyTab })), {
   loading: () => <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-white/40" /></div>,

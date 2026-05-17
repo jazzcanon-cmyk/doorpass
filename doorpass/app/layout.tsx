@@ -1,8 +1,18 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { Noto_Sans_KR } from 'next/font/google'
 import './globals.css'
 import LeafletPreloader from '@/components/LeafletPreloader'
+import { KakaoScript } from '@/components/KakaoScript'
 import { Toaster } from 'sonner'
+
+const notoSansKR = Noto_Sans_KR({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-sans',
+})
 
 export const viewport: Viewport = {
   themeColor: '#2E3192',
@@ -38,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={notoSansKR.variable}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -51,10 +61,7 @@ export default function RootLayout({
         src="https://www.googletagmanager.com/gtag/js?id=G-4VT7N36ZS0"
         strategy="lazyOnload"
       />
-      <Script
-        src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
-        strategy="lazyOnload"
-      />
+      <KakaoScript />
       <Script id="google-analytics" strategy="lazyOnload">
         {`
           window.dataLayer = window.dataLayer || [];
