@@ -47,6 +47,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="DoorPass" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="preconnect" href="https://xqvisvevzajxxmpzelmw.supabase.co" />
+        <link rel="dns-prefetch" href="https://xqvisvevzajxxmpzelmw.supabase.co" />
       </head>
       <Script
         src="https://www.googletagmanager.com/gtag/js?id=G-4VT7N36ZS0"
@@ -76,17 +78,7 @@ export default function RootLayout({
         <LeafletPreloader />
         {children}
         <Toaster position="top-center" richColors />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
+        <Script id="sw-register" strategy="afterInteractive">{`if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js')`}</Script>
       </body>
     </html>
   )

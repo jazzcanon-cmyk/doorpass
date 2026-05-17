@@ -6,8 +6,8 @@ import { KakaoChannelButton } from "@/components/KakaoChannelButton"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { AppHeader } from "@/components/AppHeader"
 import { SearchTab } from "@/components/SearchTab"
-import PushNotificationBanner from "@/components/PushNotificationBanner"
-import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
+const PushNotificationBanner = dynamic(() => import("@/components/PushNotificationBanner"), { ssr: false })
+const PWAInstallPrompt = dynamic(() => import("@/components/pwa-install-prompt").then((m) => ({ default: m.PWAInstallPrompt })), { ssr: false })
 
 const CalendarModal = dynamic(() => import("@/components/calendar").then((m) => ({ default: m.CalendarModal })), { ssr: false })
 const WelcomeDialog = dynamic(() => import("@/components/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })), { ssr: false })
@@ -126,11 +126,10 @@ export default function Home() {
     [getLocation, fetchBuildings, selectedRadius]
   )
 
-  // 초기 마운트 시 GPS 없이 건물 목록만 로드 (검색 탭에서 바로 사용)
+  // auth 완료를 기다리지 않고 마운트 즉시 건물 목록 로드 (비로그인도 허용)
   useEffect(() => {
-    if (authStatus !== "ok") return
     void fetchBuildings()
-  }, [authStatus, fetchBuildings])
+  }, [fetchBuildings])
 
   // 내주변 탭 진입 시에만 GPS 로딩 + 거리 재계산
   useEffect(() => {
