@@ -96,17 +96,34 @@ export async function POST(
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { unauthorized } = await requireAuth();
+    const { user, unauthorized } = await requireAuth();
     if (unauthorized) return unauthorized;
 
-    const { id: buildingId } = await params;
-    const supabase = await createSupabaseRouteHandlerClient();
+    const approvedInfo = await lookupApprovedUser<{ role: string | null; branch_id: string | null }>(user!, "role, branch_id");
+    const role = approvedInfo?.role;
+    if (!role || !["admin", "sub_admin"].includes(role)) {
+      return NextResponse.json({ error: '관리자만 이력을 조회할 수 있습니다.' }, { status: 403 });
+    }
 
-    const { data: history, error } = await supabase
+    const { id: buildingId } = await params;
+
+    // sub_admin은 자신의 대리점 건물 이력만 조회 가능
+    if (role === 'sub_admin') {
+      const { data: building } = await supabaseAdmin
+        .from('buildings')
+        .select('branch_id')
+        .eq('id', buildingId)
+        .maybeSingle();
+      if (building?.branch_id !== approvedInfo?.branch_id) {
+        return NextResponse.json({ error: '다른 대리점 건물 이력은 조회할 수 없습니다.' }, { status: 403 });
+      }
+    }
+
+    const { data: history, error } = await supabaseAdmin
       .from('password_edit_history')
       .select('*')
       .eq('building_id', buildingId)

@@ -690,7 +690,23 @@ export function TaxTab({ currentUser }: TaxTabProps) {
       fd.append("userId", String(approvedUserId))
       fd.append("storagePrefix", currentUser.userId) // Storage 폴더는 카카오 ID 유지
 
-      const uploadRes = await fetch("/api/income/upload", { method: "POST", body: fd })
+      let uploadRes = await fetch("/api/income/upload", { method: "POST", body: fd })
+
+      // 이번 달 이미 수입 내역이 있는 경우 — 사용자 확인 후 강제 추가
+      if (uploadRes.status === 409) {
+        const json = (await uploadRes.json()) as { isDuplicate?: boolean }
+        if (json.isDuplicate) {
+          const ok = window.confirm("이번 달 수입 내역이 이미 있습니다. 추가로 등록하시겠습니까?")
+          if (!ok) { setUploadingIncome(false); e.target.value = ""; return }
+          const fd2 = new FormData()
+          fd2.append("file", file)
+          fd2.append("userId", String(approvedUserId))
+          fd2.append("storagePrefix", currentUser.userId)
+          fd2.append("force", "1")
+          uploadRes = await fetch("/api/income/upload", { method: "POST", body: fd2 })
+        }
+      }
+
       if (!uploadRes.ok) throw new Error("업로드 실패")
       const { incomeId, imageUrl } = (await uploadRes.json()) as { incomeId: string; imageUrl: string }
 
