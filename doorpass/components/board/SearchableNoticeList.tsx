@@ -59,6 +59,8 @@ export function SearchableNoticeList({ query }: { query: string }) {
                   </div>
                   <button
                     onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
+                    aria-label={expandedId === n.id ? "공지 접기" : "공지 펼치기"}
+                    aria-expanded={expandedId === n.id}
                     className="p-1.5 text-muted-foreground hover:text-foreground flex-shrink-0"
                   >
                     {expandedId === n.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

@@ -41,6 +41,7 @@ export function SearchModal({ memos, kakaoId, onClose }: SearchModalProps) {
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <input
             placeholder="내용 검색..."
+            aria-label="메모 검색"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}

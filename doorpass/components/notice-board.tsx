@@ -122,10 +122,11 @@ export function NoticeBoard() {
       {isAdmin && showForm && (
         <Card className="mb-4 border-primary/30">
           <CardContent className="p-4 space-y-3">
-            <Input placeholder="닉네임 (기본: 관리자)" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
-            <Input placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
+            <Input placeholder="닉네임 (기본: 관리자)" aria-label="작성자 닉네임" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
+            <Input placeholder="제목" aria-label="공지 제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
             <textarea
               placeholder="내용을 입력하세요"
+              aria-label="공지 내용"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={4}
@@ -182,6 +183,8 @@ export function NoticeBoard() {
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
+                      aria-label={expandedId === n.id ? "공지 접기" : "공지 펼치기"}
+                      aria-expanded={expandedId === n.id}
                       className="p-1.5 text-muted-foreground hover:text-foreground"
                     >
                       {expandedId === n.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -189,6 +192,7 @@ export function NoticeBoard() {
                     {isAdmin && (
                       <button
                         onClick={() => deleteNotice(n.id)}
+                        aria-label="공지 삭제"
                         className="p-1.5 text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />

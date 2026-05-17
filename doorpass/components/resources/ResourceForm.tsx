@@ -102,10 +102,10 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
   return (
     <Card className="mb-4 border-primary/30">
       <CardContent className="p-4 space-y-3">
-        <Input placeholder="닉네임 (기본: 관리자)" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
-        <Input placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
+        <Input placeholder="닉네임 (기본: 관리자)" aria-label="작성자 닉네임" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
+        <Input placeholder="제목" aria-label="자료 제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
         {resourceType !== "text" && (
-          <Input placeholder="설명 (선택)" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-0" />
+          <Input placeholder="설명 (선택)" aria-label="자료 설명" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-0" />
         )}
 
         <div className="flex gap-2">
@@ -131,6 +131,7 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
         {resourceType === "text" && (
           <textarea
             placeholder="내용을 입력하세요"
+            aria-label="텍스트 내용"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={6}
@@ -139,15 +140,15 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
         )}
 
         {resourceType === "link" && (
-          <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
+          <Input placeholder="https://..." aria-label="링크 URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
         )}
 
         {resourceType === "image" && (
           <div className="space-y-2">
             {pickedFile ? (
               <div className="relative">
-                {imagePreview && <img src={imagePreview} alt="" className="w-full rounded-lg" />}
-                <button onClick={clearFile} className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white hover:bg-black/80">
+                {imagePreview && <img src={imagePreview} alt="이미지 미리보기" className="w-full rounded-lg" />}
+                <button onClick={clearFile} aria-label="이미지 제거" className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white hover:bg-black/80">
                   <X className="h-4 w-4" />
                 </button>
                 {compressInfo && (
@@ -165,7 +166,7 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
                     onChange={(e) => handleFilePick(e, true)} />
                 </label>
                 <p className="text-xs text-muted-foreground">또는</p>
-                <Input placeholder="이미지 URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
+                <Input placeholder="이미지 URL" aria-label="이미지 URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
               </>
             )}
           </div>
@@ -177,7 +178,7 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
               <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2">
                 <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-sm text-foreground truncate flex-1">{compressInfo}</span>
-                <button onClick={clearFile} className="text-muted-foreground hover:text-destructive">
+                <button onClick={clearFile} aria-label="파일 제거" className="text-muted-foreground hover:text-destructive">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -196,7 +197,7 @@ export function ResourceForm({ onCancel, onSubmitted }: ResourceFormProps) {
                   />
                 </label>
                 <p className="text-xs text-muted-foreground">또는</p>
-                <Input placeholder="파일 URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
+                <Input placeholder="파일 URL" aria-label="파일 URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-secondary border-0" />
               </>
             )}
           </div>

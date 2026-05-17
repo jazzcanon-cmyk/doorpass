@@ -40,14 +40,14 @@ export function CalendarGrid({
     <>
       <div style={{ background: "linear-gradient(135deg, #1e3a5f, #0f2744)", padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={onPrevMonth}
+          <button onClick={onPrevMonth} aria-label="이전 달"
             style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "5px 9px", color: "white", cursor: "pointer" }}>
             <ChevronLeft size={15} />
           </button>
           <span style={{ color: "white", fontWeight: 700, fontSize: 16 }}>
             {currentYear}년 {MONTHS[currentMonth]}
           </span>
-          <button onClick={onNextMonth}
+          <button onClick={onNextMonth} aria-label="다음 달"
             style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "5px 9px", color: "white", cursor: "pointer" }}>
             <ChevronRight size={15} />
           </button>

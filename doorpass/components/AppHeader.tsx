@@ -40,8 +40,8 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => onTabChange("search")} className="flex-shrink-0 focus:outline-none">
-              <Image src="/icon-light-32x32.png" alt="DoorPass" width={32} height={32} className="rounded-lg" priority />
+            <button onClick={() => onTabChange("search")} aria-label="홈으로 이동" className="flex-shrink-0 focus:outline-none">
+              <Image src="/icon-light-32x32.png" alt="" width={32} height={32} className="rounded-lg" priority />
             </button>
             <div>
               <p className="text-[11px] text-white/40 flex items-center gap-1">
@@ -70,6 +70,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
                 size="icon"
                 onClick={onRefresh}
                 disabled={loading}
+                aria-label="새로고침"
                 className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -77,17 +78,17 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
             )}
             <Link
               href="/settings"
-              title="설정"
+              aria-label="설정"
               className="h-8 w-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Button
               variant="ghost"
               size="icon"
               onClick={onLogout}
+              aria-label="로그아웃"
               className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200"
-              title="로그아웃"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -104,7 +105,7 @@ export function AppHeader({ currentUser, activeTab, loading, onTabChange, onRefr
               className={`flex flex-col flex-1 items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all duration-200 ${
                 activeTab === tab.key
                   ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
-                  : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                  : "text-white/60 hover:text-white/80 hover:bg-white/5"
               }`}
             >
               {tab.icon}

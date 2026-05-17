@@ -229,10 +229,10 @@ export function PostDetail({ postId, defaultAuthor }: PostDetailProps) {
         </div>
       </div>
       <Card><CardContent className="p-3 space-y-2">
-        <Input placeholder="닉네임 (선택)" value={author} onChange={(e) => setAuthor(e.target.value)} className="h-8 text-sm bg-secondary border-0" />
+        <Input placeholder="닉네임 (선택)" aria-label="댓글 작성자 닉네임" value={author} onChange={(e) => setAuthor(e.target.value)} className="h-8 text-sm bg-secondary border-0" />
         <div className="flex gap-2">
-          <Input placeholder="댓글을 입력하세요" value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submitComment()} className="h-9 text-sm bg-secondary border-0 flex-1" />
-          <Button size="icon" onClick={submitComment} disabled={submitting || !comment.trim()} className="h-9 w-9">
+          <Input placeholder="댓글을 입력하세요" aria-label="댓글 내용" value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submitComment()} className="h-9 text-sm bg-secondary border-0 flex-1" />
+          <Button size="icon" onClick={submitComment} disabled={submitting || !comment.trim()} aria-label="댓글 등록" className="h-9 w-9">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

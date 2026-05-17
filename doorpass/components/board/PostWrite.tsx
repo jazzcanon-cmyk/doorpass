@@ -82,13 +82,13 @@ export function PostWrite({ defaultAuthor }: { defaultAuthor?: string }) {
       <button onClick={goToList} className="flex items-center gap-2 text-muted-foreground mb-4 text-sm hover:text-foreground"><ArrowLeft className="h-4 w-4" />취소</button>
       <h2 className="text-base font-bold mb-4">글쓰기</h2>
       <div className="space-y-3">
-        <Input placeholder="닉네임 (선택)" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
-        <Input placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
-        <textarea placeholder="내용을 입력하세요" value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="w-full rounded-md bg-secondary border-0 p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
+        <Input placeholder="닉네임 (선택)" aria-label="작성자 닉네임" value={author} onChange={(e) => setAuthor(e.target.value)} className="bg-secondary border-0" />
+        <Input placeholder="제목" aria-label="게시글 제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary border-0 font-medium" />
+        <textarea placeholder="내용을 입력하세요" aria-label="게시글 내용" value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="w-full rounded-md bg-secondary border-0 p-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
         {preview ? (
           <div className="relative">
             <img src={preview} alt="" className="w-full h-auto rounded-lg" />
-            <button onClick={() => { setImageFile(null); setPreview(null); setCompressInfo(null) }} className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white hover:bg-black/80"><X className="h-4 w-4" /></button>
+            <button onClick={() => { setImageFile(null); setPreview(null); setCompressInfo(null) }} aria-label="이미지 제거" className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white hover:bg-black/80"><X className="h-4 w-4" /></button>
             {compressInfo && <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">{compressInfo}</div>}
           </div>
         ) : (

@@ -95,7 +95,7 @@ export function ResourceCard({
           <button
             onClick={(e) => void handleCopy(e)}
             className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-primary"
-            title="복사"
+            aria-label="링크 복사"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </button>
@@ -106,7 +106,7 @@ export function ResourceCard({
                 onEdit()
               }}
               className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-primary"
-              title="수정"
+              aria-label="수정"
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -115,6 +115,7 @@ export function ResourceCard({
             <button
               onClick={(e) => { e.stopPropagation(); onDelete() }}
               className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-destructive"
+              aria-label="삭제"
             >
               <Trash2 className="h-4 w-4" />
             </button>
