@@ -69,6 +69,7 @@ export function PostWrite({ defaultAuthor }: { defaultAuthor?: string }) {
         setSubmitting(false)
         return
       }
+      toast.success("게시글이 등록됐습니다.")
       afterWrite()
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.")

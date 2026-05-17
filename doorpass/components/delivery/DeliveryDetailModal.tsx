@@ -153,13 +153,14 @@ export function DeliveryDetailModal({ open, requestId, currentEmail, onClose, on
               <button
                 onClick={() => void handleDelete()}
                 disabled={deleting}
+                aria-label="삭제"
                 title="삭제"
                 className="text-white/40 hover:text-red-400 p-1 disabled:opacity-40"
               >
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               </button>
             )}
-            <button onClick={onClose} className="text-white/60 hover:text-white p-1">
+            <button onClick={onClose} aria-label="닫기" className="text-white/60 hover:text-white p-1">
               <X className="h-5 w-5" />
             </button>
           </div>

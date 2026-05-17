@@ -164,7 +164,7 @@ export function BuildingCard({
             {/* 팝업 헤더 */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="font-bold text-foreground">건물 정보</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowPopup(false)}
+              <Button variant="ghost" size="icon" aria-label="닫기" onClick={() => setShowPopup(false)}
                 className="h-8 w-8 text-muted-foreground">
                 <X className="h-4 w-4" />
               </Button>
@@ -280,6 +280,7 @@ export function BuildingCard({
                               <Button
                                 variant="default"
                                 size="icon"
+                                aria-label="저장"
                                 disabled={saving}
                                 onClick={async () => {
                                   await saveField("password", passwordDraft)
@@ -292,6 +293,7 @@ export function BuildingCard({
                               <Button
                                 variant="secondary"
                                 size="icon"
+                                aria-label="취소"
                                 onClick={() => {
                                   setPasswordDraft(currentBuilding.password || "")
                                   setIsEditingPassword(false)
@@ -312,6 +314,7 @@ export function BuildingCard({
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="비밀번호 수정"
                                   onClick={() => setIsEditingPassword(true)}
                                   className="h-7 w-7 text-muted-foreground hover:text-primary flex-shrink-0"
                                 >
@@ -457,6 +460,7 @@ export function BuildingCard({
                         <Button
                           variant="default"
                           size="icon"
+                          aria-label="저장"
                           disabled={saving}
                           onClick={async () => {
                             await saveField("memo", composeMemo(elevatorStatus, memoDraft))
@@ -470,6 +474,7 @@ export function BuildingCard({
                         <Button
                           variant="secondary"
                           size="icon"
+                          aria-label="취소"
                           onClick={() => {
                             setMemoDraft(memoText)
                             setIsEditingMemo(false)
@@ -490,6 +495,7 @@ export function BuildingCard({
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="메모 수정"
                             onClick={() => {
                               setMemoDraft(memoText)
                               setIsEditingMemo(true)
@@ -749,6 +755,7 @@ export function BuildingCard({
         >
           <button
             type="button"
+            aria-label="사진 닫기"
             onClick={(e) => {
               e.stopPropagation()
               setLightboxUrl(null)

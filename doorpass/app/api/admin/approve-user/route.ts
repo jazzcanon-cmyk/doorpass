@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireManagerApi } from "@/lib/auth"
+import { requireManagerApi, resolveUserEmail } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { executePendingApprovalById } from "@/lib/pending-approval-actions"
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "요청 값이 올바르지 않습니다." }, { status: 400 })
     }
 
-    const email = user?.email ?? "unknown"
+    const email = resolveUserEmail(user!)
     const meta = user?.user_metadata as Record<string, unknown> | undefined
     const userId =
       ((meta?.provider_id as string | undefined) ??
